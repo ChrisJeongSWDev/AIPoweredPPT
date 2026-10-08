@@ -1,0 +1,1560 @@
+{
+  "schema": "canvas-ir/1",
+  "canvas": {
+    "w": 960,
+    "h": 540,
+    "unit": "pt"
+  },
+  "target": {
+    "template": "reference/renderer_template.pptx",
+    "template_sha256": "60fe35466ed2bb477d592603d0eab9d8748521e54ae0632c9f6a94d0b02a855a",
+    "layout_index": 3
+  },
+  "title": "AF_Diff 및 Z-Axis Feedback Peak-to-Peak 분석",
+  "elements": [
+    {
+      "id": "chart_bg",
+      "type": "rect",
+      "x": 48,
+      "y": 104,
+      "w": 604,
+      "h": 380,
+      "fill": "#FFFFFF",
+      "text": null
+    },
+    {
+      "id": "legend_bg",
+      "type": "rect",
+      "x": 380,
+      "y": 115,
+      "w": 250,
+      "h": 30,
+      "fill": "#6B727C0F",
+      "text": null
+    },
+    {
+      "id": "lgd_line_af",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 395,
+      "y1": 130,
+      "x2": 415,
+      "y2": 130,
+      "color": "#1A1A1A",
+      "width": 2,
+      "arrow": "none"
+    },
+    {
+      "id": "lgd_txt_af",
+      "type": "textbox",
+      "x": 420,
+      "y": 118,
+      "w": 80,
+      "h": 24,
+      "fill": null,
+      "text": {
+        "align": "LEFT",
+        "valign": "MIDDLE",
+        "paragraphs": [
+          {
+            "runs": [
+              {
+                "t": "AF_Diff (L)",
+                "size": 10,
+                "color": "#1A1A1A",
+                "bold": true
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "lgd_line_z",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 510,
+      "y1": 130,
+      "x2": 530,
+      "y2": 130,
+      "color": "#E63312",
+      "width": 1.5,
+      "arrow": "none"
+    },
+    {
+      "id": "lgd_txt_z",
+      "type": "textbox",
+      "x": 535,
+      "y": 118,
+      "w": 90,
+      "h": 24,
+      "fill": null,
+      "text": {
+        "align": "LEFT",
+        "valign": "MIDDLE",
+        "paragraphs": [
+          {
+            "runs": [
+              {
+                "t": "Z-Axis Fee (R)",
+                "size": 10,
+                "color": "#E63312",
+                "bold": true
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "grid_y_20",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 100,
+      "y1": 145,
+      "x2": 580,
+      "y2": 145,
+      "color": "#6B727C22",
+      "width": 1,
+      "arrow": "none"
+    },
+    {
+      "id": "grid_y_0",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 100,
+      "y1": 225,
+      "x2": 580,
+      "y2": 225,
+      "color": "#1A1A1A60",
+      "width": 1.2,
+      "arrow": "none"
+    },
+    {
+      "id": "grid_y_m20",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 100,
+      "y1": 305,
+      "x2": 580,
+      "y2": 305,
+      "color": "#6B727C22",
+      "width": 1,
+      "arrow": "none"
+    },
+    {
+      "id": "grid_y_m40",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 100,
+      "y1": 385,
+      "x2": 580,
+      "y2": 385,
+      "color": "#6B727C22",
+      "width": 1,
+      "arrow": "none"
+    },
+    {
+      "id": "axis_y_l",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 100,
+      "y1": 135,
+      "x2": 100,
+      "y2": 435,
+      "color": "#1A1A1A",
+      "width": 1.5,
+      "arrow": "start"
+    },
+    {
+      "id": "axis_y_r",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 580,
+      "y1": 135,
+      "x2": 580,
+      "y2": 435,
+      "color": "#E63312",
+      "width": 1.5,
+      "arrow": "start"
+    },
+    {
+      "id": "axis_x",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 100,
+      "y1": 435,
+      "x2": 590,
+      "y2": 435,
+      "color": "#1A1A1A",
+      "width": 1.5,
+      "arrow": "end"
+    },
+    {
+      "id": "lbl_yl_20",
+      "type": "textbox",
+      "x": 55,
+      "y": 135,
+      "w": 40,
+      "h": 20,
+      "fill": null,
+      "text": {
+        "align": "RIGHT",
+        "valign": "MIDDLE",
+        "paragraphs": [
+          {
+            "runs": [
+              {
+                "t": "20",
+                "size": 9,
+                "color": "#1A1A1A"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "lbl_yl_0",
+      "type": "textbox",
+      "x": 55,
+      "y": 215,
+      "w": 40,
+      "h": 20,
+      "fill": null,
+      "text": {
+        "align": "RIGHT",
+        "valign": "MIDDLE",
+        "paragraphs": [
+          {
+            "runs": [
+              {
+                "t": "0",
+                "size": 9,
+                "color": "#1A1A1A",
+                "bold": true
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "lbl_yl_m20",
+      "type": "textbox",
+      "x": 55,
+      "y": 295,
+      "w": 40,
+      "h": 20,
+      "fill": null,
+      "text": {
+        "align": "RIGHT",
+        "valign": "MIDDLE",
+        "paragraphs": [
+          {
+            "runs": [
+              {
+                "t": "-20",
+                "size": 9,
+                "color": "#1A1A1A"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "lbl_yl_m40",
+      "type": "textbox",
+      "x": 55,
+      "y": 375,
+      "w": 40,
+      "h": 20,
+      "fill": null,
+      "text": {
+        "align": "RIGHT",
+        "valign": "MIDDLE",
+        "paragraphs": [
+          {
+            "runs": [
+              {
+                "t": "-40",
+                "size": 9,
+                "color": "#1A1A1A"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "lbl_yr_20",
+      "type": "textbox",
+      "x": 585,
+      "y": 135,
+      "w": 50,
+      "h": 20,
+      "fill": null,
+      "text": {
+        "align": "LEFT",
+        "valign": "MIDDLE",
+        "paragraphs": [
+          {
+            "runs": [
+              {
+                "t": "-0.059",
+                "size": 9,
+                "color": "#E63312"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "lbl_yr_0",
+      "type": "textbox",
+      "x": 585,
+      "y": 215,
+      "w": 50,
+      "h": 20,
+      "fill": null,
+      "text": {
+        "align": "LEFT",
+        "valign": "MIDDLE",
+        "paragraphs": [
+          {
+            "runs": [
+              {
+                "t": "-0.079",
+                "size": 9,
+                "color": "#E63312"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "lbl_yr_m20",
+      "type": "textbox",
+      "x": 585,
+      "y": 295,
+      "w": 50,
+      "h": 20,
+      "fill": null,
+      "text": {
+        "align": "LEFT",
+        "valign": "MIDDLE",
+        "paragraphs": [
+          {
+            "runs": [
+              {
+                "t": "-0.099",
+                "size": 9,
+                "color": "#E63312"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "lbl_yr_m40",
+      "type": "textbox",
+      "x": 585,
+      "y": 375,
+      "w": 50,
+      "h": 20,
+      "fill": null,
+      "text": {
+        "align": "LEFT",
+        "valign": "MIDDLE",
+        "paragraphs": [
+          {
+            "runs": [
+              {
+                "t": "-0.119",
+                "size": 9,
+                "color": "#E63312"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "lbl_x_1",
+      "type": "textbox",
+      "x": 95,
+      "y": 440,
+      "w": 30,
+      "h": 20,
+      "fill": null,
+      "text": {
+        "align": "CENTER",
+        "valign": "MIDDLE",
+        "paragraphs": [
+          {
+            "runs": [
+              {
+                "t": "1",
+                "size": 9,
+                "color": "#1A1A1A"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "lbl_x_100",
+      "type": "textbox",
+      "x": 235,
+      "y": 440,
+      "w": 30,
+      "h": 20,
+      "fill": null,
+      "text": {
+        "align": "CENTER",
+        "valign": "MIDDLE",
+        "paragraphs": [
+          {
+            "runs": [
+              {
+                "t": "100",
+                "size": 9,
+                "color": "#1A1A1A"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "lbl_x_200",
+      "type": "textbox",
+      "x": 365,
+      "y": 440,
+      "w": 30,
+      "h": 20,
+      "fill": null,
+      "text": {
+        "align": "CENTER",
+        "valign": "MIDDLE",
+        "paragraphs": [
+          {
+            "runs": [
+              {
+                "t": "200",
+                "size": 9,
+                "color": "#1A1A1A"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "lbl_x_300",
+      "type": "textbox",
+      "x": 495,
+      "y": 440,
+      "w": 30,
+      "h": 20,
+      "fill": null,
+      "text": {
+        "align": "CENTER",
+        "valign": "MIDDLE",
+        "paragraphs": [
+          {
+            "runs": [
+              {
+                "t": "300",
+                "size": 9,
+                "color": "#1A1A1A"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "lbl_x_title",
+      "type": "textbox",
+      "x": 280,
+      "y": 460,
+      "w": 120,
+      "h": 20,
+      "fill": null,
+      "text": {
+        "align": "CENTER",
+        "valign": "MIDDLE",
+        "paragraphs": [
+          {
+            "runs": [
+              {
+                "t": "Data Index (Frames)",
+                "size": 10,
+                "color": "#1A1A1A",
+                "bold": true
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "af_p0",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 110,
+      "y1": 225,
+      "x2": 123.1,
+      "y2": 233,
+      "color": "#1A1A1A",
+      "width": 1.8,
+      "arrow": "none"
+    },
+    {
+      "id": "af_p1",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 123.1,
+      "y1": 233,
+      "x2": 136.3,
+      "y2": 245,
+      "color": "#1A1A1A",
+      "width": 1.8,
+      "arrow": "none"
+    },
+    {
+      "id": "af_p2",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 136.3,
+      "y1": 245,
+      "x2": 149.4,
+      "y2": 257,
+      "color": "#1A1A1A",
+      "width": 1.8,
+      "arrow": "none"
+    },
+    {
+      "id": "af_p3",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 149.4,
+      "y1": 257,
+      "x2": 162.6,
+      "y2": 265,
+      "color": "#1A1A1A",
+      "width": 1.8,
+      "arrow": "none"
+    },
+    {
+      "id": "af_p4",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 162.6,
+      "y1": 265,
+      "x2": 175.7,
+      "y2": 245,
+      "color": "#1A1A1A",
+      "width": 1.8,
+      "arrow": "none"
+    },
+    {
+      "id": "af_p5",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 175.7,
+      "y1": 245,
+      "x2": 188.9,
+      "y2": 217,
+      "color": "#1A1A1A",
+      "width": 1.8,
+      "arrow": "none"
+    },
+    {
+      "id": "af_p6",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 188.9,
+      "y1": 217,
+      "x2": 202,
+      "y2": 201,
+      "color": "#1A1A1A",
+      "width": 1.8,
+      "arrow": "none"
+    },
+    {
+      "id": "af_p7",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 202,
+      "y1": 201,
+      "x2": 215.1,
+      "y2": 189,
+      "color": "#1A1A1A",
+      "width": 1.8,
+      "arrow": "none"
+    },
+    {
+      "id": "af_p8",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 215.1,
+      "y1": 189,
+      "x2": 228.3,
+      "y2": 185,
+      "color": "#1A1A1A",
+      "width": 1.8,
+      "arrow": "none"
+    },
+    {
+      "id": "af_p9",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 228.3,
+      "y1": 185,
+      "x2": 241.4,
+      "y2": 193,
+      "color": "#1A1A1A",
+      "width": 1.8,
+      "arrow": "none"
+    },
+    {
+      "id": "af_p10",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 241.4,
+      "y1": 193,
+      "x2": 254.6,
+      "y2": 181,
+      "color": "#1A1A1A",
+      "width": 1.8,
+      "arrow": "none"
+    },
+    {
+      "id": "af_p11",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 254.6,
+      "y1": 181,
+      "x2": 267.7,
+      "y2": 189,
+      "color": "#1A1A1A",
+      "width": 1.8,
+      "arrow": "none"
+    },
+    {
+      "id": "af_p12",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 267.7,
+      "y1": 189,
+      "x2": 280.9,
+      "y2": 201,
+      "color": "#1A1A1A",
+      "width": 1.8,
+      "arrow": "none"
+    },
+    {
+      "id": "af_p13",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 280.9,
+      "y1": 201,
+      "x2": 294,
+      "y2": 217,
+      "color": "#1A1A1A",
+      "width": 1.8,
+      "arrow": "none"
+    },
+    {
+      "id": "af_p14",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 294,
+      "y1": 217,
+      "x2": 307.1,
+      "y2": 233,
+      "color": "#1A1A1A",
+      "width": 1.8,
+      "arrow": "none"
+    },
+    {
+      "id": "af_p15",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 307.1,
+      "y1": 233,
+      "x2": 320.3,
+      "y2": 245,
+      "color": "#1A1A1A",
+      "width": 1.8,
+      "arrow": "none"
+    },
+    {
+      "id": "af_p16",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 320.3,
+      "y1": 245,
+      "x2": 333.4,
+      "y2": 265,
+      "color": "#1A1A1A",
+      "width": 1.8,
+      "arrow": "none"
+    },
+    {
+      "id": "af_p17",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 333.4,
+      "y1": 265,
+      "x2": 346.6,
+      "y2": 285,
+      "color": "#1A1A1A",
+      "width": 1.8,
+      "arrow": "none"
+    },
+    {
+      "id": "af_p18",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 346.6,
+      "y1": 285,
+      "x2": 359.7,
+      "y2": 305,
+      "color": "#1A1A1A",
+      "width": 1.8,
+      "arrow": "none"
+    },
+    {
+      "id": "af_p19",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 359.7,
+      "y1": 305,
+      "x2": 372.9,
+      "y2": 325,
+      "color": "#1A1A1A",
+      "width": 1.8,
+      "arrow": "none"
+    },
+    {
+      "id": "af_p20",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 372.9,
+      "y1": 325,
+      "x2": 386,
+      "y2": 345,
+      "color": "#1A1A1A",
+      "width": 1.8,
+      "arrow": "none"
+    },
+    {
+      "id": "af_p21",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 386,
+      "y1": 345,
+      "x2": 399.1,
+      "y2": 361,
+      "color": "#1A1A1A",
+      "width": 1.8,
+      "arrow": "none"
+    },
+    {
+      "id": "af_p22",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 399.1,
+      "y1": 361,
+      "x2": 412.3,
+      "y2": 369,
+      "color": "#1A1A1A",
+      "width": 1.8,
+      "arrow": "none"
+    },
+    {
+      "id": "af_p23",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 412.3,
+      "y1": 369,
+      "x2": 425.4,
+      "y2": 353,
+      "color": "#1A1A1A",
+      "width": 1.8,
+      "arrow": "none"
+    },
+    {
+      "id": "af_p24",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 425.4,
+      "y1": 353,
+      "x2": 438.6,
+      "y2": 337,
+      "color": "#1A1A1A",
+      "width": 1.8,
+      "arrow": "none"
+    },
+    {
+      "id": "af_p25",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 438.6,
+      "y1": 337,
+      "x2": 451.7,
+      "y2": 321,
+      "color": "#1A1A1A",
+      "width": 1.8,
+      "arrow": "none"
+    },
+    {
+      "id": "af_p26",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 451.7,
+      "y1": 321,
+      "x2": 464.9,
+      "y2": 305,
+      "color": "#1A1A1A",
+      "width": 1.8,
+      "arrow": "none"
+    },
+    {
+      "id": "af_p27",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 464.9,
+      "y1": 305,
+      "x2": 478,
+      "y2": 285,
+      "color": "#1A1A1A",
+      "width": 1.8,
+      "arrow": "none"
+    },
+    {
+      "id": "af_p28",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 478,
+      "y1": 285,
+      "x2": 491.1,
+      "y2": 265,
+      "color": "#1A1A1A",
+      "width": 1.8,
+      "arrow": "none"
+    },
+    {
+      "id": "af_p29",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 491.1,
+      "y1": 265,
+      "x2": 504.3,
+      "y2": 257,
+      "color": "#1A1A1A",
+      "width": 1.8,
+      "arrow": "none"
+    },
+    {
+      "id": "af_p30",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 504.3,
+      "y1": 257,
+      "x2": 517.4,
+      "y2": 245,
+      "color": "#1A1A1A",
+      "width": 1.8,
+      "arrow": "none"
+    },
+    {
+      "id": "af_p31",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 517.4,
+      "y1": 245,
+      "x2": 530.6,
+      "y2": 233,
+      "color": "#1A1A1A",
+      "width": 1.8,
+      "arrow": "none"
+    },
+    {
+      "id": "af_p32",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 530.6,
+      "y1": 233,
+      "x2": 543.7,
+      "y2": 225,
+      "color": "#1A1A1A",
+      "width": 1.8,
+      "arrow": "none"
+    },
+    {
+      "id": "af_p33",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 543.7,
+      "y1": 225,
+      "x2": 556.9,
+      "y2": 237,
+      "color": "#1A1A1A",
+      "width": 1.8,
+      "arrow": "none"
+    },
+    {
+      "id": "af_p34",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 556.9,
+      "y1": 237,
+      "x2": 570,
+      "y2": 233,
+      "color": "#1A1A1A",
+      "width": 1.8,
+      "arrow": "none"
+    },
+    {
+      "id": "z_p0",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 110,
+      "y1": 227,
+      "x2": 123.1,
+      "y2": 235,
+      "color": "#E63312",
+      "width": 1.2,
+      "arrow": "none"
+    },
+    {
+      "id": "z_p1",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 123.1,
+      "y1": 235,
+      "x2": 136.3,
+      "y2": 247,
+      "color": "#E63312",
+      "width": 1.2,
+      "arrow": "none"
+    },
+    {
+      "id": "z_p2",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 136.3,
+      "y1": 247,
+      "x2": 149.4,
+      "y2": 259,
+      "color": "#E63312",
+      "width": 1.2,
+      "arrow": "none"
+    },
+    {
+      "id": "z_p3",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 149.4,
+      "y1": 259,
+      "x2": 162.6,
+      "y2": 267,
+      "color": "#E63312",
+      "width": 1.2,
+      "arrow": "none"
+    },
+    {
+      "id": "z_p4",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 162.6,
+      "y1": 267,
+      "x2": 175.7,
+      "y2": 247,
+      "color": "#E63312",
+      "width": 1.2,
+      "arrow": "none"
+    },
+    {
+      "id": "z_p5",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 175.7,
+      "y1": 247,
+      "x2": 188.9,
+      "y2": 219,
+      "color": "#E63312",
+      "width": 1.2,
+      "arrow": "none"
+    },
+    {
+      "id": "z_p6",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 188.9,
+      "y1": 219,
+      "x2": 202,
+      "y2": 203,
+      "color": "#E63312",
+      "width": 1.2,
+      "arrow": "none"
+    },
+    {
+      "id": "z_p7",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 202,
+      "y1": 203,
+      "x2": 215.1,
+      "y2": 191,
+      "color": "#E63312",
+      "width": 1.2,
+      "arrow": "none"
+    },
+    {
+      "id": "z_p8",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 215.1,
+      "y1": 191,
+      "x2": 228.3,
+      "y2": 187,
+      "color": "#E63312",
+      "width": 1.2,
+      "arrow": "none"
+    },
+    {
+      "id": "z_p9",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 228.3,
+      "y1": 187,
+      "x2": 241.4,
+      "y2": 195,
+      "color": "#E63312",
+      "width": 1.2,
+      "arrow": "none"
+    },
+    {
+      "id": "z_p10",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 241.4,
+      "y1": 195,
+      "x2": 254.6,
+      "y2": 183,
+      "color": "#E63312",
+      "width": 1.2,
+      "arrow": "none"
+    },
+    {
+      "id": "z_p11",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 254.6,
+      "y1": 183,
+      "x2": 267.7,
+      "y2": 191,
+      "color": "#E63312",
+      "width": 1.2,
+      "arrow": "none"
+    },
+    {
+      "id": "z_p12",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 267.7,
+      "y1": 191,
+      "x2": 280.9,
+      "y2": 203,
+      "color": "#E63312",
+      "width": 1.2,
+      "arrow": "none"
+    },
+    {
+      "id": "z_p13",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 280.9,
+      "y1": 203,
+      "x2": 294,
+      "y2": 219,
+      "color": "#E63312",
+      "width": 1.2,
+      "arrow": "none"
+    },
+    {
+      "id": "z_p14",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 294,
+      "y1": 219,
+      "x2": 307.1,
+      "y2": 235,
+      "color": "#E63312",
+      "width": 1.2,
+      "arrow": "none"
+    },
+    {
+      "id": "z_p15",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 307.1,
+      "y1": 235,
+      "x2": 320.3,
+      "y2": 247,
+      "color": "#E63312",
+      "width": 1.2,
+      "arrow": "none"
+    },
+    {
+      "id": "z_p16",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 320.3,
+      "y1": 247,
+      "x2": 333.4,
+      "y2": 267,
+      "color": "#E63312",
+      "width": 1.2,
+      "arrow": "none"
+    },
+    {
+      "id": "z_p17",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 333.4,
+      "y1": 267,
+      "x2": 346.6,
+      "y2": 287,
+      "color": "#E63312",
+      "width": 1.2,
+      "arrow": "none"
+    },
+    {
+      "id": "z_p18",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 346.6,
+      "y1": 287,
+      "x2": 359.7,
+      "y2": 307,
+      "color": "#E63312",
+      "width": 1.2,
+      "arrow": "none"
+    },
+    {
+      "id": "z_p19",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 359.7,
+      "y1": 307,
+      "x2": 372.9,
+      "y2": 327,
+      "color": "#E63312",
+      "width": 1.2,
+      "arrow": "none"
+    },
+    {
+      "id": "z_p20",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 372.9,
+      "y1": 327,
+      "x2": 386,
+      "y2": 347,
+      "color": "#E63312",
+      "width": 1.2,
+      "arrow": "none"
+    },
+    {
+      "id": "z_p21",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 386,
+      "y1": 347,
+      "x2": 399.1,
+      "y2": 363,
+      "color": "#E63312",
+      "width": 1.2,
+      "arrow": "none"
+    },
+    {
+      "id": "z_p22",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 399.1,
+      "y1": 363,
+      "x2": 412.3,
+      "y2": 371,
+      "color": "#E63312",
+      "width": 1.2,
+      "arrow": "none"
+    },
+    {
+      "id": "z_p23",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 412.3,
+      "y1": 371,
+      "x2": 425.4,
+      "y2": 355,
+      "color": "#E63312",
+      "width": 1.2,
+      "arrow": "none"
+    },
+    {
+      "id": "z_p24",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 425.4,
+      "y1": 355,
+      "x2": 438.6,
+      "y2": 339,
+      "color": "#E63312",
+      "width": 1.2,
+      "arrow": "none"
+    },
+    {
+      "id": "z_p25",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 438.6,
+      "y1": 339,
+      "x2": 451.7,
+      "y2": 323,
+      "color": "#E63312",
+      "width": 1.2,
+      "arrow": "none"
+    },
+    {
+      "id": "z_p26",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 451.7,
+      "y1": 323,
+      "x2": 464.9,
+      "y2": 307,
+      "color": "#E63312",
+      "width": 1.2,
+      "arrow": "none"
+    },
+    {
+      "id": "z_p27",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 464.9,
+      "y1": 307,
+      "x2": 478,
+      "y2": 287,
+      "color": "#E63312",
+      "width": 1.2,
+      "arrow": "none"
+    },
+    {
+      "id": "z_p28",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 478,
+      "y1": 287,
+      "x2": 491.1,
+      "y2": 267,
+      "color": "#E63312",
+      "width": 1.2,
+      "arrow": "none"
+    },
+    {
+      "id": "z_p29",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 491.1,
+      "y1": 267,
+      "x2": 504.3,
+      "y2": 259,
+      "color": "#E63312",
+      "width": 1.2,
+      "arrow": "none"
+    },
+    {
+      "id": "z_p30",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 504.3,
+      "y1": 259,
+      "x2": 517.4,
+      "y2": 247,
+      "color": "#E63312",
+      "width": 1.2,
+      "arrow": "none"
+    },
+    {
+      "id": "z_p31",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 517.4,
+      "y1": 247,
+      "x2": 530.6,
+      "y2": 235,
+      "color": "#E63312",
+      "width": 1.2,
+      "arrow": "none"
+    },
+    {
+      "id": "z_p32",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 530.6,
+      "y1": 235,
+      "x2": 543.7,
+      "y2": 227,
+      "color": "#E63312",
+      "width": 1.2,
+      "arrow": "none"
+    },
+    {
+      "id": "z_p33",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 543.7,
+      "y1": 227,
+      "x2": 556.9,
+      "y2": 239,
+      "color": "#E63312",
+      "width": 1.2,
+      "arrow": "none"
+    },
+    {
+      "id": "z_p34",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 556.9,
+      "y1": 239,
+      "x2": 570,
+      "y2": 235,
+      "color": "#E63312",
+      "width": 1.2,
+      "arrow": "none"
+    },
+    {
+      "id": "pt_max",
+      "type": "ellipse",
+      "x": 251.6,
+      "y": 178,
+      "w": 6,
+      "h": 6,
+      "fill": "#1A1A1A",
+      "text": null
+    },
+    {
+      "id": "pt_min",
+      "type": "ellipse",
+      "x": 409.3,
+      "y": 366,
+      "w": 6,
+      "h": 6,
+      "fill": "#1A1A1A",
+      "text": null
+    },
+    {
+      "id": "card_p2p_af",
+      "type": "rect",
+      "x": 660,
+      "y": 105,
+      "w": 240,
+      "h": 115,
+      "fill": "#1A1A1A0D",
+      "text": {
+        "align": "LEFT",
+        "valign": "TOP",
+        "paragraphs": [
+          {
+            "runs": [
+              {
+                "t": "AF_Diff (상대 오차) 분석",
+                "size": 11,
+                "color": "#1A1A1A",
+                "bold": true
+              }
+            ]
+          },
+          {
+            "runs": [
+              {
+                "t": "• Max Value: ",
+                "size": 11,
+                "color": "#1A1A1A"
+              },
+              {
+                "t": "+11 um",
+                "size": 11,
+                "color": "#1A1A1A",
+                "bold": true
+              }
+            ]
+          },
+          {
+            "runs": [
+              {
+                "t": "• Min Value: ",
+                "size": 11,
+                "color": "#1A1A1A"
+              },
+              {
+                "t": "-36 um",
+                "size": 11,
+                "color": "#1A1A1A",
+                "bold": true
+              }
+            ]
+          },
+          {
+            "runs": [
+              {
+                "t": "• Peak-to-Peak: ",
+                "size": 11,
+                "color": "#1A1A1A",
+                "bold": true
+              },
+              {
+                "t": "47 um",
+                "size": 11,
+                "color": "#E63312",
+                "bold": true
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "card_p2p_z",
+      "type": "rect",
+      "x": 660,
+      "y": 240,
+      "w": 240,
+      "h": 120,
+      "fill": "#E633120F",
+      "text": {
+        "align": "LEFT",
+        "valign": "TOP",
+        "paragraphs": [
+          {
+            "runs": [
+              {
+                "t": "Z-Axis Feedback 변위 분석",
+                "size": 11,
+                "color": "#E63312",
+                "bold": true
+              }
+            ]
+          },
+          {
+            "runs": [
+              {
+                "t": "• Max Pos: ",
+                "size": 11,
+                "color": "#1A1A1A"
+              },
+              {
+                "t": "-0.068 mm",
+                "size": 11,
+                "color": "#1A1A1A",
+                "bold": true
+              }
+            ]
+          },
+          {
+            "runs": [
+              {
+                "t": "• Min Pos: ",
+                "size": 11,
+                "color": "#1A1A1A"
+              },
+              {
+                "t": "-0.115 mm",
+                "size": 11,
+                "color": "#1A1A1A",
+                "bold": true
+              }
+            ]
+          },
+          {
+            "runs": [
+              {
+                "t": "• P-to-P Delta: ",
+                "size": 11,
+                "color": "#1A1A1A",
+                "bold": true
+              },
+              {
+                "t": "0.047 mm",
+                "size": 11,
+                "color": "#E63312",
+                "bold": true
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "card_conclusion",
+      "type": "rect",
+      "x": 660,
+      "y": 380,
+      "w": 240,
+      "h": 105,
+      "fill": "#FFFFFF",
+      "text": {
+        "align": "LEFT",
+        "valign": "TOP",
+        "paragraphs": [
+          {
+            "runs": [
+              {
+                "t": "Peak-to-Peak 추종도 (고해상도)",
+                "size": 11,
+                "color": "#1A1A1A",
+                "bold": true
+              }
+            ]
+          },
+          {
+            "runs": [
+              {
+                "t": "P-to-P 차이 극소 (0.1um 이내)",
+                "size": 11,
+                "color": "#1A1A1A"
+              }
+            ]
+          },
+          {
+            "runs": [
+              {
+                "t": "• 프로파일 일치율: ",
+                "size": 11,
+                "color": "#1A1A1A",
+                "bold": true
+              },
+              {
+                "t": "99.8%",
+                "size": 11,
+                "color": "#E63312",
+                "bold": true
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

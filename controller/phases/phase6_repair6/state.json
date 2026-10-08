@@ -1,0 +1,59 @@
+{
+  "payload": {
+    "applied": true,
+    "applied_artifact_sha256": "61005018174a92ee2e0311516a69e0217049b5c1f686d7c54d6769d0dab29b34",
+    "current_state": "VERIFYING",
+    "decision_validated": true,
+    "decision_worker": "claude-main",
+    "decision_worker_model": "sonnet",
+    "events_tip_sha256": "92db6abcb98cde9291aa78649b04bd5329ac7cd2e777f81c8f99f79b290db2e2",
+    "gates": {
+      "blocking_reasons": [
+        "may_advance: review classification not acceptable for mode",
+        "may_advance: verdict is not APPROVE",
+        "may_advance: verification not passed",
+        "may_advance: unresolved needs_decision reasons ['review_verdict:WARNING']"
+      ],
+      "may_accept_review": false,
+      "may_advance": false,
+      "may_apply": false,
+      "may_spawn": false
+    },
+    "needs_decision": {
+      "active": true,
+      "reasons": [
+        "review_verdict:WARNING"
+      ]
+    },
+    "phase_id": "phase6_repair6",
+    "pinned_decision_id": "decision-009",
+    "pinned_decision_sha256": "c359897a40db1a4119c37563cebc6afedbbed10c384da535797b3db3106634d5",
+    "review": {
+      "artifact_sha": "61005018174a92ee2e0311516a69e0217049b5c1f686d7c54d6769d0dab29b34",
+      "classification": "legacy_delegated",
+      "contract_mode": "legacy_d86",
+      "contract_ok": true,
+      "identity_match": "true",
+      "output_parse_status": "legacy_passthrough",
+      "process_exit_code": 0,
+      "ran": true,
+      "reviewer_observed": "claude-review-sonnet",
+      "reviewer_requested": "claude-review-sonnet",
+      "reviewer_resolved": "claude-review-sonnet",
+      "verdict": "WARNING"
+    },
+    "tamper_evidence": "stale-detection-only",
+    "updated_seq": 12,
+    "user_override": "apply_anyway",
+    "verification": {
+      "status": "pending"
+    },
+    "violations": [],
+    "worker_failure_class": null,
+    "worker_model": "sonnet",
+    "worker_role": "claude-main",
+    "write_scope_sha256": "b8c0c92108a88deaf6d7c3c577b4ac0e77c2f3b0df1f7c876dc2f29215d0203e"
+  },
+  "payload_sha256": "4f41bb4332c56eb0e2726b91eeed2c929a84ff2a78aeba5e815ec2ff4af02779",
+  "schema_version": 1
+}

@@ -1,0 +1,3 @@
+tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js
+tasks/AI_Powered_PPT/src/aippt/canvas/render_canvas.py
+tasks/AI_Powered_PPT/src/aippt/canvas/style.py

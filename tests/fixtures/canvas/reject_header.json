@@ -1,0 +1,20 @@
+{
+  "schema": "canvas-ir/1",
+  "canvas": {"w": 960, "h": 540, "unit": "pt"},
+  "target": {
+    "template_sha256": "60fe35466ed2bb477d592603d0eab9d8748521e54ae0632c9f6a94d0b02a855a",
+    "layout_index": 3
+  },
+  "title": "Rejected: element in HEADER_RESERVED",
+  "elements": [
+    {
+      "id": "over_the_logo",
+      "type": "rect",
+      "x": 100,
+      "y": 50,
+      "w": 200,
+      "h": 100,
+      "fill": "#FF0032"
+    }
+  ]
+}

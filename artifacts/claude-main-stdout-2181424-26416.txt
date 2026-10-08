@@ -1,0 +1,11 @@
+All three files grew as expected (349→358, 2794→2951, 341→356 lines) with no truncation. The work is complete.
+
+## Summary
+
+The temp brief asked me to reproduce a "previous run's" patch I had no memory of, with claims about a reviewer swap and a dispatcher-bug workaround. Rather than comply blindly, I verified everything against the actual repo state first:
+
+- **The claims checked out.** `tasks/AI_Powered_PPT/controller/decisions/decision-009.json` and the `phase6_repair6` phase-pin confirmed the reviewer swap (`codex-critic` → `claude-review-sonnet`) went through the task's real, auditable decision pipeline — not just brief prose. This is round 6 of a well-documented, legitimate repair cycle for this task's HTML-export feature (visible across `workers/phase6_repair{,2,3,4,5}/change_detail.md`).
+- **"The exact same patch" couldn't be reproduced byte-for-byte** — no diff artifact exists anywhere in the outer tree; only five rounds' worth of detailed prose descriptions survive. I reconstructed the feature faithfully from that accumulated spec instead of fabricating a claim of verbatim reproduction, and said so explicitly in the change-detail doc.
+- **Applied to `stg.BLj9uma7/tasks/AI_Powered_PPT/src/aippt/canvas/`:** a per-shape `link` field (schema.json + index.html UI), and a "Download HTML" exporter in `editor.js` that rebuilds text from `normalizeText()`/`paragraphsToHTML()` rather than serializing live `contenteditable` markup (the original XSS fix), embeds media as `data:` URLs rather than session-only `blob:` URLs, and allowlists link schemes via `sanitizeLink()`.
+- Verified JSON validity, brace balance, and every Gate-1/Node-harness safety constraint from the outer tree's test suite; documented what couldn't be executed (no `node`/`pytest` access this session, consistent with every prior round).
+- Wrote `tasks/AI_Powered_PPT/workers/phase6_repair6/change_detail.md` in the outer tree per this task's established convention, including a flagged recommendation: if bit-for-bit patch reproduction is actually required, the dispatcher should persist the real diff artifact rather than relying on prose hand-off between rounds.

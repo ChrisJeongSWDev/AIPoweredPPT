@@ -1,0 +1,12 @@
+Task complete. Summary of what I found and did:
+
+**Investigation**: The brief (`phase6_frontend_work_order.md`) was a continuation of a prior session — tasks 1–4 (media support, multi-select/align, copy/paste, alpha/border) were already implemented in `.editwork/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js`, matching the existing `phase6_frontend_change_detail.md`. Only task 5 (the multi-selection state-leak bug fix) was outstanding, and I confirmed the bug was real: `clearMulti()` existed but `restore()` and `loadIR()` never called it, and `deleteSelected()` never checked if the deleted element was also a `multi` member.
+
+**Fix** (`editor.js`, under `.editwork`, per the CRITICAL INSTRUCTION):
+1. `restore()` — added an explicit `clearMulti()` call at the start of its commit pass, before the snapshot's elements are rebuilt.
+2. `select(el)` — now clears `multi` whenever deselecting to `null`, checked *before* its early-return so it fires even when `selected` was already null. `loadIR()` already calls `select(null)` right when it clears the stage, so this covers it without editing `loadIR()`'s own body.
+3. `deleteSelected()` — documented (via comment) that its existing `select(null)` call now also drops the deleted element from `multi` if it was a member.
+
+**Why `select()` instead of editing `loadIR()` directly**: `loadIR()` is lifted verbatim into a Node test harness (Gate 4b, `test_app.py`) that doesn't define `multi`/`clearMulti` — calling either by name from inside `loadIR()` would throw `ReferenceError` and break that gate, the same constraint the previous phase's `isMediaType()` design worked around. Routing the fix through `select()` (which the harness stubs out entirely) sidesteps this while still firing at the exact point the brief specifies ("when clearing the stage").
+
+**Caveats**: Node/Python execution is refused in this session (same constraint noted in prior phases), so nothing was run — verification was manual (bracket-balance reading, tracing all `select(null)`/`select(el)` call sites to confirm no regression, e.g. `pasteClipboard()`'s intentional non-null `select()` call after populating `multi` is unaffected). Full details and reasoning are appended to `tasks/AI_Powered_PPT/phase6_frontend_change_detail.md`.

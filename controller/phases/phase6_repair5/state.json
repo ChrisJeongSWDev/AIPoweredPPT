@@ -1,0 +1,61 @@
+{
+  "payload": {
+    "applied": false,
+    "applied_artifact_sha256": null,
+    "current_state": "REVIEW_RUNNING",
+    "decision_validated": true,
+    "decision_worker": "claude-main",
+    "decision_worker_model": "sonnet",
+    "events_tip_sha256": "def94cdc3bbe95da927bed19c7338eb72bb58021a844238badf6b60549256735",
+    "gates": {
+      "blocking_reasons": [
+        "may_advance: reviewer identity not verified",
+        "may_advance: review process exit code != 0",
+        "may_advance: review classification not acceptable for mode",
+        "may_advance: verdict is not APPROVE",
+        "may_advance: reviewed artifact sha absent",
+        "may_advance: not applied",
+        "may_advance: applied artifact != reviewed artifact",
+        "may_advance: verification not passed"
+      ],
+      "may_accept_review": false,
+      "may_advance": false,
+      "may_apply": false,
+      "may_spawn": false
+    },
+    "needs_decision": {
+      "active": false,
+      "reasons": []
+    },
+    "phase_id": "phase6_repair5",
+    "pinned_decision_id": "decision-008",
+    "pinned_decision_sha256": "d8e4044bc4f6a54d1e0109db4c65584ddead0b10372e641b49ec8a3f1f5cd6f7",
+    "review": {
+      "artifact_sha": null,
+      "classification": null,
+      "contract_mode": null,
+      "contract_ok": null,
+      "identity_match": null,
+      "output_parse_status": null,
+      "process_exit_code": null,
+      "ran": false,
+      "reviewer_observed": null,
+      "reviewer_requested": null,
+      "reviewer_resolved": null,
+      "verdict": null
+    },
+    "tamper_evidence": "stale-detection-only",
+    "updated_seq": 7,
+    "user_override": null,
+    "verification": {
+      "status": null
+    },
+    "violations": [],
+    "worker_failure_class": null,
+    "worker_model": "sonnet",
+    "worker_role": "claude-main",
+    "write_scope_sha256": "b8c0c92108a88deaf6d7c3c577b4ac0e77c2f3b0df1f7c876dc2f29215d0203e"
+  },
+  "payload_sha256": "1e4c409f9bca578c06ea3bf0384d3760c9cf3b813704cd6351ddfd43b0d65903",
+  "schema_version": 1
+}

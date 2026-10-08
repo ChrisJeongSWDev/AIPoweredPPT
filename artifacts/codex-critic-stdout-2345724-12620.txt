@@ -1,0 +1,5 @@
+VERDICT: BLOCK
+
+The justification is incorrect: `MAX_IMAGE_BYTES` limits the decoded total across all images, not each image. Raising the request cap from 2 MB to 10 MB therefore weakens the pre-renderer protection fivefold without the claimed need. The existing comment near `MAX_IMAGES` also still states `MAX_BODY_BYTES (2 MB)`.
+
+VERDICT: BLOCK

@@ -1,0 +1,19 @@
+The applied code is coherent. All edits are on disk. Here's the summary.
+
+## Done — Phase 4 (live Gemini author) applied
+
+I read the worker brief at `tmp.WmCmNUp2FT`. It was **corrupted**: every literal `.` (period) had been globally replaced with the string `/c/Users/2021670/Documents/멀티 에이전트/tasks/AI_Powered_PPT/.editwork`. Reversing that substitution yields a coherent Phase-4 change-detail. I applied the changes against the **real current source** (not the corrupted snippets), in the project at `tasks/AI_Powered_PPT/`.
+
+**Files written (all 5 in `write_scope`):**
+- `src/aippt/canvas/app.py` — `import os`; `DEFAULT_GEMINI_MODEL`, `PROMPT_PATH` (verified `parents[3]` → project root where `Gemini_Web_Prompt.md` lives), `GeminiError`; `/api/context` now returns `mode`/`model`; `api_generate` split into mock/live branches; live-author helpers (`gemini_api_key`, `gemini_model`, `server_mode`, `system_instruction`, `_strip_code_fence`, `_finalize_live_ir`, `_call_gemini` lazy-importing `google.genai`, `generate_live`); docstring updated to two-mode.
+- `src/aippt/canvas/static/index.html` — badge `id="ai-mode"`, Paste-Gem-JSON button, hint `id`, second hint.
+- `src/aippt/canvas/static/editor.js` — `stripFence`, `pasteGemJSON`, `applyMode`, button wiring; `applyMode` call in `loadContext`; mode-aware `generate()` status.
+- `requirements.txt` — active Phase-4 `google-genai>=0.3.0` section.
+- `tests/canvas/test_app.py` — appended Phase-4 block (10 tests, network seam mocked via `monkeypatch`).
+
+**Change-detail written** to `tasks/AI_Powered_PPT/phase4_change_detail.md` (the path the brief's metadata requested).
+
+**Caveats (also recorded in the change-detail):**
+1. **`style.css` (brief §4) not applied** — it is absent from `write_scope`, so I respected that boundary and skipped the cosmetic green-badge rule. It's non-functional (the `.live` class is still toggled; no test checks CSS). The one-line rule to add is documented for follow-up.
+2. **Suite not run** — the session permission layer denied all command execution (`pytest`, `py_compile`) for this non-interactive worker. Unlike the previous worker, my **writes succeeded** — the changes are on disk. I verified by re-reading each applied region and confirming the validator emits `intersects HEADER_RESERVED` (which the on-logo test asserts). Run `pip install -e ".[editor,dev]"` then `python -m pytest tests/canvas/test_app.py -q` to confirm before merge.
+3. Assumptions (brief was silent): pin-enforced `schema`/`canvas`/`target`, 502 for upstream/model failures vs 422 for user error, server-side `validate()` in live mode, default `gemini-2.5-flash` overridable via `GEMINI_MODEL`, and the harmless `#E63312`/`#FF0032` brand-red mismatch left as-is.

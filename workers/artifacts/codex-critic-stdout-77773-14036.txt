@@ -1,0 +1,7 @@
+VERDICT: WARNING
+
+The request correctly sends the selected profile ID, and the server independently validates it against `MODEL_PROFILES`.
+
+Issue: after generation, the UI status still displays `CONTEXT.model`, which is the server default profile—not the profile sent in this request. Selecting Opus or a GPT profile can therefore report “from Claude Sonnet 5.” The model picker also remains enabled while a request is in flight.
+
+VERDICT: WARNING

@@ -1,0 +1,20 @@
+{
+  "status": "error",
+  "exit_code": 90,
+  "backend": "claude-edit",
+  "model": "N/A",
+  "worker_started": true,
+  "applied": false,
+  "failure_class": "empty_diff_no_capture",
+  "review_verdict": "N/A",
+  "reviewer": "review_gate_not_run",
+  "reviewer_model": "N/A",
+  "diff": "",
+  "diff_path": "",
+  "worktree_path": "C:/Users/2021670/.ma-stg/stg.m3litLa9",
+  "stdout": "=== EMPTY DIFF — EDIT CAPTURED NO REVIEWABLE CHANGES (dispatcher hard stop) ===\nThe edit worker returned but the staging diff (/c/Users/2021670/.ma-stg/stg.m3litLa9 vs HEAD, bin/obj/.vs/packages/settings.local.json excluded) is EMPTY.\nClassification: empty_diff_no_capture\n\nActions taken:\n- Did NOT default the verdict to APPROVE and did NOT apply anything (applied:false).\n- Did NOT invoke the review gate on an empty diff.\n- PRESERVED the staging worktree for inspection (not cleaned up), so any worker output is not destroyed: /c/Users/2021670/.ma-stg/stg.m3litLa9\n\nLikely causes (check in this order):\n- A stale .editwork left by a CANCELED prior run of the same slug (worktree add collides / falls back). Use a FRESH slug and do not cancel mid-run.\n- The worker edited a location outside the diffed worktree (wrong working root).\n- The worker genuinely had nothing to change (then re-scope or confirm the task is a no-op).\n\nDo NOT re-call the worker blindly and do NOT mark this done/applied. Diagnose why the diff is empty first (inspect the preserved worktree above).",
+  "phase_enforcement": "advisory",
+  "phase_state_recording": "degraded",
+  "phase_state": null,
+  "confinement_mode": "unverified_owner_accepted"
+}

@@ -1,0 +1,33 @@
+Done. Here's what happened.
+
+## The headline
+
+**I could not run the test suite** — this session's permission layer denies all Python execution (`python -m pytest`, `pytest`, `python -c` all auto-denied; only `python --version` is allowed, and the brief forbids asking you). So Phase 1A's code is written and reviewed, but **not proven green**. First action for whoever picks this up:
+
+```
+cd tasks/AI_Powered_PPT && python -m pytest tests/canvas -q
+```
+
+This is the same wall Phase 0 hit — its change detail opens with an identical banner — and it was later cleared, since `reference/calibration.json` now shows `"roundtrip_problems": []`. Python clearly runs in this project, just not from my session.
+
+## What I found on arrival
+
+An earlier attempt at this same brief had **already written all six `src/aippt/canvas/*` modules** (schema, geometry, validate, style, connectors, render_canvas) and had already applied correction 4 to `pyproject.toml`. It stopped before task 1.7: there were **no tests and no fixtures at all**.
+
+I reviewed those six line-by-line against the brief and the installed python-pptx source, found them correct, and **left all six unchanged**. All four of the brief's corrections were already carried. So what I actually built is the entire test half — three test modules and a 16-file fixture corpus (6 that must render, 10 that must be rejected).
+
+## Compensating for not running it
+
+Since I couldn't execute the library, I read it — every API the code leans on was checked against `site-packages/pptx/`, not recalled. Two of those reads changed the code I wrote:
+
+- `LineFormat.color`'s **getter mutates** (it sets the line fill to SOLID). Asserting a `stroke: null` shape through it would have made the shape solid and then reported success. Colours and no-line states are now read straight out of the XML.
+- `OptionalAttribute` **deletes** an attribute when set to its default, so `line.width = Pt(0)` removes `w` entirely — a test asserting on the raw `w` attribute would have failed on the hairline fixture.
+
+And since I couldn't run `validate.py`, I recomputed its inputs with `jq` — a different tool doing the same arithmetic — and pinned the tests to those answers. Notably: `reject_rotated_into_header`'s path box sits at y 95–115 (clearing the header), but its 45° footprint reaches **y = 27.22**, producing exactly one `HEADER_RESERVED` hit. That's the fixture that makes the brief's rotated-AABB decision non-negotiable.
+
+## Worth your attention
+
+- **D-1 is still open and this is the cheap moment.** Century Gothic isn't the Vieworks brand font — the template's real design fonts are 뷰웍스 B / 뷰웍스 M. Today it's *one constant* in `style.py`. After the Phase 1B editor ships it's an expensive discovery.
+- **`schema.json` isn't declared as package data.** It loads fine under the editable install, but a wheel build would ship without it and `validate()` would die on first call. `src/aippt/ir/schema.json` has the identical exposure. I didn't fix it — the brief permits exactly one `pyproject.toml` edit, and this isn't it.
+
+Full write-up, including the source-verification table and the authoring hazard where raw control bytes nearly turned a rejection fixture into invalid JSON, is in `tasks/AI_Powered_PPT/phase1a_change_detail.md`.

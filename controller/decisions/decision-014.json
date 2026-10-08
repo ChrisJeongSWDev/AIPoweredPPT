@@ -1,0 +1,17 @@
+{
+  "payload": {
+    "candidate_id": "cand-014",
+    "candidate_payload_sha256": "d3a6d8a8524ebb7b7e5cd6cd4a4bd47b4628b11f5794296e960ba5c41f630ab1",
+    "confirmed_at": "2026-07-23T08:47:57+09:00",
+    "decision_id": "decision-014",
+    "decision_source": "operator_acknowledged_via_orchestrator",
+    "phase_id": "phase4_frontend",
+    "requested_reviewer": "codex-critic",
+    "requested_worker": "claude-main",
+    "requested_worker_model": "sonnet",
+    "revision": 14,
+    "session_id": "AI_Powered_PPT"
+  },
+  "payload_sha256": "441d2e6a67d8734fba2cb7e6509da8ce33a70232fede64e0739ea67c21943fd2",
+  "schema_version": 1
+}

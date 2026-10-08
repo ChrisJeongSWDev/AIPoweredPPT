@@ -1,0 +1,546 @@
+I could not save the file: **every write into `C:\Users\2021670\Documents\멀티 에이전트\...` is being refused this session.** The Write tool asks for a permission that a non-interactive run can't grant, and both shell fallbacks hard-block — PowerShell's error revealed why, it decodes the path as `C:/Users/2021670/Documents/��Ƽ ������Ʈ/...` (cp949 mojibake of `멀티 에이전트`) and then decides that mangled string isn't inside the allowed working directory. Reads work fine; only writes go through that validator.
+
+So the brief is written but unsaved. Below is the full content for `tasks/AI_Powered_PPT/phase2_brief.md` — approve the write (or re-run interactively) and I'll persist it verbatim.
+
+## What the review turned up
+
+**Three of the four requirements already shipped in Phase 1B.** Double-click-to-edit exists (`editor.js:593-600` plus the `.el.editing .txt { pointer-events: auto }` rule in `style.css:287`); Delete/Backspace exists (`editor.js:1078`); and every property the draft asked for — `fill`, stroke `color`/`width`, `text.align`, `text.valign`, `run.size`, `run.color` — is already wired through `patchSelected()`/`syncProps()`. They just live in the always-visible left toolbar. **Only `run.bold`, `run.italic` and Undo/Redo are genuinely new.** So I turned Phase 2 into: relocate the controls into a right-side panel, add two buttons, tighten `contenteditable`, and build the history stack.
+
+**Two traps that would have cost `claude-main` a cycle.** First, `tests/canvas/test_app.py:280-402` lifts functions out of `editor.js` **by name** (`loadIR`, `illegalReason`, `stateFromIR`, …) and executes them in Node against a stubbed DOM — so a `pushHistory()` call added inside `loadIR()` throws `ReferenceError` and turns every import test red for reasons that look nothing like the cause. The brief moves that snapshot to the call site. Second, Gate 1 (`test_editor_source.py`) is a substring grep that bans `getComputedStyle`, `z-index`/`zIndex` *in editor.js*, and the literals `1920`/`1080`/`1280`/`720`/`1440`/`810` anywhere in the file — which quietly outlaws the obvious "panel floats next to the element" design and a `MAX_HISTORY = 1080`. That file is not in the write scope, so it cannot be relaxed.
+
+**Caveat on the scope I was handed:** the metadata block (reproduced verbatim, as instructed) puts only `test_app.py` in the test scope, so the new structural assertions about `index.html`/`style.css` have to live in the server-gate file, and no new names can be added to Gate 1's ban list. I flagged both inside the brief rather than changing the block.
+
+---
+
+```markdown
+# Phase 2: Property Panel & Editor UX — Task Brief
+
+## Goal
+
+Give the Phase 1B editor a **right-side property panel that appears when an element is selected**, and
+finish the UX contract: **double-click to edit**, **Delete/Backspace to remove**, and — the one thing
+that genuinely does not exist yet — **Undo / Redo**.
+
+The renderer, the IR, the server and the existing acceptance gates are **frozen and green**. You are
+polishing the editor's front end inside a set of rules that already have machine-checked teeth. Every
+rule below that reads like nagging is a rule a test will enforce anyway; the only question is whether
+you find out in `pytest` or in a code review.
+
+---
+
+## READ THIS FIRST: three of the four requirements are already implemented
+
+The draft brief was written from the plan, not from the shipped code. I read the shipped code. Here is
+the truth, and it changes what you should do:
+
+| Requirement (draft) | Actual state in `editor.js` @ Phase 1B | What Phase 2 actually is |
+|---|---|---|
+| Property panel | The controls **all exist** — `#p-fill`, `#p-stroke`, `#p-stroke-w`, `#p-color`, `#p-size`, `#p-align`, `#p-valign`, `#p-kind`, `#p-arrow`, `#p-rot` — wired through `patchSelected()` and reflected by `syncProps()` (editor.js:945–1067). They sit in the **left** `#toolbar` and are **always visible**, even with nothing selected. | **Relocate**, don't rebuild. Move them into a right-side panel that shows on selection. **Add the two missing IR properties: `run.bold` and `run.italic`.** |
+| Double-click to edit | **Already done.** `el.addEventListener('dblclick', …)` adds `.editing` (editor.js:593–600); `style.css:285-287` keeps `.txt { pointer-events: none }` until `.el.editing`. A single click selects and drags. | **Tighten it** (see §3): `.body` currently carries `contenteditable="true"` **at all times** — only CSS is stopping the caret. Make the attribute itself appear on double-click and disappear on exit. |
+| Delete / Backspace | **Already done.** editor.js:1078–1081, guarded by `editingText()` so it does not fire while typing. | **Keep it, and make it undoable.** Do not rewrite it. |
+| Undo / Redo | **Does not exist.** Phase 1B explicitly deferred it ("Undo/redo is out of scope (deferred)"). | **This is the real work of Phase 2.** |
+
+**Do not "reimplement" the three that work.** A regression in double-click or Delete costs you a whole
+phase and buys nothing. Read `editor.js` end to end before you touch a line of it.
+
+---
+
+## The invariants you are working inside (all machine-checked — none of them are advice)
+
+### 1. THE PRIME DIRECTIVE
+
+> `getBoundingClientRect()` appears **exactly once** in `editor.js`, inside `toModel(ev)`.
+> Nothing else may measure the DOM. Ever.
+
+Geometry lives in JS state (`el.dataset`) and flows **one way** into CSS and SVG attributes. It is
+never read back. `tests/canvas/test_editor_source.py` (Gate 1) is a plain grep over `editor.js` and
+`interactions.js` that enforces this, and **it is out of your write scope — you cannot relax it.**
+
+What Gate 1 will fail you for, and what it means for *this* phase:
+
+| Gate 1 rule | The Phase 2 trap it is waiting for |
+|---|---|
+| `getBoundingClientRect` occurs exactly once, inside `toModel()` | **A panel that "floats next to the selected element."** Anchoring to a measured element rect is the obvious way to build one, and it is banned. See §1 of "What to build": the panel is a **fixed right rail**. |
+| Zero `offsetWidth` · `offsetHeight` · `clientWidth` · `clientHeight` · `offsetLeft` · `offsetTop` · `offsetParent` · `devicePixelRatio` · `getComputedStyle` · `getBBox` | `getComputedStyle` is the tempting way to read a run's bold/italic state back out of the DOM. Banned. Derive it from the run model instead (§5). |
+| Zero `zIndex` / `z-index` **in `editor.js`** | A floating panel needs a stacking context. **Put the `z-index` in `style.css`** — that file is not grepped. Never set it from JS. |
+| Zero `12700` | No EMU maths in the browser. Python converts, once, at the end. |
+| No other canvas size: the substrings **`1920`, `1080`, `1280`, `720`, `1440`, `810`** must not appear **anywhere** in `editor.js` | This is a **plain substring test over the whole file**. A history cap of `1080`, a debounce of `720`, a comment mentioning "1920×1080" — any of them fails the gate. Keep your new constants clear of those digit strings. |
+| `#4472C4` appears **only** on lines matching `FORBIDDEN\|reject\|refus` | Every colour input you add must go through the existing `guardColor()`. Do not hand-roll a second check, and do not name the colour anywhere else. |
+| Every `deltaRect.*` read is divided by `/ zoom` in the same expression | Unchanged. Do not add a new `deltaRect` reader that forgets it. |
+
+### 2. `tests/canvas/test_app.py` LIFTS FUNCTIONS OUT OF `editor.js` BY NAME AND RUNS THEM IN NODE
+
+This is the single most likely way you break the suite without understanding why. Read
+`test_app.py:280–402` before editing `editor.js`.
+
+The Gate 4b harness extracts, **verbatim and by name**, these declarations and functions from
+`editor.js` and executes them in Node against a stubbed DOM:
+
+```
+_DECLS: CANVAS, SCHEMA, HEADER_RESERVED, FOOTER_RESERVED, REJECT_REGIONS, EPS, BRAND_RED,
+        SHAPE_TYPES, DEFAULTS, GEOM_FIELDS, ELEMENT_TYPES        (matched as `var <NAME> = …;`)
+_FUNCS: intersects, elementBBox, outOfBounds, esc, geometryIsReadable, illegalReason,
+        stateFromIR, paragraphsToHTML, loadIR                    (matched as `function <name>(`)
+```
+
+Consequences, all of them load-bearing:
+
+- **Do not rename or restructure any of those.** Turning `function loadIR(…)` into
+  `var loadIR = (…) => …` makes the harness fail to extract it, and it fails as a *broken test*, not as
+  a clear message.
+- **`loadIR()` must not call any function that is not in that list or in `_STUBS`.** If you put
+  `pushHistory()` inside `loadIR()`, Node throws `ReferenceError: pushHistory is not defined`, every
+  Gate 4b test goes red, and the failure looks nothing like its cause.
+  **→ Snapshot the pre-load state at the *call site* (the `#f-load` change handler), not inside
+  `loadIR()`.** That is where it belongs anyway: `loadIR()` is the judge, and the judge stays inert.
+- If you genuinely must touch `loadIR()`'s internals, you own updating `_STUBS` / `_DECLS` / `_FUNCS`
+  in `test_app.py` (it *is* in your write scope) **and** keeping these green:
+  `test_loadIR_judges_the_whole_file_BEFORE_it_touches_the_stage`,
+  `test_there_is_exactly_ONE_copy_of_the_legality_rule`,
+  `test_the_import_path_calls_the_SAME_judge`.
+
+### 3. One legality rule, one door
+
+`illegalReason(s)` is **the judge** — it reads state and transforms nothing. `applyConstraints(s, opt)`
+is **the transform** (min-extent → snap → clamp) and then calls the judge. `loadIR()` calls the judge
+directly and never the transform, so importing a file cannot silently re-snap the user's deck.
+
+`test_there_is_exactly_ONE_copy_of_the_legality_rule` asserts that `applyConstraints()` contains
+`illegalReason(` and does **not** contain `REJECT_REGIONS`. Undo/redo does not get its own copy of the
+rule either (see §4.2 of "What to build").
+
+`HEADER_RESERVED = [0, 0, 960, 92]` and `FOOTER_RESERVED = [733.6, 500, 960, 540]`, tested against the
+**rotated AABB**, half-open (edge contact is not intersection). Ported verbatim from `geometry.py`.
+Nothing you add may weaken that.
+
+**Property edits cannot violate the reserved regions, and that is by design, not by luck.** The stroke
+is centred on the path box and bleeds `width/2` *outside* `x/y/w/h`, and that bleed is deliberately
+**not** part of the reserved-region check (see the `stroke` description in `schema.json` and the caveat
+in `geometry.py`). So a stroke-width edit next to the header is legal on both sides.
+**Do not "improve" `elementBBox()` to include the stroke.** It would desync the editor from
+`geometry.py`, and the user would get a stage that looks legal and a 422 they cannot explain.
+
+---
+
+## The IR is the whole vocabulary of the panel
+
+Read `src/aippt/canvas/schema.json` top to bottom, `description` strings included. **A control that is
+not backed by a key in that file does not exist.** `additionalProperties: false` is set on every object,
+so a leaked key is a hard 422 — but the more common failure is subtler: a control that *looks* like it
+works, is silently dropped by `toIR()`, and lands in PowerPoint as nothing.
+
+**The complete, closed list of what the panel may expose:**
+
+| Control | IR path | Editor state (`dataset`) | Applies to |
+|---|---|---|---|
+| Fill colour + **none** | `fill` (`#RRGGBB` \| `null`, **required even when null**) | `fill` (`""` ⇒ `null`) | rect · ellipse · triangle · textbox |
+| Stroke colour + **none** | `stroke.color`, or `stroke: null` | `strokeColor` (`""` ⇒ no stroke) | the four shapes |
+| Stroke width | `stroke.width` (pt, `minimum: 0`) | `strokeWidth` | the four shapes |
+| Text align | `text.align` — `LEFT` \| `CENTER` \| `RIGHT` | `align` | the four shapes |
+| Text valign | `text.valign` — `TOP` \| `MIDDLE` \| `BOTTOM` | `valign` | the four shapes |
+| Run size | `run.size` (pt, `exclusiveMinimum: 0`) | `size` | the four shapes |
+| Run colour | `run.color` (**required**; an un-coloured run inherits `lt1` = **white**) | `color` | the four shapes |
+| **Run bold** | `run.bold` (bool, default `false`) | — *lives in the `.body` HTML as `<b>`* | the four shapes — **NEW** |
+| **Run italic** | `run.italic` (bool, default `false`) | — *lives in the `.body` HTML as `<i>`* | the four shapes — **NEW** |
+| Rotation | `rotation` (degrees CW about the centre) | `rot` | the four shapes |
+| Connector colour | `color` | `color` | connector |
+| Connector width | `width` | `width` | connector |
+| Connector kind | `kind` — `straight` \| `elbow` | `kind` | connector |
+| Connector arrow | `arrow` — `none` \| `start` \| `end` \| `both` | `arrow` | connector |
+
+**A connector has no fill and no text — the schema gives it neither key.** `isConnector()` already
+refuses those patches (editor.js:945–968); the panel must now also *show* that, by hiding the fill and
+text groups rather than leaving dead controls on screen.
+
+**Explicitly forbidden in the panel** (each one is either absent from the IR or a named deferred
+decision): opacity / alpha (**D-4**) · gradient or picture fill · shadow · font family · line height ·
+corner radius · dash style · arrowhead size · connector text · connector gluing (**D-3**) · any `z`
+field or z-index control (**z-order is DOM order** — `Raise`/`Lower` stay as `insertBefore`) ·
+**per-run size** (see the trap below).
+
+> **The per-run trap.** `run.size` is per-*run* in the schema, but `normalizeText(root, defSize,
+> defColor)` (editor.js:728) stamps **`defSize` onto every run** — the element's `data-size`. Run
+> *colour* can vary per run (a `<span style="color:…">` is read back); run *size* cannot. So **size is
+> an element-level control** and must stay one. Do not add a per-run size picker: it would round-trip
+> to a single size and look like a bug in the renderer.
+
+---
+
+## What to build
+
+### 1 — `static/index.html`: the panel
+
+Add a right-side panel. **Structure and placement are constrained:**
+
+- It is a **sibling of `#stage-wrap` inside `#app`, or a `position: fixed` overlay — it is NEVER inside
+  `#stage`.** The stage's children are the serialization surface (`:scope > .el`), and its chrome is
+  deliberately made of CSS pseudo-elements precisely so that nothing can leak into a deck. Do not put
+  UI in there.
+- `<aside id="props" hidden>` — the `hidden` attribute is the show/hide mechanism; toggle it from
+  `syncProps()`.
+- **MOVE, do not copy**, these four groups out of `#toolbar` into `#props`, **keeping every existing
+  `id` byte-for-byte**: *Fill & stroke* (`p-fill`, `p-fill-none`, `p-stroke`, `p-stroke-none`,
+  `p-stroke-w`), *Text* (`p-color`, `p-size`, `p-align`, `p-valign`), *Connector* (`p-kind`,
+  `p-arrow`), *Transform* (`p-rot`, `p-rot-out`, `b-raise`, `b-lower`, `b-dup`, `b-del`).
+  **Duplicating a control is a bug, not a convenience:** two nodes with `id="p-fill"` means
+  `getElementById` silently picks one and the other goes dead. Keeping the ids means the ~20 existing
+  `$('p-…')` listeners keep working untouched — which is most of why this task is small.
+- `#toolbar` keeps: *Tool*, *View* (zoom), *Export*. It is the tool rail; `#props` is the selection rail.
+- **New controls (the only two):**
+  ```html
+  <button type="button" id="p-bold"   aria-pressed="false"><b>B</b></button>
+  <button type="button" id="p-italic" aria-pressed="false"><i>I</i></button>
+  ```
+  Undo/redo buttons (`b-undo`, `b-redo`) are optional; if you add them they must be `disabled` when
+  their stack is empty.
+- Wrap the fill/text groups in a container you can hide for a connector (e.g.
+  `<section class="group" data-for="shape">`), and the connector group in `data-for="connector"`.
+  Toggle with `hidden` from `syncProps()`.
+- Give `#props` the same internal class vocabulary `#toolbar` uses (`.group`, `label`, `.pair`, `.row`)
+  so the CSS is a selector list, not a second stylesheet.
+
+### 2 — `static/style.css`: the panel, and only the panel
+
+- `#props`: right-hand, floating, scrollable if tall, `hidden` when nothing is selected.
+  **The `z-index` lives here and nowhere else** (Gate 1 greps `editor.js` for `z-index`/`zIndex`).
+  `#warnings` sits at `z-index: 10` and must stay **above** the panel — a validation banner the panel
+  covers is a banner nobody reads. Give `#props` something below 10.
+- Extend the existing `#toolbar …` rules to `#toolbar, #props …` rather than writing new ones.
+- **DO NOT TOUCH the blocks marked `CONTRACT`** (`#stage`, `#stage-sizer`, `#stage::before/::after`,
+  `#title-field`, `.el`, `.el .txt`, `.el .txt > .body`, `.el svg`, the handles). Every declaration in
+  them has a counterpart in `style.py`, and they change together or not at all. The 7.2/3.6 insets and
+  `line-height: 1.2` in particular are a *renderer* contract: change them and the browser and PowerPoint
+  wrap at different widths, which presents as a coordinate bug.
+- Keep `.el.editing .txt { pointer-events: auto; cursor: text; }` — it is half of double-click-to-edit,
+  and it stays even after §3.
+- `.el` must not gain a `z-index`. Nothing inside `#stage` carries one, on purpose.
+
+### 3 — `editor.js`: double-click to edit, tightened
+
+Today `.body` is created with `contenteditable="true"` permanently (editor.js:490) and only
+`pointer-events: none` keeps the caret out. That satisfies the *behaviour*, but the requirement says an
+element "should only enter `contenteditable` state when double-clicked" — so make the attribute itself
+match the state:
+
+- `makeEl()` builds `<div class="txt"><div class="body"></div></div>` — **no `contenteditable`
+  attribute**.
+- The existing `dblclick` handler adds `.editing`, then `body.setAttribute('contenteditable', 'true')`,
+  then `body.focus()`.
+- `stopEditing()` removes `.editing`, **removes the attribute**, and blurs the node if it holds focus.
+- Keep the CSS `pointer-events` gate as well. Two locks, one door.
+- `editingText(t)` (editor.js:1071) tests `t.isContentEditable`, so it keeps working unchanged — and it
+  becomes *more* correct: `Backspace` on a merely-selected element deletes the element and cannot be
+  swallowed by a body that was quietly editable all along.
+- `#title-field` is **not** an element and is **not** affected. It stays permanently editable.
+
+### 4 — `editor.js`: Undo / Redo (the actual new work)
+
+#### 4.1 The snapshot is the whole document, and it is built from state — never from the DOM's geometry
+
+```js
+// Everything the stage is, as plain data. Read from dataset via read() -- the same one-way flow
+// everything else uses. NOTHING here measures anything.
+function snapshot() {
+  var els = [].slice.call(stage.querySelectorAll(':scope > .el')).map(function (el) {
+    var s = read(el);                                   // dataset -> state
+    var body = el.querySelector('.txt .body');
+    s.html = body ? body.innerHTML : null;              // the runs, verbatim
+    return s;
+  });
+  return {
+    title: titleField.innerHTML,
+    els: els,                                           // ARRAY ORDER IS Z-ORDER. Preserve it.
+    selectedId: selected ? selected.dataset.id : null,
+  };
+}
+```
+
+Why the whole document and not a per-element diff: z-order (`Raise`/`Lower`), delete, duplicate and
+Load-JSON are all *document* operations. A per-element undo cannot express them, and a mixed scheme
+would need a second source of truth about what changed — which is the bug this codebase spends most of
+its comments avoiding. The stage is small; snapshots are cheap.
+
+#### 4.2 Restore rebuilds the stage, and **re-judges** on the way in
+
+```js
+function restore(snap) {
+  // Every state in a snapshot was legal when it was captured -- it got there through commit() or
+  // through loadIR()'s judge. Re-judging is therefore expected to be a no-op, and it costs
+  // microseconds. Do it anyway: it keeps "illegalReason() is the ONLY door into the stage" a true
+  // sentence rather than a sentence with an exception in it.
+  for (var i = 0; i < snap.els.length; i++) {
+    if (illegalReason(snap.els[i])) { /* refuse the WHOLE restore; warn(); return; */ }
+  }
+  // ... clear :scope > .el, select(null), titleField.innerHTML = snap.title,
+  //     makeEl(state) + stage.appendChild(el) in array order, body.innerHTML = s.html,
+  //     re-select by id, syncProps()
+}
+```
+
+- Restore calls **the judge, never the transform**. `applyConstraints()` would re-snap and re-clamp a
+  state the user already committed — an undo that silently moves things by 3 units is worse than no
+  undo. This is exactly the split `loadIR()` exists to demonstrate; copy its posture.
+- `stage.appendChild()` in array order preserves z-order exactly. Do not sort.
+- **`idSeq` is not rewound.** `nextId()` already loops until the id is unused in the DOM
+  (editor.js:472–476), so a restored `el3` cannot collide with a future one. Rewinding the counter would
+  *be* the collision.
+- `makeEl()` calls `write()` + `renderEl()` + `wire()`, so restored elements come back fully live. There
+  is no separate re-wiring step and you must not add one.
+
+#### 4.3 What goes on the stack, and when
+
+Two arrays and a cap:
+
+```js
+var past = [], future = [];
+var MAX_HISTORY = 100;          // keep every new constant clear of 1920/1080/1280/720/1440/810
+```
+
+A snapshot is taken **before** a mutation and pushed **only if the mutation actually changed
+something**. That "only if" is not polish — without it, every plain click on an element pushes a no-op
+frame (because `Interactions.pointerDrag` fires `start` on `pointerdown`, movement or not), and the
+user's first `Ctrl+Z` does nothing at all.
+
+The shape to use, and to reuse everywhere:
+
+```js
+var pending = null;
+function beginHistory() { if (!pending) pending = JSON.stringify(snapshot()); }
+function endHistory() {
+  if (!pending) return;
+  var before = pending; pending = null;
+  if (before === JSON.stringify(snapshot())) return;   // nothing changed -- not a history frame
+  past.push(JSON.parse(before));
+  if (past.length > MAX_HISTORY) past.shift();
+  future.length = 0;                                   // a new action forks the timeline
+}
+function act(fn) { beginHistory(); fn(); endHistory(); }   // for atomic, one-shot mutations
+```
+
+| Mutation | `beginHistory()` | `endHistory()` |
+|---|---|---|
+| Drag an element / a connector | the `start` callback of `Interactions.draggable` | the **`end`** callback — `draggable()` already forwards `opts.end`, so `interactions.js` needs no change (and it is **out of scope**) |
+| Resize (8 handles) | `resizable(...).start` | `resizable(...).end` |
+| Rotate; drag a connector endpoint | `pointerDrag(...).start` | `pointerDrag(...).end` |
+| Draw a new element (stage drag-out) | the stage `pointerDrag`'s `start` (pre-state = no element) | its `end` |
+| Delete, Duplicate, Raise, Lower | wrap the existing handler in `act(...)` | — |
+| Colour / number / range inputs (`p-fill`, `p-stroke`, `p-stroke-w`, `p-size`, `p-rot`) | on the **first `input`** of the burst (the `pending` guard makes this automatic) | on the control's **`change`** event, which fires once when the drag or the typing settles — one history frame per gesture, not one per pixel of the colour wheel |
+| `<select>` (`p-align`, `p-valign`, `p-kind`, `p-arrow`), bold, italic | `act(...)` around the handler | — |
+| Text editing | the `dblclick` handler, **before** focus | `stopEditing()` — the html comparison inside `endHistory()` is what stops a no-op edit becoming a frame |
+| Title editing | `titleField` `focus` | `titleField` `blur` |
+| **Load JSON** | in the `#f-load` change handler, **before** `loadIR(ir)` | after it returns — and a refused import changed nothing, so `endHistory()`'s comparison drops it by itself. **Do not put either call inside `loadIR()`** (see the Node-harness rule above). |
+
+#### 4.4 The keyboard
+
+Extend the **existing** `keydown` handler (editor.js:1075), which already opens with
+`if (editingText(ev.target)) return;`:
+
+- `Ctrl+Z` / `Cmd+Z` → undo. `Ctrl+Y` / `Ctrl+Shift+Z` / `Cmd+Shift+Z` → redo. `preventDefault()` on all
+  of them.
+- **Keep the `editingText()` early return exactly as it is.** Inside a `contenteditable` or an
+  `<input>`, `Ctrl+Z` must reach the *browser's* field-level undo — that is what a user typing into a box
+  expects, and fighting it produces an editor where you cannot un-type a letter without losing a shape.
+  Our stack takes over the moment the caret leaves, because the text edit lands as one history frame on
+  exit (§4.3).
+- Undo: `if (!past.length) return; future.push(snapshot()); restore(past.pop());` Redo is the mirror.
+  Cap `future` the same way. Set the status line (`setStatus`) so the user can see it happened, and
+  disable `b-undo` / `b-redo` if you added them.
+- `Delete` / `Backspace` and `Ctrl+D` keep working; they now go through `act(...)`.
+
+### 5 — `editor.js`: bold / italic, without measuring anything
+
+`normalizeText()` already reads `<b>`/`<strong>` and `<i>`/`<em>` back out as `run.bold` / `run.italic`
+(editor.js:772–773), and `init()` already calls `execCommand('styleWithCSS', false, false)` so the
+browser emits tags rather than styled spans. The round trip exists. You only need to drive it.
+
+**Element-wide toggle (the panel buttons), when the element is *not* in `.editing`** — rebuild the body
+from the run model, reusing two functions that already exist:
+
+```js
+// normalizeText() -> set bold on every run -> paragraphsToHTML() -> back into .body.
+// Deterministic, no Selection API, no execCommand, no measurement, and it round-trips through the
+// exact code path the serializer uses -- so what the button does is what the .pptx gets.
+```
+
+**Selection-scoped toggle, while `.editing`**: the browser's native `Ctrl+B` / `Ctrl+I` inside a
+`contenteditable` already emits `<b>` / `<i>` (that is what `styleWithCSS false` bought us) and
+`normalizeText()` already understands them. **Leave it alone.** If you want the panel buttons to work on
+a live selection too, call `document.execCommand('bold')` — but only when the element is `.editing` and
+the caret is inside it.
+
+**Reading the state back for `aria-pressed`:** derive it from `normalizeText(body, s.size, s.color)` —
+every run bold ⇒ `true`, none ⇒ `false`, some ⇒ `aria-pressed="mixed"`. **Never `getComputedStyle`
+(banned), and do not reach for `document.queryCommandState`** — it reports the *caret's* state, which is
+not the element's, and it would disagree with the serializer.
+
+### 6 — `syncProps()` is the one place the panel learns anything
+
+It is already the single reflection point (editor.js:1045). Extend it; do not fork it:
+
+- `selected === null` → `props.hidden = true`, status `Ready.`
+- otherwise → `props.hidden = false`; show the `data-for="shape"` groups **or** the
+  `data-for="connector"` group, never both; fill every control from `read(selected)`; set `p-bold` /
+  `p-italic` from the run model.
+- The write direction stays as it is: every control calls `patchSelected()` → `commit()` →
+  `applyConstraints()` → the judge. **A property edit passes `{ alt: true }` on purpose**
+  (editor.js:940) so that changing a colour cannot silently re-snap the element's geometry. Preserve
+  that.
+- Every new colour input goes through `guardColor()`. The width-0 hairline warning (editor.js:970–982)
+  stays.
+
+---
+
+## Write scope
+
+**Modify (surgical; no reformatting, no "tidying" of the contract blocks):**
+
+```
+src/aippt/canvas/static/index.html      — #props panel; move the four groups; p-bold / p-italic
+src/aippt/canvas/static/editor.js       — history, panel wiring, bold/italic, contenteditable gating
+src/aippt/canvas/static/style.css       — #props only (+ extend the #toolbar selectors). CONTRACT blocks untouched
+tests/canvas/test_app.py                — new Phase 2 assertions; keep the Gate 4b harness in sync
+```
+
+**DO NOT TOUCH — frozen or out of scope:**
+
+```
+src/aippt/canvas/{schema.json, validate.py, geometry.py, style.py, connectors.py, render_canvas.py,
+                  pin.py, app.py}
+src/aippt/canvas/static/interactions.js     — you do not need it: draggable/resizable/pointerDrag all
+                                              already forward `end`
+tests/canvas/test_editor_source.py          — Gate 1. It greps your new code automatically. You may not
+                                              relax it, and you do not need to extend it
+tests/canvas/test_{geometry,validate,roundtrip}.py · tests/fixtures/canvas/**
+src/aippt/ir/**, src/aippt/render/**, src/aippt/adapters/**, reference/**
+HUMAN_VERIFICATION.md
+```
+
+If you believe a frozen file has a bug, **write it up in `phase2_change_detail.md` under "Defects found"
+— do not fix it.**
+
+---
+
+## Acceptance gates
+
+Run `python -m pytest tests/ -q` from the task root and **paste the real output. Do not paraphrase it.**
+
+### Gate 1 — `tests/canvas/test_editor_source.py`, unchanged, still green
+
+You do not edit it; it greps your new `editor.js`. If your panel measures the DOM, sets a `z-index` from
+JS, or names a banned canvas size, this is where you find out.
+
+### Gate 2 — `tests/canvas/test_app.py`, still green
+
+Including `test_index_is_served` (it asserts `id="stage"` is in the served HTML) and every Gate 4b import
+test. **If you touched `loadIR()` at all, say so explicitly in the report and show these three passing:**
+`test_loadIR_judges_the_whole_file_BEFORE_it_touches_the_stage`,
+`test_there_is_exactly_ONE_copy_of_the_legality_rule`, `test_the_import_path_calls_the_SAME_judge`.
+
+### Gate 3 — new Phase 2 assertions, in `tests/canvas/test_app.py`
+
+There is no browser in this suite and you are not to add one. Use the two techniques the file already
+uses — a **structural assertion** over the source, and the **Node harness** for behaviour:
+
+**Structural (never skips):**
+
+- `index.html` contains `id="props"`, `id="p-bold"` and `id="p-italic"`.
+- **Every `id="p-…"` in `index.html` appears exactly once** — the duplicate-control trap.
+- `index.html` exposes **no control outside the closed IR list**: assert the set of `p-*` ids equals
+  exactly the expected set. This is the draft brief's "no property is exposed that isn't supported", made
+  machine-checkable instead of aspirational.
+- `#props` is **not** nested inside `#stage` in the markup.
+- `editor.js` contains no `z-index` / `zIndex` (Gate 1 covers it; assert it here too, because *this* is
+  the phase that adds a floating panel and the next reader needs to see why).
+- `style.css`'s CONTRACT blocks are intact: the `7.2px` / `3.6px` insets, `line-height: 1.2`,
+  `overflow: visible` on `.el .txt`, and `.el.editing .txt { pointer-events: auto`.
+- `makeEl()`'s markup no longer hard-codes `contenteditable` on `.body`, and `stopEditing()` removes the
+  attribute.
+
+**Behavioural, via the existing Node harness (`@needs_node`, skips cleanly without node):**
+
+- Extend `_FUNCS` with your history functions and stub what they need. Design them to be liftable:
+  **top-level `function name(…) {…}` declarations and `var NAME = …;` constants inside the IIFE**, in the
+  same style as everything else in the file. A history core hidden inside a nested closure cannot be
+  tested by this suite at all.
+- Assert, at minimum: **delete → undo restores the element** (id, geometry, fill, text html);
+  **undo → redo re-deletes it**; **undo restores z-order** after a `Raise`; **a no-op click pushes no
+  frame**; **a new action clears the redo stack**; **the stack is capped at `MAX_HISTORY`**; and
+  **`restore()` refuses a snapshot that `illegalReason()` rejects** (synthesise one — it must never
+  happen in practice, and that test is what proves the door stayed locked).
+
+### Gate 4 — the editor ↔ CLI contract still holds
+
+Draw two boxes and a connector, set one of them **bold** → **Download JSON** →
+`python -m aippt.canvas.render_canvas <downloaded>.json -o out.pptx` → exit 0, prints
+`1 slide, 3 element(s)`. The JSON must carry `"bold": true` on the run. Paste the output.
+
+### Human gates — record them as **un-run**; do not edit `HUMAN_VERIFICATION.md`
+
+In `phase2_change_detail.md`, list as still un-run: the panel appears on selection and hides on deselect;
+a single click drags and a double click lands a caret; `Delete` removes the selected element and does not
+fire while typing; `Ctrl+Z` after a drag / a resize / a delete / a property change restores the previous
+state, and `Ctrl+Y` re-applies it; `Ctrl+Z` **inside** a text box un-types a character instead of undoing
+the last shape; bold survives a Download-JSON → Load-JSON round trip.
+
+---
+
+## Decisions I am making for you (and why)
+
+| # | Decision | Why |
+|---|---|---|
+| 1 | The panel is a **fixed right rail**, not a popover anchored to the element | Anchoring needs a measured element rect. That is the Prime Directive, and Gate 1 fails the build |
+| 2 | **Move** the existing controls; do not build new ones | The ids are already wired to `patchSelected()` / `syncProps()`. Duplicating them gives you two nodes with one id and a control that silently goes dead |
+| 3 | Undo is a **whole-document snapshot**, not a per-element diff | Delete, duplicate, raise/lower and import are document operations. A diff scheme needs a second source of truth about what changed |
+| 4 | `restore()` calls **`illegalReason()`, never `applyConstraints()`** | Re-snapping on undo would move the user's element by up to 3 units *as a side effect of undoing*. And the judge stays the only door |
+| 5 | History frames are pushed **only when the state actually changed** | `pointerDrag` fires `start` on every click. Without the check, `Ctrl+Z` after a click does nothing, and the user learns the feature is broken |
+| 6 | `Ctrl+Z` inside a text box stays the **browser's** undo | Field-level undo is what a typist expects. The text edit lands on our stack as one frame when the caret leaves |
+| 7 | **Bold/italic are element-wide from the panel**, selection-scoped from the keyboard | The panel reflects the *element*; a run-level control has nowhere to show a partial state honestly beyond `aria-pressed="mixed"` |
+| 8 | **Run size stays element-level** | `normalizeText()` stamps one size on every run. A per-run size picker would round-trip to a single value and look like a renderer bug |
+| 9 | History is snapshotted at the **`loadIR()` call site**, not inside it | `test_app.py`'s Node harness executes `loadIR()` verbatim; an unstubbed call inside it is a `ReferenceError` that reads as a broken test |
+| 10 | `interactions.js` is untouched | It already forwards `end` on all three primitives. Touching the one file that is deliberately measurement-free is pure downside |
+
+## Deferred — name them in the report, do not build them
+
+Multi-select · copy/paste · alignment & distribution tools · grouping · per-run size · alpha (**D-4**) ·
+connector gluing (**D-3**) · layout-3 PNG stage background (**D-2**) · autofit · multi-slide · images ·
+arrow-key nudge · persisting history across a reload.
+
+## Deliverable
+
+`tasks/AI_Powered_PPT/phase2_change_detail.md` — files changed and why, the gate output **pasted
+verbatim**, the design of the history stack (what pushes a frame and what deliberately does not), every
+assumption, every caveat, any defect found in a frozen file (**written up, not fixed**), and the un-run
+human gates. **Assumptions are not a failure; unstated assumptions are.**
+
+---
+
+## Caveats on this brief itself (stated, not asked about — they affect your scope)
+
+1. **`tests/canvas/test_editor_source.py` is not in the write scope.** That is fine for everything above
+   (Gate 1 greps `editor.js` automatically, so it polices the new code for free), but it means you
+   **cannot add new banned names to Gate 1** — e.g. you cannot make `queryCommandState` or
+   `Selection.getRangeAt` grep-banned even though this brief tells you not to use them. If you think a
+   new ban is warranted, say so in `phase2_change_detail.md` and leave it for a follow-up.
+2. **The draft brief's write scope lists `tests/canvas/test_app.py` only**, so all new Phase 2 tests go
+   there — including the structural `index.html` / `style.css` assertions, which sit slightly oddly in a
+   file whose docstring says it is the *server* gate. Add a clearly-headed Phase 2 section rather than
+   scattering them, and note the placement in your report.
+3. **Requirements 2a (double-click) and 2c (Delete) were already delivered in Phase 1B.** I have turned
+   them into *verify-and-tighten* tasks rather than build tasks. If a reviewer expected new code there,
+   the answer is at `editor.js:593–600` and `editor.js:1078–1081`.
+4. `run.bold` / `run.italic` are the **only** IR properties the draft brief named that the editor did not
+   already expose. Everything else on its list shipped in Phase 1B; the panel work is relocation plus
+   those two.
+5. I have not run the suite. The gate list assumes the tests reported green at the end of Phase 1B are
+   still green on this tree.
+
+---
+
+claude_model: opus
+mode: continuation
+target_repo: .
+change_detail_path: tasks/AI_Powered_PPT/phase2_change_detail.md
+write_scope: src/aippt/canvas/static/index.html, src/aippt/canvas/static/editor.js, src/aippt/canvas/static/style.css, tests/canvas/test_app.py
+```
+
+Two notes on the trailing metadata: I reproduced the five fields exactly as the draft specified, but wrote them **unfenced** after a `---`, which is how `phase0_brief.md`, `phase1a_brief.md` and `phase1b_brief.md` all actually end on disk — the ```` ```yaml ```` fence in the draft appears to be display formatting, not the stored convention. And the write-scope line is verbatim from the draft, including `tests/canvas/test_app.py` as the only test file, which is what caveats 1 and 2 are about.

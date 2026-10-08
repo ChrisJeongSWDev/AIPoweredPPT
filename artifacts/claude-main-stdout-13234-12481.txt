@@ -1,0 +1,879 @@
+The write was denied (the approved write manifest for this task only lists `critic_review.md`), so per the brief I'm emitting the complete file content below for the Orchestrator to persist as `HTML_to_PPTX_Plan.md`.
+
+**Summary of what the plan does:** it synthesizes both reviews, resolving the conflicts in favor of `critic_review.md` (which inspected the actual OPC package) — most importantly the reversed asset map (`그림 3` = divider, `그래픽 8` = logo), the "no autofit" overstatement, and the control-character claim. All 12 critic rules are carried in with a compliance index mapping each rule to the section that discharges it. The three blocking gates are: build a slide-free renderer template (the source has 23 slides, so `add_slide()` would ship a 24-slide deck), pin it by SHA-256 plus a structural layout signature that fails closed, and run the calibration slide before any feature work.
+
+````markdown
+# HTML Visual Editor → PPTX — Implementation Plan
+
+**Status:** implementation-ready. Phase 0 can start immediately.
+**Supersedes:** the slide-cloning workstream in `renderer_draft_brief.md` for the visual-editor path.
+**Sources:** `plan_review.md` (claude-review) + `critic_review.md` (codex-critic). Where the two disagree, **`critic_review.md` wins** — it inspected the actual OPC package; `plan_review.md` inferred from the manifest.
+
+---
+
+## 0. Executive summary
+
+A human draws a slide in a browser at **960 × 540 logical units**. The browser serializes a **Canvas IR** (JSON, absolute coordinates). A deterministic Python renderer opens a **pinned, slide-free renderer template**, calls `add_slide(layout_3)` to inherit the Vieworks chrome (logo, gradient divider, page number), fills **BODY placeholder idx 10** with the title, and draws the user's shapes at absolute EMU.
+
+Three facts make this cheap and exact:
+
+1. **1 logical unit ≡ 1 pt ≡ exactly 12,700 EMU.** The slide is 12,192,000 × 6,858,000 EMU; `12192000/960 = 6858000/540 = 12700`. Integer, exact, zero drift — and **font sizes map 1:1** (a 14-unit font is a 14 pt font, no scale factor anywhere).
+2. **The chrome lives in the layout, not the slides.** `add_slide()` inherits it for free at native coordinates. No lxml slide-cloning engine is needed — the highest-risk module in the project is deleted, not built.
+3. **A human sizes the text box and sees the text in it.** `foundation_research.md` called text overflow the #1 project risk *because an LLM had to guess a character budget*. That risk is now structurally reduced — though **not eliminated** (§7.4).
+
+Three things will silently produce a wrong deck if not handled, and all three are handled below:
+
+- The source template **already contains 23 slides** — `add_slide()` on it appends a *24th* (§2).
+- `add_shape()` hands you **Office blue `#4472C4` with a drop shadow**, not your colour (§6.4).
+- **Century Gothic has no Hangul glyphs.** Latin/EA font split is mandatory (§6.5).
+
+---
+
+## 1. The 12 rules, and where each is discharged
+
+Every rule from `critic_review.md` §3 is normative. This table is the compliance index — a reviewer should be able to check the plan against it line by line.
+
+| # | Rule | Discharged in |
+|---|---|---|
+| 1 | Adopt Layout 3 chrome; do not clone exemplar slides | §3, §6.2 |
+| 2 | Correct asset map: `그림 3`/`image5.jpeg` = **divider**; `그래픽 8`/`image2.svg` = **logo** | §3.1 |
+| 3 | Create and verify a **clean renderer template** before feature work | §2 |
+| 4 | **Pin the template SHA + layout signature**, fail closed | §4 |
+| 5 | Fill **BODY placeholder idx 10** directly; never `slide.shapes.title` | §6.3 |
+| 6 | Keep editor chrome out of the Canvas IR; lock header/footer exclusion zones | §3.2, §5.3, §5.7 |
+| 7 | Keep 960×540 logical model; single exact 12,700-EMU conversion; explicit zoom inversion | §5.2, §6.1 |
+| 8 | Specify border, rotation, text-margin, paragraph, fallback-font, `contenteditable` normalization **before** implementing serialization | §5.4–§5.6, §6.5–§6.6 |
+| 9 | Make all PPTX styling explicit (remove inherited Office effects; set Latin **and** East-Asian fonts) | §6.4, §6.5 |
+| 10 | Add a connector schema/tool **or** declare arrows out of scope | §6.7 — **connectors are IN scope** |
+| 11 | Run calibration + round-trip QA **first** | §7 |
+| 12 | Do not claim WYSIWYG from coordinate equality alone; use tolerances + rendered evidence | §7.5, §9 |
+
+---
+
+## 2. Phase 0, Step 1 — the clean renderer template (blocking; do this first)
+
+### 2.1 The problem
+
+`Presentation("Vieworks_R&D_ppt_Template.pptx")` opens a deck that **already has 23 slides** (`layout_manifest.json` → `deck.existing_slide_count: 23`). `add_slide()` appends a **24th**. Every export would ship all 23 exemplar slides, and the inherited page-number field on the new slide would read 24. The public `Slides` API has **no deletion operation**.
+
+### 2.2 The fix
+
+Build a **one-off, committed artifact**: `reference/renderer_template.pptx` — same master, same 5 layouts, same theme, same `image5.jpeg` / `image2.svg` media, **zero slides**.
+
+Slide deletion needs private API. That is acceptable **exactly once, in a build script**, and is forbidden in the request path (critic rule 3: *"Do not make private slide-deletion code part of each export request"*).
+
+`src/aippt/tools/make_renderer_template.py`:
+
+```python
+"""One-off build step. Produces reference/renderer_template.pptx (0 slides).
+
+Run once, commit the output, pin its SHA in reference/template_pin.json.
+NEVER import this from the request path. NEVER overwrite the source template.
+"""
+import hashlib, json
+from pathlib import Path
+from pptx import Presentation
+from pptx.oxml.ns import qn
+
+SRC = Path("Vieworks_R&D_ppt_Template.pptx")
+DST = Path("reference/renderer_template.pptx")
+SRC_SHA = "0de7d70cf45197e959d93c31eedd7599c42c23c1153d7b67b18d332141e61442"
+
+
+def sha256(p: Path) -> str:
+    h = hashlib.sha256()
+    with p.open("rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def main() -> None:
+    src_sha = sha256(SRC)
+    if src_sha != SRC_SHA:
+        raise SystemExit(f"source template changed: {src_sha}")
+
+    prs = Presentation(str(SRC))          # SRC is never written back
+    sld_id_lst = prs.slides._sldIdLst     # private, by necessity — build step only
+    for sld_id in list(sld_id_lst):
+        rId = sld_id.get(qn("r:id"))
+        prs.part.drop_rel(rId)            # drop the presentation->slide relationship
+        sld_id_lst.remove(sld_id)         # drop the sldId entry
+
+    DST.parent.mkdir(parents=True, exist_ok=True)
+    prs.save(str(DST))
+
+    out = Presentation(str(DST))
+    assert len(out.slides) == 0, "slides survived"
+    assert len(out.slide_layouts) == 5, "layouts lost"
+    assert out.slide_width == 12192000 and out.slide_height == 6858000
+    print(json.dumps({"source_sha256": src_sha, "renderer_sha256": sha256(DST)}, indent=2))
+```
+
+**Why `drop_rel` as well as `sldIdLst.remove`:** python-pptx serializes every part reachable through the relationship graph. Removing only the `<p:sldId>` entry leaves the `presentation.xml.rels` relationship intact, so the slide parts would still be written into the package — invisible in PowerPoint, but dead weight and a source of confusing audits.
+
+### 2.3 Acceptance gate for Step 1 (all must pass before any feature work)
+
+Run `src/aippt/package_audit.py` (already in the repo) against the output, plus:
+
+1. `len(prs.slides) == 0`.
+2. All 5 layouts present; layout index 3 is still `2_사용자 지정 레이아웃` → `/ppt/slideLayouts/slideLayout4.xml`.
+3. `ppt/media/image5.jpeg` and `ppt/media/image2.svg` still present **and still related to slideLayout4**.
+4. No dangling relationships; no orphaned `notesSlide` parts.
+5. `renderer_template.pptx` **opens cleanly in PowerPoint** and shows an empty deck.
+6. `add_slide(prs.slide_layouts[3])` → save → reopen → the new slide is **slide 1** and the page-number field reads **1**.
+
+> **Caveat — rebuild determinism.** ZIP entries carry timestamps, so re-running the builder does **not** produce a byte-identical file. Therefore we pin **the committed artifact's** SHA, not a rebuild. The builder exists for provenance and reproduction, and a deliberate rebuild requires deliberately re-pinning (§4.3).
+
+---
+
+## 3. The template facts (authoritative)
+
+Template SHA-256 `0de7d70cf45197e959d93c31eedd7599c42c23c1153d7b67b18d332141e61442`, 1,881,082 bytes.
+Slide size **12,192,000 × 6,858,000 EMU** = 13.3333 × 7.5 in = **960 × 540 pt**, 16:9.
+Layout index **3** = `2_사용자 지정 레이아웃` = `/ppt/slideLayouts/slideLayout4.xml` — the layout **15 of the 23** template slides already use.
+
+### 3.1 Layout 3 asset map — corrected
+
+`plan_review.md` reversed these. **`critic_review.md` is correct and is what we build against:**
+
+| Layout element | **Actual role** | x, y, w, h (pt = logical units) | Part |
+|---|---|---:|---|
+| `그림 3` (`p:pic`, id 4) | **Gradient divider** | 0.31, 60.67, 959.39, 27.91 | `rId2` → `ppt/media/image5.jpeg` |
+| `그래픽 8` (`p:pic`, id 9) | **Vieworks logo** (red SVG wordmark) | 816.76, 64.00, 97.14, 11.92 | SVG ext `rId3` → `ppt/media/image2.svg` |
+| `텍스트 개체 틀 2` | **BODY placeholder idx 10** — used as the title | 45.55, 26.75, 725.29, 37.25 | layout placeholder, 30 pt |
+| `슬라이드 번호 개체 틀 5` | Slide-number chrome | 733.61, 507.72, 216.00, 28.75 | regular layout shape |
+
+The divider JPEG is 2934 × 85 with white padding. Its **visible** non-white band is approximately **x 46.41 → 788.68, y 68.88 → 75.12**, visual centre **y = 72.00**. The picture's outer box is therefore a poor proxy for the visible line — use the pixel-audited numbers for the editor's red line, and record them as an **approximation**, not as the picture box.
+
+**These are layout-level shapes.** After `add_slide()` they are *not* in `slide.shapes` — they are inherited and always render **behind** slide content. Nothing you draw can go under them, and they cannot be raised above your content. Hence §3.2.
+
+### 3.2 Protected regions (locked in the editor, clamped in the renderer)
+
+All in logical units (= pt), 960 × 540 space.
+
+| Region | Box | Rule |
+|---|---|---|
+| `HEADER_RESERVED` | x 0, y 0, w 960, **h 92** | No user element may intersect. Covers the title placeholder (26.75–64.0), the divider picture box (60.67–88.58) and the logo (64.0–75.92). |
+| `FOOTER_RESERVED` | x 733.6, y 500, w 226.4, h 40 | No user element may intersect. Covers the slide-number chrome (507.72–536.47). |
+| `TITLE_LOCKED` | x 45.55, y 26.75, w 725.29, h 37.25 | The title box. **Not movable, not resizable, not serialized as an element.** Its text goes to `title`, which maps to placeholder idx 10. |
+| `BODY_SAFE` | x 45.6, y 92, w 868.8, h 408 (y 92 → 500) | The drawable region. Default snap bounds. |
+
+The renderer **clamps** to the slide and **rejects** any element intersecting a reserved region. The editor prevents it; the renderer does not trust the editor.
+
+---
+
+## 4. Template hashing and pinning — the exact mechanism
+
+Critic rule 4. Hard-coding `slide_layouts[3]` is safe **only** while the package is pinned. A changed or reordered template must **fail closed with a clear error**, never silently select a different layout.
+
+### 4.1 The pin file — `reference/template_pin.json`
+
+```jsonc
+{
+  "pin_version": 1,
+  "source_template": {
+    "filename": "Vieworks_R&D_ppt_Template.pptx",
+    "sha256": "0de7d70cf45197e959d93c31eedd7599c42c23c1153d7b67b18d332141e61442",
+    "bytes": 1881082
+  },
+  "renderer_template": {
+    "filename": "reference/renderer_template.pptx",
+    "sha256": "<FILL FROM make_renderer_template.py OUTPUT>",
+    "bytes": 0,
+    "built_from_sha256": "0de7d70cf45197e959d93c31eedd7599c42c23c1153d7b67b18d332141e61442",
+    "builder": "aippt.tools.make_renderer_template@1"
+  },
+  "layout_signature": {
+    "layout_index": 3,
+    "layout_name": "2_사용자 지정 레이아웃",
+    "layout_partname": "/ppt/slideLayouts/slideLayout4.xml",
+    "slide_width_emu": 12192000,
+    "slide_height_emu": 6858000,
+    "slide_count": 0,
+    "layout_count": 5,
+    "placeholder_idxs": [10],
+    "placeholder_10_emu": { "left": 578541, "top": 339725, "width": 9211156, "height": 473075 },
+    "required_media": ["image5.jpeg", "image2.svg"]
+  },
+  "theme": { "accent1": "4472C4", "note": "Office blue. MUST NOT appear in any generated shape." }
+}
+```
+
+### 4.2 Startup verification — `src/aippt/canvas/pin.py`
+
+**Two gates, both mandatory, both at process start (not per request):**
+
+```python
+class TemplatePinError(RuntimeError):
+    """Fail closed. Never fall back to another layout."""
+
+
+def sha256_file(path: Path) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def verify_pin(pin: dict) -> Presentation:
+    # Gate 1 — byte identity of the renderer template.
+    tpl = Path(pin["renderer_template"]["filename"])
+    actual = sha256_file(tpl)
+    if actual != pin["renderer_template"]["sha256"]:
+        raise TemplatePinError(
+            f"renderer template SHA mismatch\n  expected {pin['renderer_template']['sha256']}"
+            f"\n  actual   {actual}\n"
+            "Rebuild via aippt.tools.make_renderer_template and RE-PIN deliberately."
+        )
+
+    # Gate 2 — structural signature. Catches a re-pinned-but-wrong package.
+    prs = Presentation(str(tpl))
+    sig = pin["layout_signature"]
+    checks = [
+        (len(prs.slides) == sig["slide_count"], "renderer template must contain 0 slides"),
+        (len(prs.slide_layouts) == sig["layout_count"], "layout count changed"),
+        (prs.slide_width == sig["slide_width_emu"], "slide width changed"),
+        (prs.slide_height == sig["slide_height_emu"], "slide height changed"),
+    ]
+    layout = prs.slide_layouts[sig["layout_index"]]
+    checks += [
+        (str(layout.part.partname) == sig["layout_partname"], "layout 3 partname changed"),
+        (sorted(p.placeholder_format.idx for p in layout.placeholders) == sig["placeholder_idxs"],
+         "layout 3 placeholder idx set changed"),
+    ]
+    got = {Path(r.target_partname).name for r in layout.part.rels.values() if not r.is_external}
+    checks.append((set(sig["required_media"]) <= got,
+                   f"layout 3 lost media: {sig['required_media']} vs {sorted(got)}"))
+
+    ph = layout.placeholders[10]
+    exp = sig["placeholder_10_emu"]
+    checks.append((
+        (ph.left, ph.top, ph.width, ph.height) == (exp["left"], exp["top"], exp["width"], exp["height"]),
+        "placeholder idx 10 geometry moved",
+    ))
+
+    for ok, msg in checks:
+        if not ok:
+            raise TemplatePinError(f"layout signature mismatch: {msg}")
+    return prs
+```
+
+The Canvas IR payload also carries `target.template_sha256`. The backend **hard-fails** on mismatch rather than rescaling a stale payload into a subtly-wrong deck.
+
+### 4.3 Re-pinning is a deliberate, reviewed act
+
+Changing the pin is a code change: run the builder, run the audit, run the calibration slide, update `template_pin.json`, commit the new `renderer_template.pptx`. There is no auto-repin, no `--force`, no environment-variable escape hatch.
+
+> **Housekeeping:** `~$Vieworks_R&D_ppt_Template.pptx` in the task directory is an Office lock file. It means the template may be open in PowerPoint. Never hash it, never read it, and close PowerPoint before running the builder.
+
+---
+
+## 5. Frontend architecture — HTML/JS
+
+### 5.1 Technology choice: DOM + inline SVG. **Not `<canvas>`. Not Fabric.js.**
+
+Fabric is a `<canvas>` library. Text becomes bitmap-rendered by *Fabric's own* layout engine, which means (a) you reimplement text editing from scratch, and (b) Fabric's wrapping metrics become a **third text engine**, agreeing with neither the browser nor PowerPoint. For a project whose headline risk is text overflow, adding a third metric model is a bad trade.
+
+The DOM gives you, free:
+- `contenteditable` — real text editing, nothing to reimplement;
+- **real browser metrics in the real Century Gothic** — the closest possible preview of what PowerPoint will do;
+- the element *is* the model (`el.dataset.x`), so serialization is trivial.
+
+Total library requirement: **interact.js (~10 KB)** for drag/resize handles and snapping — or ~150 lines of `pointerdown`/`pointermove`/`pointerup` with pointer capture. Nothing else.
+
+### 5.2 Canvas sizing and the coordinate system
+
+**The model space is 960 × 540 logical units, and nothing else ever enters the IR.**
+
+```
+1 logical unit  ≡  1 pt  ≡  exactly 12,700 EMU        (12192000/960 = 6858000/540 = 914400/72)
+```
+
+Consequences that delete whole bug classes before they exist:
+- Geometry: `emu = round(u * 12700)` — integer, exact.
+- **Font size maps 1:1** — a size-14 run is `Pt(14)`. No scale factor anywhere. (1280×720 also divides exactly, at 9525 EMU/px, but then every font size needs a ×0.75 factor. 960×540 is strictly better.)
+
+**Decouple model space from display.** The stage is a `960 × 540` div in *logical* units; zoom is a single `transform: scale(s)` with `transform-origin: 0 0`.
+
+```css
+#stage {
+  position: relative;
+  width: 960px; height: 540px;          /* 1 CSS px == 1 logical unit at s = 1 */
+  transform: scale(var(--zoom));
+  transform-origin: 0 0;
+  background: #FFFFFF;
+  overflow: hidden;
+}
+```
+
+**The zoom-inversion rule (critic rule 7), stated once and obeyed everywhere:**
+
+```js
+// The ONLY place a device coordinate becomes a model coordinate.
+function toModel(ev) {
+  const r = stage.getBoundingClientRect();   // used ONLY for pointer inversion
+  return { x: (ev.clientX - r.left) / zoom,  // `zoom` is the single source of truth
+           y: (ev.clientY - r.top)  / zoom };
+}
+```
+
+**Forbidden in the IR path, without exception:** `getBoundingClientRect()` widths/heights, `offsetWidth`, `clientWidth`, `devicePixelRatio`, responsive/percentage widths, any value read back from computed CSS. Geometry lives in JS state (`el.dataset.x/y/w/h`), and CSS is written *from* that state, never read back into it. `getBoundingClientRect()` appears exactly once, in `toModel()`.
+
+Round only at the final `logical × 12700` conversion — carry floats in the IR, round in Python.
+
+### 5.3 Element model, z-order, and the red line
+
+```html
+<div id="stage">
+  <!-- editor-only chrome: CSS pseudo-elements. Structurally cannot be serialized. -->
+  <!-- #stage::before = the title box outline; #stage::after = the red divider line -->
+  <div class="el" data-type="rect" data-x="100" data-y="120" data-w="180" data-h="60">…</div>
+  …
+</div>
+```
+
+- **Array order in the DOM IS z-order.** No `z` field. A separate `z` is a second source of truth and will desync.
+- **The red line is `#stage::after`** — a CSS pseudo-element. It has no DOM node, therefore the serializer *cannot* emit it even by accident (critic rule 6). The layout already draws the real gradient divider; if the exporter also emitted the red line, **the deck would ship two stacked dividers**.
+
+```css
+#stage::after {                 /* editor-only. Approximates the visible gradient band. */
+  content: ""; position: absolute; pointer-events: none;
+  left: 46.4px; top: 71px;      /* visible band centre y = 72.0; audited 68.88–75.12 */
+  width: 742.3px; height: 2px;  /* audited x 46.41 → 788.68 */
+  background: #FF0032;
+}
+#stage::before {                /* the locked title box, TITLE_LOCKED */
+  content: ""; position: absolute; pointer-events: none;
+  left: 45.55px; top: 26.75px; width: 725.29px; height: 37.25px;
+  outline: 1px dashed rgba(0,0,0,.25);
+}
+```
+
+**Tell the user plainly:** the editor shows a flat red line; PowerPoint shows the real gradient. **The header region is deliberately not WYSIWYG.** The geometry above is an evidence-based approximation of the gradient's visible centre, not the divider picture's outer box.
+
+**Better, once LibreOffice is available (a Phase 3 dependency, but cheap to pull forward):** render layout 3 to a PNG once and set it as the stage's `background-image`. The editor then shows the *real* logo and the *real* gradient, the red-line-position question evaporates, and the header becomes genuinely WYSIWYG. The flat red line is a perfectly good day-one MVP; the PNG background is the target.
+
+### 5.4 Shapes: inline SVG, because SVG stroke semantics == DrawingML stroke semantics
+
+Critic rule 8 demands we **define whether stroke is included in `w`/`h`**. We define it by construction:
+
+> **`x, y, w, h` are the shape's *unrotated path box*. Stroke is NOT included; it is centred on the path and bleeds `stroke/2` outward on every side.**
+
+That is exactly what DrawingML does (`<a:off>`/`<a:ext>` is the path box; `<a:ln w=…>` is centred) **and exactly what SVG does**. Using CSS borders instead would import CSS `box-sizing` semantics (border drawn *inward*), producing a visible `stroke/2` edge drift on every shape — a bug that presents as a coordinate error and burns a day.
+
+So every shape is an inline `<svg>` with a 1:1 viewBox and `overflow: visible`:
+
+```html
+<div class="el" style="left:100px; top:120px; width:180px; height:60px;">
+  <svg width="180" height="60" viewBox="0 0 180 60" preserveAspectRatio="none"
+       style="overflow: visible; position:absolute; inset:0;">
+    <rect x="0" y="0" width="180" height="60"
+          fill="#FF0032" stroke="#FFFFFF" stroke-width="1"/>
+  </svg>
+  <div class="txt" contenteditable="true">Capture</div>
+</div>
+```
+
+| Editor shape | SVG | `python-pptx` | `prst` |
+|---|---|---|---|
+| Rectangle | `<rect>` | `MSO_SHAPE.RECTANGLE` | `rect` |
+| Circle / ellipse | `<ellipse>` | `MSO_SHAPE.OVAL` | `ellipse` |
+| Triangle | `<polygon points="w/2,0 w,h 0,h">` | `MSO_SHAPE.ISOSCELES_TRIANGLE` | `triangle` |
+| Connector | `<line>` + `<marker>` | `add_connector(...)` | — (§6.7) |
+
+`viewBox` is 1:1 with the element box, so `stroke-width` is in logical units with no scaling distortion. `overflow: visible` lets the outer half of the stroke draw. `preserveAspectRatio="none"` keeps resize honest.
+
+### 5.5 Rotation
+
+**Centre-origin, degrees clockwise, in both systems.** CSS `transform: rotate(Ndeg)` with `transform-origin: 50% 50%` on `.el`; `shape.rotation = N` in python-pptx rotates about the shape centre. Same convention, no conversion. `x/y/w/h` always describe the **unrotated** box.
+
+### 5.6 Text: the CSS contract that must match the renderer
+
+Critic rule 8, plus the "browser text is a preview, not proof" finding. Every one of these has a PowerPoint counterpart in §6.6, and they must be changed **together**:
+
+```css
+.el .txt {
+  position: absolute;
+  /* PowerPoint's default text-frame insets: 0.1in L/R, 0.05in T/B = 7.2 / 3.6 logical units.
+     Hard-coded on both sides. This is the trap that reads like a coordinate bug. */
+  left: 7.2px; right: 7.2px; top: 3.6px; bottom: 3.6px;
+  box-sizing: border-box;
+  padding: 0; margin: 0; border: 0;
+
+  font-family: 'Century Gothic', 'Malgun Gothic', sans-serif;  /* mirrors latin/ea split */
+  font-size: 14px;              /* == 14 pt in the model */
+  line-height: 1.2;             /* must equal renderer line_spacing */
+  white-space: pre-wrap;        /* word_wrap = True */
+  overflow-wrap: break-word;
+  word-break: keep-all;         /* Korean: break at spaces, not mid-word */
+
+  display: flex;                /* autoshape default is anchor="ctr" + algn="ctr" */
+  align-items: center;          /* valign ctr  -> tf.vertical_anchor = MSO_ANCHOR.MIDDLE */
+  justify-content: center;      /* align  ctr  -> p.alignment = PP_ALIGN.CENTER */
+  text-align: center;
+  overflow: visible;            /* show overflow; do NOT hide the problem */
+}
+```
+
+**Overflow is shown, never clipped.** If the text does not fit in the browser, the user sees it and fixes it. That is the entire defence, and it is a far stronger one than any character-budget heuristic — but see §7.4: it is a *preview*, not a proof.
+
+**`contenteditable` normalization — specify before writing the serializer.** The browser emits `<div>`, `<br>`, `&nbsp;`, and styled `<span>`s. The serializer must normalize to an explicit run model:
+
+| DOM | IR |
+|---|---|
+| block-level `<div>` / `<p>` | new paragraph |
+| `<br>` | line break within a paragraph (`<a:br/>`) |
+| `&nbsp;` (U+00A0) | preserved as U+00A0 (do **not** collapse to a space) |
+| `<b>`/`<strong>`, `<i>`/`<em>`, colour spans | run-level `bold` / `italic` / `color` |
+| everything else | flattened to plain text |
+
+Reject C0 control characters except `\t` and `\n` at validation time. **This is an interoperability/validation policy, not a corruption fix** — `python-pptx` 1.0.x escapes unsupported control characters, so the "illegal chars corrupt the deck" claim in `plan_review.md` §2 is overstated. Reject them anyway; they have no legitimate source in a visual editor.
+
+### 5.7 Editor constraints (enforced in the UI, re-enforced in the renderer)
+
+- Elements cannot be dragged or resized into `HEADER_RESERVED` or `FOOTER_RESERVED`, and are clamped to the 960 × 540 slide.
+- The title box is fixed at `TITLE_LOCKED`; it is a *title field*, not an element.
+- Non-positive `w`/`h` are impossible (minimum 4 logical units).
+- **Font availability check** on load — warn loudly if the preview is lying:
+
+```js
+await document.fonts.ready;
+if (!document.fonts.check('14pt "Century Gothic"')) {
+  warn("Century Gothic is not installed. This preview does NOT match what PowerPoint will render.");
+}
+```
+
+---
+
+## 6. Backend architecture — Python renderer
+
+### 6.1 Module layout
+
+New modules, kept **separate** from the existing semantic-IR renderer (see §8 — there are now two IRs and they must not merge):
+
+```
+src/aippt/
+  canvas/
+    schema.json          # canvas-ir/1  (normative)
+    validate.py          # jsonschema + semantic rules (reserved regions, positive dims, colour format)
+    pin.py               # §4 — SHA + layout signature, fail closed
+    geometry.py          # logical -> EMU, clamping, reserved-region rejection
+    style.py             # font split, fill/line/shadow/effect overrides
+    connectors.py        # lxml arrowheads (§6.7)
+    render_canvas.py     # IR -> .pptx   (also the CLI entry point)
+    app.py               # FastAPI: static editor + POST /api/export
+  tools/
+    make_renderer_template.py   # §2 — build step, never imported by the request path
+    calibrate.py                # §7 — the calibration slide
+```
+
+### 6.2 The render loop — Layout 3 adoption, not cloning
+
+`renderer_draft_brief.md` specifies an `lxml` slide-cloning engine. **It is not needed for this path and should be dropped from Phase-1 scope.** Cloning exists to *reuse hand-designed slides*. A human drawing from scratch does not want to reuse a design — they want the *chrome*, and the chrome is inherited from the layout for free.
+
+The Q3 objection that originally blocked `add_slide()` is **lifted for this narrowly defined path** (critic §1, explicitly): it was an objection to *reusing designs*, and it remains valid for that. It does not bind here, because we deliberately draw our own body content and inherit only chrome.
+
+```python
+def render(ir: dict, pin: dict) -> Presentation:
+    prs = verify_pin(pin)                                # §4 — fail closed
+    if ir["canvas"] != {"w": 960, "h": 540, "unit": "pt"}:
+        raise ValueError("stale payload: canvas dims do not match the model space")
+    if ir["target"]["template_sha256"] != pin["renderer_template"]["sha256"]:
+        raise ValueError("stale payload: template SHA mismatch")
+
+    layout = prs.slide_layouts[pin["layout_signature"]["layout_index"]]   # 3
+    slide = prs.slides.add_slide(layout)   # logo + divider + page number, inherited, free
+
+    set_title(slide, ir["title"])                        # §6.3
+    for el in ir["elements"]:                            # array order IS z-order
+        draw(slide, el)                                  # §6.4
+    return prs
+```
+
+`add_slide()` clones the layout's eligible placeholders — BODY placeholders are cloneable; only date, footer and slide-number placeholders are excluded. So **idx 10 arrives on the slide**, while the logo and divider stay layout-level (and therefore invisible to `slide.shapes` — hence §3.2's protected regions; a collision check that inspects only `slide.shapes` will not see the chrome).
+
+### 6.3 The title — placeholder idx 10, by idx, never by position
+
+Layout 3 has **no semantic TITLE placeholder**, so `slide.shapes.title` is `None`. Use the idx.
+
+```python
+def set_title(slide, text: str) -> None:
+    try:
+        ph = slide.placeholders[10]        # keyed by idx, NOT by collection position
+    except KeyError:                       # documented fallback; must never fire silently
+        raise TemplatePinError("layout 3 did not clone placeholder idx 10")
+
+    tf = ph.text_frame
+    tf.text = text
+    p = tf.paragraphs[0]
+    run = p.runs[0]
+    set_run_fonts(run, latin=LATIN, ea=EA)     # do NOT trust inherited placeholder style
+    run.font.size = Pt(30)                     # explicit; the layout says 30 but say it anyway
+    run.font.bold = False
+    run.font.color.rgb = RGBColor.from_string("000000")
+    p.alignment = PP_ALIGN.LEFT
+```
+
+**Do not assume the BODY placeholder's inherited style equals the editor's default.** Set every run/paragraph property the product depends on, explicitly.
+
+### 6.4 Shapes — overcoming the default Office blue
+
+`new_autoshape_sp` hard-codes a `<p:style>` block pointing `lnRef`, `fillRef` and `effectRef` at `schemeClr accent1`, and `fontRef` at `lt1`. **`accent1` in this template is `#4472C4`** — stock Office blue (`layout_manifest.json:42`). So **every shape arrives blue-filled, blue-outlined, drop-shadowed, with white theme-font text.**
+
+Four overrides. The third is the one everyone forgets:
+
+```python
+def draw_shape(slide, el) -> None:
+    shp = slide.shapes.add_shape(
+        PRST[el["type"]],                               # RECTANGLE / OVAL / ISOSCELES_TRIANGLE
+        Emu(round(el["x"] * 12700)), Emu(round(el["y"] * 12700)),
+        Emu(round(el["w"] * 12700)), Emu(round(el["h"] * 12700)),
+    )
+    shp.rotation = el.get("rotation", 0)                # degrees CW, about centre
+
+    # 1. fill — kills fillRef -> accent1
+    shp.fill.solid()
+    shp.fill.fore_color.rgb = RGBColor.from_string(el["fill"].lstrip("#"))
+
+    # 2. line — kills lnRef -> accent1
+    stroke = el.get("stroke")
+    if stroke:
+        shp.line.color.rgb = RGBColor.from_string(stroke["color"].lstrip("#"))
+        shp.line.width = Pt(stroke["width"])
+    else:
+        shp.line.fill.background()                      # explicit "no line", not inherited
+
+    # 3. THE ONE EVERYONE FORGETS — kills effectRef -> the Office drop shadow.
+    #    No amount of fill/line overriding removes it. There is no other shadow API.
+    shp.shadow.inherit = False
+
+    # 4. text — kills fontRef -> lt1 (white) + theme font
+    style_text_frame(shp.text_frame, el.get("text"))
+```
+
+**Invariant: `#4472C4` must never appear in a generated shape.** Assert it in the QA harness (§7.3) — scan the exported `slide1.xml` for `accent1` and for `4472C4`; both must be absent from the `<p:sp>` elements the renderer created.
+
+Colour policy: **new content defaults to `#FF0032`** (the user's authoritative override); **inherited template chrome keeps its native branding** and is never recoloured. Use opaque `#RRGGBB` in Phase 1 — transparency semantics are out of scope until separately specified.
+
+### 6.5 Fonts — the Latin/EA split (mandatory)
+
+**"Century Gothic for both English and Korean" is not achievable.** Century Gothic ships no Hangul glyphs; no API can conjure them. And `python-pptx` cannot even express an East-Asian typeface: `Font.name` writes **only** `<a:latin>`, and `CT_TextCharacterProperties` declares no `<a:ea>` element at all. You must drop to lxml.
+
+The honest contract is a **split**:
+
+```
+latin = "Century Gothic"        ea = "맑은 고딕" (Malgun Gothic)
+CSS:  font-family: 'Century Gothic', 'Malgun Gothic', sans-serif;
+```
+
+This is the pleasing part: **the browser's font-fallback chain and PowerPoint's latin/ea split are the same mechanism.** Configure them consistently and preview and export agree — that is the only route to WYSIWYG for mixed KO/EN. Chase "Century Gothic for Korean" and they diverge forever.
+
+```python
+from pptx.oxml.ns import qn
+
+LATIN = "Century Gothic"
+EA = "맑은 고딕"           # installed Hangul fallback; must exist in BOTH browser and export env
+
+def set_run_fonts(run, latin: str = LATIN, ea: str = EA) -> None:
+    rPr = run._r.get_or_add_rPr()
+    rPr.get_or_add_latin().typeface = latin
+    ea_el = rPr.find(qn("a:ea"))
+    if ea_el is None:
+        ea_el = rPr.makeelement(qn("a:ea"), {})
+        # a:ea must follow a:latin and precede a:cs/a:sym/a:hlink... per the DrawingML schema.
+        rPr.insert_element_before(
+            ea_el, "a:cs", "a:sym", "a:hlinkClick", "a:hlinkMouseOver", "a:rtl", "a:extLst"
+        )
+    ea_el.set("typeface", ea)
+```
+
+**Two font facts the user must decide on before Phase 1 closes** (see D-1, §10):
+
+- **Century Gothic is not the Vieworks brand font.** `exemplar_catalog.md` shows the template's real design fonts are **뷰웍스 B** and **뷰웍스 M**, set at run level on every slide. Century Gothic body text will sit next to inherited 뷰웍스 chrome and look subtly off-brand. That may be fine — but it should be a decision, not an accident.
+- **If Century Gothic is not installed on the opening machine, PowerPoint substitutes and geometry shifts.** `python-pptx` cannot embed fonts. Low probability, invisible until someone else opens the deck. Detect-and-warn in the browser (§5.7) and in the export environment.
+
+### 6.6 Text frames — the margin trap, and the truth about autofit
+
+**The trap nobody writes down: text-frame internal margins.** PowerPoint defaults to 0.1 in left/right and 0.05 in top/bottom (91,440 / 45,720 EMU) — **7.2 and 3.6 logical units**. If the HTML div uses `padding: 0`, the browser wraps text at a *different width* than PowerPoint does, and you get an off-by-one-line overflow that presents as a coordinate bug. Set both sides explicitly and identically (this mirrors §5.6 exactly):
+
+```python
+def style_text_frame(tf, text: dict | None) -> None:
+    tf.margin_left = tf.margin_right = Pt(7.2)     # == CSS left/right: 7.2px
+    tf.margin_top = tf.margin_bottom = Pt(3.6)     # == CSS top/bottom: 3.6px
+    tf.word_wrap = True                            # == white-space: pre-wrap
+    tf.auto_size = MSO_AUTO_SIZE.NONE
+    tf.vertical_anchor = MSO_ANCHOR.MIDDLE         # == align-items: center
+
+    if not text:
+        return
+    tf.clear()
+    for i, para in enumerate(text["paragraphs"]):
+        p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
+        p.alignment = PP_ALIGN[text.get("align", "CENTER")]
+        p.space_before = Pt(0)                     # explicit — do not inherit
+        p.space_after = Pt(0)
+        p.line_spacing = 1.2                       # == CSS line-height: 1.2
+        for r in para["runs"]:
+            run = p.add_run()
+            run.text = r["t"]
+            run.font.size = Pt(r["size"])          # 1:1 with the model. No factor.
+            run.font.bold = r.get("bold", False)
+            run.font.italic = r.get("italic", False)
+            run.font.color.rgb = RGBColor.from_string(r["color"].lstrip("#"))
+            set_run_fonts(run)                     # latin + ea
+```
+
+**On autofit, state it precisely:** there is **no guaranteed headless PowerPoint-equivalent autofit**. `TextFrame.fit_text()` *does* exist — `plan_review.md`'s "there is no autofit" is too absolute — but it needs a TTF path, it is not a PowerPoint rendering engine, and it is a poor foundation for mixed-font CJK fidelity. **Do not build on it.** Set `auto_size = NONE`, let the human size the box, and keep **deterministic render QA as the authority** (§7).
+
+### 6.7 Connectors and arrowheads — **in scope for Phase 1**
+
+Critic rule 10: *add a connector schema/tool, or explicitly declare arrows out of scope.* The brief's shape list (rectangle, circle, triangle) contains **no connector or arrow tool at all** — and "flow charts or block diagrams" with nodes but no arrows is not a flow chart. **Decide it now, in the Phase-1 schema, not after the toolbar is built.**
+
+**Decision: connectors ship in Phase 1, with explicit absolute endpoints and no gluing.**
+
+```python
+def draw_connector(slide, el) -> None:
+    # Endpoints in logical units. Connectors are emitted BEFORE nodes (array order = z-order),
+    # so lines sit behind boxes — the editor forces new connectors to the back of the array.
+    cxn = slide.shapes.add_connector(
+        MSO_CONNECTOR.STRAIGHT if el["kind"] == "straight" else MSO_CONNECTOR.ELBOW,
+        Emu(round(el["x1"] * 12700)), Emu(round(el["y1"] * 12700)),
+        Emu(round(el["x2"] * 12700)), Emu(round(el["y2"] * 12700)),
+    )
+    cxn.line.color.rgb = RGBColor.from_string(el["color"].lstrip("#"))
+    cxn.line.width = Pt(el["width"])
+    cxn.shadow.inherit = False                     # connectors get the Office shadow too
+
+    # Arrowheads are NOT exposed in the python-pptx API. There is no line.end_arrow.
+    ln = cxn.line._get_or_add_ln()
+    if el["arrow"] in ("end", "both"):
+        ln.append(ln.makeelement(qn("a:tailEnd"), {"type": "triangle"}))
+    if el["arrow"] in ("start", "both"):
+        ln.append(ln.makeelement(qn("a:headEnd"), {"type": "triangle"}))
+```
+
+**`begin_connect()` / `end_connect()` are explicitly NOT used in Phase 1.** They are experimental, and connection-site indices are unreliable for arbitrary shapes (notably triangles). Gluing is genuinely valuable — a glued connector stays attached when the user later drags a box *in PowerPoint* — so revisit it in Phase 2, behind a fixture suite. Phase 1 ships absolute endpoints, which always work.
+
+**Every connector fixture must be saved, reopened, and rendered** (§7.3).
+
+---
+
+## 7. QA — calibration first, then round-trip. Before any feature work.
+
+Critic rule 11: *run calibration and round-trip QA first.* This is not a testing chore appended to the end; it is **Phase 0, Step 2**, and it converts "I think the mapping is right" into a measured number in about an hour.
+
+### 7.1 The smoke test (critic §1 — five assertions, run before anything else)
+
+Add one slide from layout 3 to the clean renderer template, save, reopen, render in the **actual target consumer** (PowerPoint and/or the LibreOffice conversion path actually used). Assert:
+
+1. The new slide still relates to `slideLayout4.xml`.
+2. The layout still relates to **both** `image5.jpeg` and `image2.svg`.
+3. Placeholder **idx 10** exists on the slide and can be filled.
+4. The logo and divider are **visible and undistorted** in the rendered output.
+5. **The SVG logo survives** the LibreOffice / server-side conversion path. *(SVG in OOXML carries a raster fallback via the `svgBlip` extension; converters vary in which they honour. This is the single most likely inheritance surprise — test it, don't assume it.)*
+
+### 7.2 The calibration slide (one hour, blocking)
+
+`src/aippt/tools/calibrate.py` emits a fixture deck containing:
+
+- Four rectangles at the **exact slide corners** (0,0 / 960−w,0 / 0,540−h / 960−w,540−h).
+- Shapes with stroke widths of **0, 1, 4 and 8** logical units — the case that catches box-model drift (§5.4).
+- A shape at **30° and 45° rotation** — catches centre-origin mismatches.
+- A text box of **known width** with a **known string**, at 14 pt, chosen to wrap at a predictable point.
+- A **mixed KO/EN** string — catches the latin/ea split.
+- The divider and logo, inherited.
+
+Export → LibreOffice → PNG → **diff against a screenshot of the HTML stage at zoom 1**. That number is the mapping's error bar.
+
+### 7.3 Deterministic round-trip assertions (the machine-checkable part)
+
+Re-open the exported `.pptx` and assert against the IR:
+
+| Assertion | Tolerance |
+|---|---|
+| `shape.left/top/width/height` == `round(u * 12700)` | **0 EMU** — exact, by construction |
+| `shape.rotation` == `el.rotation` | 0° |
+| Fill RGB == `el.fill` | exact |
+| Line RGB / width == `el.stroke` | exact |
+| `<a:latin typeface="Century Gothic"/>` on every run | present |
+| `<a:ea typeface="맑은 고딕"/>` on every run | present |
+| `accent1` / `4472C4` in any renderer-created `<p:sp>` | **absent** |
+| Inherited shadow `<a:effectLst>` on any renderer-created shape | **absent** |
+| Slide count of the export | exactly 1 |
+| Slide relates to `slideLayout4.xml` | true |
+| No element intersects `HEADER_RESERVED` / `FOOTER_RESERVED` | true |
+| Every connector with `arrow != none` has `<a:tailEnd>`/`<a:headEnd>` | present |
+
+### 7.4 Say the quiet part out loud: the browser is a preview, not a proof
+
+The visual editor **reduces** text-overflow risk enormously — a human sizes the box and sees the text in it, which is a far stronger defence than any character-budget heuristic. But it does **not eliminate** the risk. Browser and PowerPoint can still differ in font fallback, kerning, line breaking, paragraph spacing and vertical metrics. The alignment list in §5.6/§6.6 (margins, wrap, alignment, spacing, line-height, font family/size/weight, KO/EN fallback, `contenteditable` normalization) is what keeps them close. **Rendered QA remains the authority.**
+
+### 7.5 Acceptance: tolerances and rendered evidence — not coordinate equality
+
+Critic rule 12. Coordinate equality proves the *transform*, not the *render*. Acceptance requires:
+
+- **Geometry:** 0 EMU drift on round-trip read-back (§7.3) — exact.
+- **Raster:** shape edges within **≤ 2 px** of the HTML stage screenshot at 960×540, from a render by the **actual target consumer**.
+- **Text:** the same **number of lines** and no overflow beyond the box, **in the rendered output** — not in the browser.
+- Logo and divider visibly correct and undistorted.
+
+Do not write "WYSIWYG" in any user-facing doc without pointing at that evidence.
+
+---
+
+## 8. The scoping consequence (say it out loud)
+
+**There are now two IRs, and that is correct — but it is not free.**
+
+| | Semantic IR (existing) | Canvas IR (this plan) |
+|---|---|---|
+| Emits | `layout_id` + content blocks | absolute geometry |
+| Author | the **AI** | a **human** |
+| Invariant | *"the AI never emits coordinates"* | the human emits nothing but coordinates |
+
+These are philosophically opposite, and the README's core invariant explicitly forbids the second — **for the AI**. That invariant is still right and still holds: a human emitting geometry in a visual editor is not the failure mode it was written to prevent (an LLM hallucinating layout). **Keep both. Do not merge them.** They converge only at the low-level "draw a shape on a slide" primitives.
+
+But the cost must be stated plainly: **this plan makes `html_adapter.py` and the 30-slide HTML corpus dead code for the visual-editor path.** Phase 1 as previously defined (HTML corpus → IR → PPTX round-trip, no AI) is not *extended* by this plan — it is **replaced**. The visual editor may well be the better product; but this is a scope decision with sunk cost, not a free addition.
+
+---
+
+## 9. Phase 1 — the build order
+
+### Phase 0 — Foundations (blocking; nothing else starts until these gates pass)
+
+| # | Task | Gate |
+|---|---|---|
+| 0.1 | `tools/make_renderer_template.py` → `reference/renderer_template.pptx` (0 slides) | §2.3 — all 6 checks pass; opens in PowerPoint |
+| 0.2 | `reference/template_pin.json` + `canvas/pin.py` | Corrupt/reorder the template → `TemplatePinError`, no silent fallback |
+| 0.3 | Smoke test — add 1 slide from layout 3, save, reopen, render | §7.1 — all 5 assertions, **including the SVG logo through the conversion path** |
+| 0.4 | `tools/calibrate.py` — the calibration slide | §7.2 — a measured error bar for the coordinate mapping |
+
+### Phase 1A — Backend, driven by hand-written JSON (no editor yet)
+
+| # | Task |
+|---|---|
+| 1.1 | `canvas/schema.json` — `canvas-ir/1` (§11) + `jsonschema` validation + semantic rules (reserved regions, positive dims, `#RRGGBB`, control-char rejection) |
+| 1.2 | `canvas/geometry.py` — `emu = round(u * 12700)`, clamping, reserved-region rejection |
+| 1.3 | `canvas/style.py` — `set_run_fonts` (latin + **ea via lxml**), the four `add_shape` overrides, `style_text_frame` |
+| 1.4 | `canvas/connectors.py` — `<a:tailEnd>` / `<a:headEnd>` arrowheads |
+| 1.5 | `canvas/render_canvas.py` — `add_slide(layout 3)` → title into idx 10 → elements at absolute EMU |
+| 1.6 | **CLI first:** `python -m aippt.canvas.render_canvas deck.json -o out.pptx` |
+| 1.7 | Round-trip assertion suite (§7.3) over hand-written fixtures |
+
+**The backend is fully testable and fully done before a single line of editor JS is written.** This is deliberate: the CLI is what you will actually use to debug the renderer.
+
+### Phase 1B — The editor
+
+| # | Task |
+|---|---|
+| 2.1 | Stage: 960×540 div, `transform: scale()` zoom, the single `toModel()` inversion (§5.2) |
+| 2.2 | Editor chrome: red line + title outline as **CSS pseudo-elements** (§5.3) |
+| 2.3 | Shape tools: rect / ellipse / triangle as inline SVG (§5.4); drag/resize via interact.js |
+| 2.4 | Text: `contenteditable` with the exact CSS contract of §5.6; normalization to runs |
+| 2.5 | **Connector tool** (§6.7) — new connectors default to the back of the z-array |
+| 2.6 | Colour picker (default `#FF0032`), font-size control, Century Gothic availability warning |
+| 2.7 | Serializer → `canvas-ir/1`. **Download JSON** button (feeds the 1.6 CLI) |
+| 2.8 | Reserved-region + slide-bounds constraints (§5.7) |
+
+### Phase 1C — The Export button
+
+| # | Task |
+|---|---|
+| 3.1 | `canvas/app.py` — FastAPI, serves the editor **same-origin**, `POST /api/export` → `.pptx` download |
+| 3.2 | The template path is **fixed and pinned server-side** — never accepted from the payload |
+| 3.3 | Keep the CLI path working. Corporate IT frequently blocks localhost servers; the CLI has zero infrastructure and always works |
+
+### Phase 1D — QA harness
+
+| # | Task |
+|---|---|
+| 4.1 | Fixture corpus: corners, strokes, rotations, known wraps, mixed KO/EN, every connector variant |
+| 4.2 | Automate §7.3 in CI |
+| 4.3 | Render → PNG → diff vs. the HTML stage screenshot; publish the error bar (§7.5) |
+
+### Phase 1 exit criteria
+
+A human draws a flow chart with boxes and arrows, presses **Export PPT**, and gets a **one-slide** `.pptx` that opens in PowerPoint with the correct Vieworks logo, gradient divider and page number 1; every shape within **2 px** of the browser preview; no Office blue anywhere; no drop shadows; Korean and English both rendering in their intended typefaces; and no text overflowing its box.
+
+---
+
+## 10. Open decisions the user must make
+
+| # | Decision | Recommendation |
+|---|---|---|
+| **D-1** | **Century Gothic vs. the real brand font.** The template's design font is **뷰웍스 B / 뷰웍스 M**, not Century Gothic. Century Gothic body text will sit next to inherited 뷰웍스 chrome. | Ship Century Gothic (the user asked for it) but **surface this before Phase 1 closes**. The font family is one constant in `style.py` and one CSS declaration — cheap to change, expensive to discover late. |
+| **D-2** | **Editor header fidelity: flat red line, or a real rendered PNG background?** | Flat red line for day one; **PNG background of layout 3 as the target** (§5.3). It makes the whole "match the line position" question disappear and makes the header genuinely WYSIWYG. |
+| **D-3** | **Connector gluing** (`begin_connect`/`end_connect`) | Out of Phase 1 (experimental, unreliable for triangles). Revisit in Phase 2 behind a fixture suite. Absolute endpoints in Phase 1. |
+| **D-4** | **Transparency / alpha in fills** | Out of Phase 1. Opaque `#RRGGBB` only, until semantics are specified. |
+| **D-5** | **The sunk cost in `html_adapter.py` + the 30-slide corpus** (§8) | Accept it, with open eyes. Keep both IRs; do not merge. |
+
+---
+
+## 11. Appendix — `canvas-ir/1`
+
+```jsonc
+{
+  "schema": "canvas-ir/1",
+  "canvas": { "w": 960, "h": 540, "unit": "pt" },      // echoed; backend HARD-FAILS on mismatch
+  "target": {
+    "template": "reference/renderer_template.pptx",     // informational; server uses its own pinned path
+    "template_sha256": "<renderer_template sha256>",    // HARD-FAIL on mismatch
+    "layout_index": 3
+  },
+  "title": "AF Camera Multi Exposure",                  // -> placeholder idx 10, NOT a new textbox
+
+  "elements": [                                         // ARRAY ORDER IS Z-ORDER. No `z` field.
+    {
+      "id": "c1", "type": "connector",                  // connectors first => behind nodes
+      "kind": "straight",                               // straight | elbow
+      "x1": 190, "y1": 180, "x2": 190, "y2": 260,
+      "color": "#FF0032", "width": 1.5,
+      "arrow": "end"                                    // none | start | end | both
+    },
+    {
+      "id": "e1", "type": "rect",                       // rect | ellipse | triangle | textbox
+      "x": 100, "y": 120, "w": 180, "h": 60,            // unrotated PATH BOX. Stroke NOT included.
+      "rotation": 0,                                    // degrees CW, about the centre
+      "fill": "#FF0032",                                // opaque #RRGGBB. NEVER #4472C4.
+      "stroke": { "color": "#FFFFFF", "width": 1 },     // centred on the path (SVG == DrawingML)
+      "text": {
+        "align": "CENTER", "valign": "MIDDLE",
+        "paragraphs": [
+          { "runs": [ { "t": "Capture", "size": 14, "bold": true, "italic": false, "color": "#FFFFFF" } ] }
+        ]
+      }
+    }
+  ]
+}
+```
+
+**Rules baked into the schema:**
+
+- **Version it.** This IR *will* change. `schema` is required and checked.
+- **Echo the canvas dims and the template SHA** so the backend rejects a stale payload rather than silently rescaling it into a subtly-wrong deck.
+- **Array order is z-order.** A separate `z` field is a second source of truth and will desync.
+- **The title is a field, not an element.** It maps to inherited placeholder idx 10 — on-brand and correctly positioned for free.
+- **No editor chrome is representable.** There is no element type for the red line or the title outline; they are CSS pseudo-elements with no DOM node.
+- **`w`, `h` > 0**; all geometry clamped to 960 × 540 and rejected if it intersects a reserved region.
+- **Colours are opaque `#RRGGBB`.** `#FF0032` is the default for new content.
+
+---
+
+## 12. Assumptions and caveats
+
+- **`critic_review.md` is authoritative where it conflicts with `plan_review.md`.** Specifically: the divider/logo asset map is **reversed** in `plan_review.md` (§3.1 here is correct); `plan_review.md` §6's "the divider geometry is missing" is resolved (it was never missing, just badly proxied by the picture's outer box, which includes white padding); "there is no autofit" is too absolute (§6.6); and "XML-illegal control characters corrupt the output" is overstated for `python-pptx` 1.0.x (§5.6).
+- **No end-to-end render has been performed.** Neither review had a PowerPoint or LibreOffice executable available. Layout inheritance is **structurally proven** from the OPC package but **not visually confirmed** — which is exactly why §7.1's smoke test is the first gate and why the SVG-logo-through-conversion check (7.1.5) is called out separately.
+- **The `python-pptx` API claims** (`shadow.inherit`, the missing `a:ea` element, `new_autoshape_sp`'s `<p:style>` block, `insert_element_before`, the absence of `line.end_arrow`) were read from the installed source, not executed. The `<a:ea>` insertion recipe is schema-correct by construction but **unrun**. The `drop_rel` + `sldIdLst.remove` deletion recipe in §2.2 is likewise **unrun** — gate 2.3 exists to prove it.
+- **The editor red-line geometry is an approximation.** `x 46.4 → 788.7, y 72.0` is an evidence-based pixel audit of the visible non-white band in the current gradient JPEG — deliberately *not* the divider picture's outer box. Recorded as an approximation; D-2's PNG background makes the question moot.
+- **`#FF0032` vs `#DB0032`:** `#FF0032` is authoritative for **new** content. `#DB0032` is retained only as the legacy value to detect and overwrite in inherited template content. This plan does not change that.
+- **Rebuilds of `renderer_template.pptx` are not byte-reproducible** (ZIP timestamps). The pin is on the committed artifact; re-pinning is deliberate (§4.3).
+````
+
+**Assumptions I had to make, since I could not ask:**
+
+- **Conflict resolution rule.** The two reviews contradict each other on the divider/logo asset map, on autofit, and on control-character corruption. I resolved all three in favor of `critic_review.md`, because it inspected the actual OPC package and media bytes while `plan_review.md` inferred from `layout_manifest.json`. Section 12 records each reversal explicitly so nothing is quietly overwritten.
+- **Connectors are in scope.** Critic rule 10 demanded a decision either way; I made the call to include them (absolute endpoints, lxml arrowheads, no `begin_connect` gluing) rather than shipping a "flowchart" tool with no arrows. It's flagged as D-3 if the user wants to reverse it.
+- **Protected-region numbers** (`HEADER_RESERVED` h=92, `BODY_SAFE` y 92–500) are mine, derived from the critic's audited layout geometry with a small margin. They're round numbers chosen for editor snapping, not extracted values.
+- **The clean-template deletion recipe** (`drop_rel` + `sldIdLst.remove`) has never been executed — no review session had code-execution permission. Gate 2.3 exists specifically to prove it before anything is built on top.

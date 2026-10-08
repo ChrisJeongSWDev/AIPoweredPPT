@@ -1,0 +1,2 @@
+tasks/AI_Powered_PPT/src/aippt/canvas/app.py
+tasks/AI_Powered_PPT/tests/canvas/test_app.py

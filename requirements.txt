@@ -1,0 +1,51 @@
+# AI_Powered_PPT — pinned runtime dependencies
+#
+#   pip install -r requirements.txt
+#
+# Deliberately small. python-pptx is the only dependency the analyzer (Deliverable C)
+# actually needs; everything else belongs to a later phase and is pinned here so the
+# environment is reproducible from day one.
+
+# --- core: needed by analyze_pptx_master.py (Phase 0, today) ---------------------------
+python-pptx==1.0.2          # PPTX read/write. Brings in lxml + Pillow + XlsxWriter.
+lxml==5.3.0                 # Explicit: we parse the theme part's XML by hand, because
+                            # python-pptx exposes no theme API at all.
+Pillow==11.0.0              # Explicit: required for aspect-fit. Without it,
+                            # `picture.image.size` is unavailable and add_picture()
+                            # silently STRETCHES images instead of fitting them.
+
+# --- Phase 1: HTML adapter -------------------------------------------------------------
+beautifulsoup4==4.12.3      # The corpus nests (<img> inside .photo-desc inside
+                            # .photo-placeholder). Regex is not an option.
+jsonschema==4.23.0          # Validate IR against ir/schema.json at every boundary.
+
+# --- Phase 1B: the editor ---------------------------------------------------------------
+# OPTIONAL. The renderer and the CLI (`python -m aippt.canvas.render_canvas deck.json -o out.pptx`)
+# must work with none of this installed -- corporate IT blocks localhost servers often enough that
+# the CLI is the fallback that always works. Install with:  pip install -e ".[editor,dev]"
+#
+# The editor itself has NO runtime dependencies: no npm, no bundler, no CDN. Drag/resize is a
+# ~150-line pointer-capture engine (static/interactions.js), which is the alternative plan Sec 5.1
+# sanctions in place of interact.js. It must keep working with the network off.
+# fastapi>=0.115           # the same-origin server: serves static/, renders in memory
+# uvicorn[standard]>=0.30  # python -m aippt.canvas.app -> 127.0.0.1:8000
+# httpx>=0.27              # dev only: FastAPI's TestClient (tests/canvas/test_app.py)
+
+# --- Phase 2: AI author ----------------------------------------------------------------
+# Install only the provider you use; all three satisfy the same LLMClient protocol.
+# anthropic>=0.40.0
+# openai>=1.50.0
+# google-genai>=0.3.0
+
+# --- Phase 3: visual QA ----------------------------------------------------------------
+# Not pip-installable — these are system binaries. Document, don't pretend:
+#   LibreOffice  (soffice)  pptx -> pdf
+#   poppler      (pdftoppm) pdf  -> png
+#   Node + @mermaid-js/mermaid-cli (mmdc)  mermaid -> png, for the diagram fallback path
+
+# --- Phase 4: live Gemini author (OPTIONAL at runtime) ---------------------------------
+# Only needed when GEMINI_API_KEY is set; the mock author and the CLI need none of this, and
+# app.py imports it LAZILY inside _call_gemini(). Also exposed as the `ai` extra in pyproject.toml.
+google-genai>=0.3.0
+
+python-multipart>=0.0.9

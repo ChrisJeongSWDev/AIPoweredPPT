@@ -1,0 +1,61 @@
+diff --git a/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js b/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js
+index 31c18ea..0aa12cc 100644
+--- a/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js
++++ b/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js
+@@ -1152,12 +1152,55 @@
+     setStatus('Added ' + type + ' ' + legal.id + '.');
+   }
+ 
++  var MEDIA_MAX_W = 1920, MEDIA_MAX_H = 1080;
++
++  // compressImage(file) -> Promise<File>
++  //
++  // Downscales to at most 1920x1080 (preserving aspect ratio; smaller images are left at their
++  // original size) and re-encodes as JPEG at quality 0.8 BEFORE the file ever reaches
++  // uploadedMedia / the export POST. A phone photo can be tens of MB; MAX_BODY_BYTES (the
++  // server's export payload cap) is 2MB, and shrinking client-side avoids having to relax that
++  // protection limit just to let one big picture through.
++  function compressImage(file) {
++    return new Promise(function (resolve, reject) {
++      var url = URL.createObjectURL(file);
++      var img = new Image();
++      img.onload = function () {
++        URL.revokeObjectURL(url);
++        var w = img.naturalWidth, h = img.naturalHeight;
++        if (w > MEDIA_MAX_W || h > MEDIA_MAX_H) {
++          var scale = Math.min(MEDIA_MAX_W / w, MEDIA_MAX_H / h);
++          w = Math.max(1, Math.round(w * scale));
++          h = Math.max(1, Math.round(h * scale));
++        }
++        var canvas = document.createElement('canvas');
++        canvas.width = w;
++        canvas.height = h;
++        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
++        canvas.toBlob(function (blob) {
++          if (!blob) { resolve(file); return; } // toBlob declined (exotic source format) -- ship the original rather than fail the insert
++          var dot = file.name ? file.name.lastIndexOf('.') : -1;
++          var stem = dot > 0 ? file.name.slice(0, dot) : (file.name || 'image');
++          resolve(new File([blob], stem + '.jpg', { type: 'image/jpeg' }));
++        }, 'image/jpeg', 0.8);
++      };
++      // Not decodable as an image (corrupt file, unsupported codec): fall back to the original so
++      // insertMedia's own handling of it -- not this function's -- decides what happens next.
++      img.onerror = function () { URL.revokeObjectURL(url); resolve(file); };
++      img.src = url;
++    });
++  }
++
+   function mediaInputHandler(type) {
+     return function () {
+       var file = this.files && this.files[0];
+       this.value = ''; // clears the input so picking the SAME file again still fires `change`
+       if (!file) return;
+-      insertMedia(type, file);
++      if (type === 'image') {
++        compressImage(file).then(function (compressed) { insertMedia(type, compressed); });
++      } else {
++        insertMedia(type, file);
++      }
+     };
+   }
+   // Wired further down, in "the toolbar" section -- $() (document.getElementById) is not defined

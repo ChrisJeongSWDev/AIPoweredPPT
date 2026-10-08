@@ -1,0 +1,7 @@
+VERDICT: BLOCK
+
+`generate_deck()` now unconditionally calls `check_budget()`, but `render/fit.py:check_budget` is still `NotImplementedError`. Thus every otherwise-valid filled slide aborts before a `GenerationResult` can be returned; the retry loop cannot handle it.
+
+`_check_slide_budget()` never checks `slide.title` for the supplied manifest: all its placeholders have BODY budgets and none contain `max_title_chars_cjk`, so `title_ph` remains `None`. This leaves title overflow unvalidated.
+
+VERDICT: BLOCK

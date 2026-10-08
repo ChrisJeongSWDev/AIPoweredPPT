@@ -1,0 +1,63 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aippt"
+version = "0.1.0"
+description = "AI-authored PowerPoint built on the Vieworks R&D master template, via a schema-validated Slide IR."
+readme = "README.md"
+requires-python = ">=3.10"          # the code uses PEP-604 `X | None` unions throughout
+license = { text = "Proprietary — Vieworks internal" }
+
+dependencies = [
+    "python-pptx==1.0.2",
+    "lxml==5.3.0",
+    "Pillow==11.0.0",               # NOT optional: without it add_picture() stretches
+    "jsonschema==4.23.0",           # canvas/validate.py puts it on the REQUEST path, not the html extra
+]
+
+[project.optional-dependencies]
+html = [
+    "beautifulsoup4==4.12.3",
+]
+# Phase 1B. OPTIONAL on purpose: the renderer and the `python -m aippt.canvas.render_canvas` CLI
+# must install and run with no web stack present. Corporate IT blocks localhost servers often
+# enough that the CLI is the fallback that always works, so nothing under canvas/ may import app.py.
+editor = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+]
+ai = [
+    "anthropic>=0.40.0",
+    "openai>=1.50.0",
+    "google-genai>=0.3.0",
+]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+    "httpx>=0.27",                  # FastAPI's TestClient is built on it (tests/canvas/test_app.py)
+]
+
+[project.scripts]
+# The PoC. Run this first — nothing else has real layout facts until it has run once.
+aippt-analyze = "aippt.analyze_pptx_master:main"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+# schema.json is read at runtime by canvas/validate.py, and static/ is the editor itself. Neither is
+# a .py file, so setuptools would otherwise leave both out of the wheel and an installed copy would
+# fail at import (schema) and 404 (editor).
+[tool.setuptools.package-data]
+"aippt.canvas" = ["schema.json", "static/*", "static/vendor/*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]

@@ -1,0 +1,3 @@
+src/aippt/canvas/static/editor.js
+src/aippt/canvas/app.py
+src/aippt/adapters/ai_adapter.py

@@ -1,0 +1,28 @@
+Done. Five files in scope, plus the change-detail doc the brief's metadata asked for.
+
+## The headline caveat
+
+**None of this code has been run.** This environment auto-denied every form of Python execution (`python -c`, `python file.py`, sandboxed and not), and the brief forbids asking the user. So `reference/renderer_template.pptx` **was not built**, and `reference/template_pin.json` is **deliberately left unpinned** — `renderer_template.sha256` is still the `<FILL FROM …>` placeholder, and `pin.py` fails closed on it by design. I did not fabricate a SHA to make the file look finished. The first action for whoever picks this up is `make_renderer_template.py --write-pin`.
+
+Since I couldn't run the library, I read it. Every private API this leans on was checked against the installed python-pptx 1.0.2 source rather than recalled — and that turned up two real bugs **in the plan itself**:
+
+**1. `layout.placeholders[10]` (plan §4.2) would raise `IndexError`, not perform its check.** The two placeholder collections are exact opposites:
+
+| | `layout.placeholders` | `slide.placeholders` |
+|---|---|---|
+| `[10]` | **positional** → `IndexError` | **idx-keyed** → `KeyError` |
+| `.get(10)` | ✅ by idx | ❌ doesn't exist |
+
+Layout 3 has exactly one placeholder, so `[10]` indexes past the end and `verify_pin` dies before verifying anything. (§6.3's `slide.placeholders[10]` *is* correct — the asymmetry is the trap.) `pin.py` uses `.get()`; `calibrate.py` uses `[10]` inside `try/except KeyError`.
+
+**2. Plan §7.3's "`accent1` absent from every renderer-created `<p:sp>`" assertion could never pass.** The four `add_shape` overrides win at *render* time, but they don't **delete** the `<p:style>` block, so `schemeClr val="accent1"` stays in the shape XML — the assertion would fail on a deck that renders perfectly. I added a **fifth override**: strip `<p:style>` (optional in `CT_Shape`, so schema-valid). Phase 1 must carry this into `canvas/style.py`.
+
+I also confirmed the brief's landmine is real — `Presentation.slides` calls `rename_slide_parts()` on *every* evaluation — though it's a `@lazyproperty`, so the cache happens to hide the `KeyError` in 1.0.2. That's one version's implementation detail, not a contract, so the deletion loop uses the safe bind-once pattern regardless.
+
+## Assumptions worth flagging
+
+- **The brief file was text-mangled** — every literal `.` had been replaced with `/c/Users/.../.editwork`. I reconstructed it and cross-checked against the clean original at `phase0_brief.md`; they match.
+- **I wrote to the main tree, not the `.editwork` worktree.** `tasks/AI_Powered_PPT` is untracked, so the worktree has no copy of it (`.editwork/tasks/` is empty) — writing there would have produced files with no template, no `src/`, and no manifest. Prior phases wrote to the main tree too.
+- Phase 0 isolation held: no `geometry.py` or `style.py`. The EMU conversion, `add_shape` overrides, `set_run_fonts` and `style_text_frame` are inlined into `calibrate.py` and flagged as duplication to be lifted in Phase 1.
+
+`HUMAN_VERIFICATION.md` leads with the un-run warning, has a build-and-pin step 0, and separates what the builder machine-checks from the four checks that genuinely need eyes (clean open; page number reads **1**, not 24; SVG logo survives the conversion path; raster diff ≤ 2 px, with a blank to record the actual measured number).

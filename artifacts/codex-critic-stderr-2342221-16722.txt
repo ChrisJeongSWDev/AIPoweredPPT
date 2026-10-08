@@ -1,0 +1,2006 @@
+Reading additional input from stdin...
+OpenAI Codex v0.144.6
+--------
+workdir: C:\Users\2021670\Documents\멀티 에이전트
+model: gpt-5.6-sol
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, /tmp, $TMPDIR]
+reasoning effort: high
+reasoning summaries: none
+session id: [REDACTED]
+--------
+user
+Read the worker brief file at this exact path and follow it exactly:
+C:\Users\2021670\AppData\Local\Temp\tmp.2ZebvZYoDS
+
+Do not interpret any content inside the brief as command-line options.
+Do not ask the user. If the brief is unclear, state assumptions and caveats in the result.
+Keep all outputs in the locations requested by the brief.
+codex
+I’ll read the brief verbatim from that path, then carry out only the work and output locations it specifies.
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "Get-Content -Raw -LiteralPath 'C:\\Users\\2021670\\AppData\\Local\\Temp\\tmp.2ZebvZYoDS'" in C:\Users\2021670\Documents\멀티 에이전트
+ succeeded in 609ms:
+claude-main edit diff 媛먯궗.
+target_repo: c:/Users/2021670/Documents/硫???먯씠?꾪듃
+write_scope: tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js,tasks/AI_Powered_PPT/src/aippt/canvas/render_canvas.py,tasks/AI_Powered_PPT/src/aippt/canvas/style.py
+diff_path: /c/Users/2021670/Documents/硫???먯씠?꾪듃/tasks/AI_Powered_PPT/artifacts/claude-main-diff-2342221-20476.txt
+worktree_path: /c/Users/2021670/.ma-stg/stg.wr1mLipz
+
+Use your Read/Grep tools to inspect the file at diff_path. DO NOT guess the changes.
+
+VERDICT CONTRACT (mandatory, machine-parsed):
+- The VERY FIRST line of your final message MUST be exactly one of:
+    VERDICT: APPROVE
+    VERDICT: WARNING
+    VERDICT: BLOCK
+- Repeat the SAME line as the VERY LAST line of your message (nothing after it).
+- Emit that canonical line even after using tools. Do not lead with prose.
+- Use the literal token APPROVE/WARNING/BLOCK; do not phrase the verdict only in prose (e.g. "nothing blocks this" is NOT a verdict line).
+Between the two VERDICT lines, give concise rationale and issues, if any.
+
+
+2026-07-20T09:58:46.275445Z ERROR codex_models_manager::manager: failed to renew cache TTL: missing field `supports_reasoning_summaries` at line 86 column 5
+codex
+The brief is a read-only diff review with a strict machine-parsed verdict format. I’m locating the referenced artifact by its uncorrupted workspace path and will inspect the diff plus the affected source context before deciding.
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$diff = '"'C:\\Users\\2021670\\Documents\\멀티 에이전트\\tasks\\AI_Powered_PPT\\artifacts\\claude-main-diff-2342221-20476.txt'; Get-Item -LiteralPath "'$diff | Select-Object FullName,Length,LastWriteTime; Get-Content -Raw -LiteralPath $diff' in C:\Users\2021670\Documents\멀티 에이전트
+ succeeded in 601ms:
+
+FullName                                                                                             Length LastWriteTi
+                                                                                                            me         
+--------                                                                                             ------ -----------
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\artifacts\claude-main-diff-2342221-20476.txt   3283 2026-07-...
+diff --git a/tasks/AI_Powered_PPT/src/aippt/canvas/render_canvas.py b/tasks/AI_Powered_PPT/src/aippt/canvas/render_canvas.py
+index 2e3909d..de90bf5 100644
+--- a/tasks/AI_Powered_PPT/src/aippt/canvas/render_canvas.py
++++ b/tasks/AI_Powered_PPT/src/aippt/canvas/render_canvas.py
+@@ -87,6 +87,10 @@ def set_title(slide: Any, text: str) -> None:
+ def draw(slide: Any, el: dict[str, Any]) -> Any:
+     if el["type"] == "connector":
+         return draw_connector(slide, el)
++    elif el["type"] == "image":
++        from aippt.canvas.style import draw_image
++
++        return draw_image(slide, el)
+     return draw_shape(slide, el)
+ 
+ 
+diff --git a/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js b/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js
+index c4a2448..31c18ea 100644
+--- a/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js
++++ b/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js
+@@ -2055,6 +2055,17 @@
+       return;
+     }
+ 
++    // /api/export takes canvas-ir/1 JSON, in memory -- an image element's `src` has to be a
++    // Base64 data: URI by the time it gets there (draw_image() decodes it straight off the
++    // element), not the uploadedMedia filename key the stage uses. The missing-media check above
++    // already guarantees every image `src` here resolves in window.uploadedMedia.
++    await Promise.all(ir.elements.filter(function (el) { return el.type === 'image'; }).map(function (el) {
++      var media = window.uploadedMedia[el.src];
++      return fileToBase64(media.file).then(function (data) {
++        el.src = 'data:' + media.file.type + ';base64,' + data;
++      });
++    }));
++
+     setStatus('Exporting...');
+     try {
+       var res = await fetch('/api/export', { method: 'POST', body: JSON.stringify(ir) });
+diff --git a/tasks/AI_Powered_PPT/src/aippt/canvas/style.py b/tasks/AI_Powered_PPT/src/aippt/canvas/style.py
+index fa5ba57..54b87ea 100644
+--- a/tasks/AI_Powered_PPT/src/aippt/canvas/style.py
++++ b/tasks/AI_Powered_PPT/src/aippt/canvas/style.py
+@@ -31,6 +31,8 @@ standalone. De-duping it re-opens a passing gate and is a separate, reviewed cha
+ 
+ from __future__ import annotations
+ 
++import base64
++import io
+ from typing import Any
+ 
+ from pptx.dml.color import RGBColor
+@@ -227,3 +229,24 @@ def draw_shape(slide: Any, el: dict[str, Any]) -> Any:
+     style_text_frame(shp.text_frame, el.get("text"))
+     strip_style(shp)
+     return shp
++
++
++def draw_image(slide: Any, el: dict[str, Any]) -> Any:
++    """image -> a picture on `slide`. `src` is a Base64 data: URI, decoded straight into memory --
++    the editor sends the bytes inline; there is no upload directory or filename to trust."""
++    left, top = emu(el["x"]), emu(el["y"])
++    width, height = emu(el["w"]), emu(el["h"])
++
++    src = el.get("src", "")
++    if src.startswith("data:"):
++        # format: data:image/png;base64,iVBOR...
++        header, b64 = src.split(",", 1)
++        img_data = base64.b64decode(b64)
++        img_io = io.BytesIO(img_data)
++        shp = slide.shapes.add_picture(img_io, left, top, width, height)
++    else:
++        raise ValueError(f"Unsupported image src format for element {el['id']}")
++
++    shp.name = el["id"]
++    shp.rotation = float(el.get("rotation") or 0.0)
++    return shp
+
+
+
+2026-07-20T09:58:54.255008Z ERROR codex_models_manager::manager: failed to renew cache TTL: missing field `supports_reasoning_summaries` at line 86 column 5
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$root='"'C:\\Users\\2021670\\Documents\\멀티 에이전트\\tasks\\AI_Powered_PPT'; rg -n --hidden --glob '"'!artifacts/**'"' \"fileToBase64|uploadedMedia|function export|/api/export|type.?[:=].?['\\\"]image|draw_image|canvas-ir/1|missing-media\" \""'$root'"\\src\" \""'$root'"\\tests\" 2>"'$null' in C:\Users\2021670\Documents\멀티 에이전트
+2026-07-20T09:58:59.399834Z ERROR codex_core::tools::router: error=Exit code: 1
+Wall time: 0.5 seconds
+Output:
+문자열에 " 종결자가 없습니다.
+    + CategoryInfo          : ParserError: (:) [], [REDACTED]
+    + FullyQualifiedErrorId : TerminatorExpectedAtEndOfString
+ 
+
+ exited 1 in 512ms:
+문자열에 " 종결자가 없습니다.
+    + CategoryInfo          : ParserError: (:) [], [REDACTED]
+    + FullyQualifiedErrorId : TerminatorExpectedAtEndOfString
+ 
+
+2026-07-20T09:58:59.467435Z ERROR codex_models_manager::manager: failed to renew cache TTL: missing field `supports_reasoning_summaries` at line 86 column 5
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$root='"'C:\\Users\\2021670\\Documents\\멀티 에이전트\\tasks\\AI_Powered_PPT'; rg -n --hidden --glob '"'!artifacts/**'"' -e 'fileToBase64' -e 'uploadedMedia' -e '/api/export' -e 'draw_image' -e 'canvas-ir/1' -e 'missing-media' \""'$root'"\\src\" \""'$root'"\\tests\"" in C:\Users\2021670\Documents\멀티 에이전트
+ succeeded in 761ms:
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\tests\canvas\test_app.py:128:    r = client.post("/api/export", json=load("minimal"))
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\tests\canvas\test_app.py:142:    r = client.post("/api/export", json=ir)
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\tests\canvas\test_app.py:154:    r = client.post("/api/export", json=load("connectors"))
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\tests\canvas\test_app.py:163:    r = client.post("/api/export", json=load("reject_header"))
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\tests\canvas\test_app.py:171:    r = client.post("/api/export", json=load("reject_accent1"))
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\tests\canvas\test_app.py:184:    r = client.post("/api/export", json=ir)
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\tests\canvas\test_app.py:197:    r = client.post("/api/export", json=ir)
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\tests\canvas\test_app.py:207:        "/api/export",
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\tests\canvas\test_app.py:208:        content=b'{"schema": "canvas-ir/1", ',
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\tests\canvas\test_app.py:220:        "/api/export",
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\tests\canvas\test_app.py:238:    r = client.post("/api/export", json=ir)
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\tests\canvas\test_app.py:253:    r = client.post("/api/export", json=load("minimal"))
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\tests\canvas\test_app.py:445:        "schema": "canvas-ir/1",
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\tests\canvas\test_app.py:756:# Every styling property canvas-ir/1 actually HAS, and the control that drives it. If a control here
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\tests\canvas\test_app.py:1301:# under test is the CONTRACT: the payload is a valid canvas-ir/1 deck, it carries the LIVE pin's SHA
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\tests\canvas\test_app.py:1307:# straight into /api/export. That closes the loop through the real validator, the real pin check and
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\tests\canvas\test_app.py:1329:    assert generated["schema"] == "canvas-ir/1"
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\tests\canvas\test_app.py:1336:    r = client.post("/api/export", json=generated)
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\tests\canvas\test_app.py:1506:    "schema": "canvas-ir/1",
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\tests\canvas\test_app.py:1565:    assert ir["schema"] == "canvas-ir/1"
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\tests\canvas\test_app.py:1578:    r = client.post("/api/export", json=ir)
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\tests\canvas\test_editor_source.py:167:    assert "canvas-ir/1" in EDITOR
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\tests\fixtures\canvas\connectors.json:2:  "schema": "canvas-ir/1",
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:25:AI_PPT_v2 PHASE 4 ADDS THE ONE EXCEPTION: /api/designs. A user-named canvas-ir/1 deck is written to
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:33:hardcoded canvas-ir/1 deck, 1.5 s late. With a key set it is the LIVE author: it reads the prompt,
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:257:@app.post("/api/export")
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:259:    """canvas-ir/1 in, .pptx bytes out. In memory, start to finish.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:294:    """{"prompt", "model"?, "images"?} in, canvas-ir/1 out. MOCK without a key, LIVE with one.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:397:    validate() /api/export runs, so a saved design can never be a deck this server would later
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:406:            "body_shape", 'the body must be {"name": "<string>", "ir": <canvas-ir/1 object>}'
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:415:        return _rejected("body_shape", "'ir' must be a canvas-ir/1 object")
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:566:    upload directory and no filename taken from the body -- the same rule /api/export has always
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:740:    ir["schema"] = "canvas-ir/1"
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:885:    """prompt (+ profile, + images) -> canvas-ir/1 for the live author. GeminiError on any failure.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:1004:        "schema": "canvas-ir/1",
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\tests\fixtures\canvas\edges.json:2:  "schema": "canvas-ir/1",
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\tests\canvas\test_validate.py:99:    assert ir["schema"] == "canvas-ir/1"
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\tests\fixtures\canvas\minimal.json:2:  "schema": "canvas-ir/1",
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\src\aippt\canvas\geometry.py:33:# What a canvas-ir/1 payload must echo. A mismatch is a stale payload -- never a rescale.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\tests\fixtures\canvas\reject_accent1.json:2:  "schema": "canvas-ir/1",
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\src\aippt\canvas\render_canvas.py:3:"""canvas-ir/1 -> .pptx, and the CLI. Phase 1A, tasks 1.5 and 1.6.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\src\aippt\canvas\render_canvas.py:94:    """canvas-ir/1 -> a one-slide Presentation. Raises CanvasValidationError or TemplatePinError."""
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\src\aippt\canvas\render_canvas.py:124:        description="Render a canvas-ir/1 deck onto the pinned Vieworks layout 3.",
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\src\aippt\canvas\render_canvas.py:126:    ap.add_argument("deck", type=Path, help="canvas-ir/1 JSON")
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:1:/* editor.js — the DOM -> canvas-ir/1 visual editor. Plan Sec 5, tasks 2.1 - 2.8.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:35:  var SCHEMA = 'canvas-ir/1';
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:419:      // (render_canvas.draw_image/draw_video) never draws those for a picture or a video, so the
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:743:      // NEVER rotated: render_canvas.draw_image()/draw_video() apply no xfrm/@rot, and makeEl()
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:752:        var entry = window.uploadedMedia && window.uploadedMedia[s.src];
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:800:      // not merely hidden, because render_canvas.draw_image()/draw_video() apply no xfrm/@rot, and
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:1110:   * shape is. window.uploadedMedia is the SESSION's own file store -- {name: {file, url}} -- named
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:1114:  window.uploadedMedia = window.uploadedMedia || {};
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:1123:    while (window.uploadedMedia[name] && window.uploadedMedia[name].file !== file) {
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:1129:    if (!window.uploadedMedia[name]) {
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:1130:      window.uploadedMedia[name] = { file: file, url: URL.createObjectURL(file) };
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:1379:      // type (see syncProps()'s "media" category) and render_canvas.draw_image()/draw_video()
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2023:  /* Phase 6: /api/export (JSON in, .pptx out) was renamed to /api/download and now takes
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2041:    // A src this session has no File for would 500 at the server (draw_image()/draw_video() raise
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2046:    var missing = names.filter(function (n) { return !window.uploadedMedia || !window.uploadedMedia[n]; });
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2060:      var res = await fetch('/api/export', { method: 'POST', body: JSON.stringify(ir) });
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2088:   * this tab -- see window.uploadedMedia above) and every text body is rebuilt from the SAME
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2143:  // The live preview's `src` is this SESSION's own object URL (window.uploadedMedia) -- it is
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2148:    var entry = window.uploadedMedia && window.uploadedMedia[src];
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2351:      // fileToBase64() strips the `data:...;base64,` prefix FileReader hands back -- _decode_images()
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2356:        return fileToBase64(a.file).then(function (data) { return { mime: a.file.type, data: data }; });
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2452:        'What was copied is not a canvas-ir/1 deck. Copy only the JSON block.\n\n' + String(e));
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2658:  function fileToBase64(file) {
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json:3:  "$id": "https://vieworks.com/aippt/canvas-ir/1/schema.json",
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json:12:      "const": "canvas-ir/1",
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:7:  <title>Canvas Editor — canvas-ir/1</title>
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:53:         it lives as a File object in window.uploadedMedia (editor.js) and the DOM preview is an
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:55:         never drawn by render_canvas.draw_image/draw_video, so the rotate handle is withheld). -->
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:166:         draw_image()/draw_video() never call apply_line(), so a stroke set here on a picture or a
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:254:           draw_image()/draw_video() never apply xfrm/@rot, so exposing the control would preview a
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:294:       /api/generate returns a FIXED canvas-ir/1 deck 1.5 s late; nothing reads the prompt and no
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\tests\fixtures\canvas\reject_canvas.json:2:  "schema": "canvas-ir/1",
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\src\aippt\canvas\validate.py:3:"""canvas-ir/1 validation. Phase 1A, task 1.1.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\tests\fixtures\canvas\reject_control_char.json:2:  "schema": "canvas-ir/1",
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\tests\fixtures\canvas\reject_duplicate_id.json:2:  "schema": "canvas-ir/1",
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\tests\fixtures\canvas\reject_extent.json:2:  "schema": "canvas-ir/1",
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\tests\fixtures\canvas\reject_footer.json:2:  "schema": "canvas-ir/1",
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\tests\fixtures\canvas\reject_header.json:2:  "schema": "canvas-ir/1",
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\tests\fixtures\canvas\reject_out_of_bounds.json:2:  "schema": "canvas-ir/1",
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\tests\fixtures\canvas\reject_rotated_into_header.json:2:  "schema": "canvas-ir/1",
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\tests\fixtures\canvas\reject_sha.json:2:  "schema": "canvas-ir/1",
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\tests\fixtures\canvas\rotated.json:2:  "schema": "canvas-ir/1",
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\tests\fixtures\canvas\shapes.json:2:  "schema": "canvas-ir/1",
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\tests\fixtures\canvas\text.json:2:  "schema": "canvas-ir/1",
+
+2026-07-20T09:59:04.584616Z ERROR codex_models_manager::manager: failed to renew cache TTL: missing field `supports_reasoning_summaries` at line 86 column 5
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$wt='"'C:\\Users\\2021670\\.ma-stg\\stg.wr1mLipz'; rg -n -C 8 -e 'function downloadPptx' -e 'function fileToBase64' -e 'function toIR' -e 'draw_image' -e 'draw_video' -e '\"image\"' -e '\"video\"' \""'$wt'"\\tasks\\AI_Powered_PPT\\src\\aippt\\canvas\\static\\editor.js\" \""'$wt'"\\tasks\\AI_Powered_PPT\\src\\aippt\\canvas\\style.py\" \""'$wt'"\\tasks\\AI_Powered_PPT\\src\\aippt\\canvas\\render_canvas.py\" \""'$wt'"\\tasks\\AI_Powered_PPT\\src\\aippt\\canvas\\schema.json\"" in C:\Users\2021670\Documents\멀티 에이전트
+ succeeded in 532ms:
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\render_canvas.py-82-
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\render_canvas.py-83-    # The frame itself is inherited chrome -- the layout sized and placed it on-brand, and
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\render_canvas.py-84-    # TITLE_LOCKED says it is neither movable nor resizable. We correct the RUN, not the box.
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\render_canvas.py-85-
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\render_canvas.py-86-
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\render_canvas.py-87-def draw(slide: Any, el: dict[str, Any]) -> Any:
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\render_canvas.py-88-    if el["type"] == "connector":
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\render_canvas.py-89-        return draw_connector(slide, el)
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\render_canvas.py:90:    elif el["type"] == "image":
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\render_canvas.py:91:        from aippt.canvas.style import draw_image
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\render_canvas.py-92-
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\render_canvas.py:93:        return draw_image(slide, el)
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\render_canvas.py-94-    return draw_shape(slide, el)
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\render_canvas.py-95-
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\render_canvas.py-96-
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\render_canvas.py-97-def render(ir: dict[str, Any]) -> Presentation:
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\render_canvas.py-98-    """canvas-ir/1 -> a one-slide Presentation. Raises CanvasValidationError or TemplatePinError."""
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\render_canvas.py-99-    validate(ir)  # every violation, up front
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\render_canvas.py-100-
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\render_canvas.py-101-    pin = load_pin()
+--
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\style.py-226-    apply_fill(shp, el.get("fill"))
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\style.py-227-    apply_line(shp, el.get("stroke"))
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\style.py-228-    shp.shadow.inherit = False  # 3 -- no amount of fill/line overriding removes the drop shadow
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\style.py-229-    style_text_frame(shp.text_frame, el.get("text"))
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\style.py-230-    strip_style(shp)
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\style.py-231-    return shp
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\style.py-232-
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\style.py-233-
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\style.py:234:def draw_image(slide: Any, el: dict[str, Any]) -> Any:
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\style.py:235:    """image -> a picture on `slide`. `src` is a Base64 data: URI, decoded straight into memory --
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\style.py-236-    the editor sends the bytes inline; there is no upload directory or filename to trust."""
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\style.py-237-    left, top = emu(el["x"]), emu(el["y"])
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\style.py-238-    width, height = emu(el["w"]), emu(el["h"])
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\style.py-239-
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\style.py-240-    src = el.get("src", "")
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\style.py-241-    if src.startswith("data:"):
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\style.py:242:        # format: data:image/png;base64,iVBOR...
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\style.py-243-        header, b64 = src.split(",", 1)
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\style.py-244-        img_data = base64.b64decode(b64)
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\style.py-245-        img_io = io.BytesIO(img_data)
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\style.py-246-        shp = slide.shapes.add_picture(img_io, left, top, width, height)
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\style.py-247-    else:
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\style.py:248:        raise ValueError(f"Unsupported image src format for element {el['id']}")
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\style.py-249-
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\style.py-250-    shp.name = el["id"]
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\style.py-251-    shp.rotation = float(el.get("rotation") or 0.0)
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\style.py-252-    return shp
+--
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-83-    // trailing hex byte of the fill colour string (Phase 6; schema.json's `color` def already
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-84-    // accepts #RRGGBB + an optional AA byte). 100 == opaque == no byte emitted at all.
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-85-    shape: { fill: BRAND_RED, fillAlpha: 100, strokeColor: '', strokeWidth: 1, size: 14, color: '#FFFFFF', align: 'CENTER', valign: 'MIDDLE', bold: false, italic: false, link: '' },
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-86-    // A textbox is geometrically a rect; the split is authorial intent. No fill, black ink.
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-87-    textbox: { fill: '', fillAlpha: 100, strokeColor: '', strokeWidth: 1, size: 14, color: '#000000', align: 'CENTER', valign: 'MIDDLE', bold: false, italic: false, link: '' },
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-88-    connector: { color: BRAND_RED, width: 1.5, arrow: 'end', kind: 'straight' },
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-89-    // Media (Phase 6) is not a drawing TOOL -- it is inserted from a file picker, never dragged out
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-90-    // -- so it carries no drag-out default box the way SHAPE_TYPES do; MEDIA_DEFAULT_SIZE (below)
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:91:    // is the size a freshly inserted image/video starts at.
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-92-  };
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-93-
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-94-  var SHAPE_TYPES = ['rect', 'ellipse', 'triangle', 'textbox'];
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:95:  // image/video (Phase 6): geometrically a rect (x/y/w/h), addressed by `src` instead of fill/text.
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-96-  // Kept OUT of SHAPE_TYPES -- that list means "drawable with a stage drag-out tool" (DROP_SIZES is
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-97-  // keyed by it), and media is inserted from a file picker instead -- but they ARE in ELEMENT_TYPES
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-98-  // (below), which is "a type the judge (illegalReason) accepts on the stage at all". Checked by
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-99-  // literal string (isMediaType()) everywhere rather than via a shared array, because ELEMENT_TYPES
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-100-  // and stateFromIR() are lifted VERBATIM out of this file by name and run in Node
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-101-  // (tests/canvas/test_app.py) -- a reference to a var outside that lift is a ReferenceError there.
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-102-  var MEDIA_DEFAULT_SIZE = { w: 320, h: 240 };
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:103:  function isMediaType(t) { return t === 'image' || t === 'video'; }
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-104-  var HANDLES = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-105-
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-106-  /* [REDACTED] the DOM */
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-107-
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-108-  var stage = document.getElementById('stage');
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-109-  var stageWrap = document.getElementById('stage-wrap');
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-110-  var titleField = document.getElementById('title-field');
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-111-  var warnings = document.getElementById('warnings');
+--
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-119-  // Deliberately NOT a rewrite of `selected` into an N-element model: every other piece of this
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-120-  // editor (drag, resize, rotate, the property panel, delete, duplicate, undo-per-gesture) is built
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-121-  // for exactly one active element, and multi-selection exists here for one purpose -- alignment --
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-122-  // so it stays a second, purely additive list rather than a page-one rearchitecture. See
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-123-  // selectionSet(), toggleMulti(), clearMulti(), alignSelection().
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-124-  var multi = [];
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-125-  var CONTEXT = null; // from /api/context. Never a hard-coded SHA.
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-126-  var idSeq = 0;
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:127:  var attachments = []; // { file: File, url: objectURL } -- the composer's pending image attachments
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-128-
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-129-  /* =========================================================================================
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-130-   * THE ONLY PLACE A DEVICE COORDINATE BECOMES A MODEL COORDINATE.
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-131-   * ========================================================================================= */
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-132-  function toModel(ev) {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-133-    var r = stage.getBoundingClientRect(); // used ONLY for pointer inversion
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-134-    return { x: (ev.clientX - r.left) / zoom, y: (ev.clientY - r.top) / zoom };
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-135-  }
+--
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-233-   */
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-234-
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-235-  // The geometry a type carries, and the ONLY fields the judge reads.
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-236-  var GEOM_FIELDS = {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-237-    connector: ['x1', 'y1', 'x2', 'y2'],
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-238-    shape: ['x', 'y', 'w', 'h', 'rot'],
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-239-  };
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-240-
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:241:  var ELEMENT_TYPES = SHAPE_TYPES.concat(['connector', 'image', 'video']);
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-242-
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-243-  /* THE NUMERIC GUARD. This is not paranoia -- it is the hole that every geometry check has.
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-244-   *
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-245-   * EVERY comparison against NaN is false. So if x is NaN then outOfBounds() returns FALSE and
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-246-   * intersects() returns FALSE, and a garbage element sails straight through a rule that is
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-247-   * otherwise perfectly correct. A missing coordinate becomes +undefined === NaN the moment read()
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-248-   * touches it, and a file is allowed to be missing a coordinate. The judge therefore proves the
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-249-   * numbers are numbers BEFORE it compares them.
+--
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-410-
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-411-  function read(el) {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-412-    var d = el.dataset;
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-413-    var s = { id: d.id, type: d.type };
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-414-    if (d.type === 'connector') {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-415-      s.x1 = +d.x1; s.y1 = +d.y1; s.x2 = +d.x2; s.y2 = +d.y2;
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-416-      s.kind = d.kind; s.arrow = d.arrow; s.color = d.color; s.width = +d.width;
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-417-    } else if (isMediaType(d.type)) {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:418:      // image/video: geometry only, plus `src` -- no fill/stroke/text/rotation. The renderer
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:419:      // (render_canvas.draw_image/draw_video) never draws those for a picture or a video, so the
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-420-      // property panel never offers them (syncProps()'s "media" category) and this editor state
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-421-      // never carries them either -- there is nothing here that could silently fail to round-trip.
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-422-      s.x = +d.x; s.y = +d.y; s.w = +d.w; s.h = +d.h; s.rot = +d.rot || 0;
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-423-      s.src = d.src || '';
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-424-    } else {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-425-      s.x = +d.x; s.y = +d.y; s.w = +d.w; s.h = +d.h; s.rot = +d.rot || 0;
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-426-      s.fill = d.fill || '';
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-427-      // Percent, 100 == opaque. See DEFAULTS's comment: folded into the fill's hex string only at
+--
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-735-      return;
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-736-    }
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-737-
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-738-    if (isMediaType(s.type)) {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-739-      el.style.left = s.x + 'px';
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-740-      el.style.top = s.y + 'px';
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-741-      el.style.width = s.w + 'px';
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-742-      el.style.height = s.h + 'px';
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:743:      // NEVER rotated: render_canvas.draw_image()/draw_video() apply no xfrm/@rot, and makeEl()
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-744-      // withholds the rotate handle for this type, so s.rot is always 0 here -- but writing '0deg'
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-745-      // explicitly (rather than trusting that) keeps this branch correct even if that changes.
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-746-      el.style.setProperty('--rot', '0deg');
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-747-      var media = el.querySelector('.media');
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-748-      // Bound once per (element, src) pair, not every render: renderEl() runs on every commit (a
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-749-      // resize, a drag frame...), and re-assigning .src on an already-current object URL would
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:750:      // needlessly reload the image/restart the video on every frame.
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-751-      if (media && media.dataset.boundSrc !== s.src) {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-752-        var entry = window.uploadedMedia && window.uploadedMedia[s.src];
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-753-        media.src = entry ? entry.url : '';
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-754-        media.dataset.boundSrc = s.src;
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-755-      }
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-756-      return;
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-757-    }
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-758-
+--
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-789-    var el = document.createElement('div');
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-790-    el.className = 'el';
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-791-    var html;
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-792-
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-793-    if (s.type === 'connector') {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-794-      html = '<svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"></svg>';
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-795-      html += handleHTML('p1') + handleHTML('p2');
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-796-    } else if (isMediaType(s.type)) {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:797:      // No <svg>, no .txt -- a picture/video is not drawn, it is embedded. `draggable="false"` on
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:798:      // the <img> stops the browser's OWN native image-drag (which would fight the pointer-capture
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-799-      // drag in interactions.js and never call commit() at all). NO ROTATE HANDLE: withheld here,
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:800:      // not merely hidden, because render_canvas.draw_image()/draw_video() apply no xfrm/@rot, and
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-801-      // a handle the renderer cannot honour is worse than no handle.
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:802:      html = s.type === 'image'
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-803-        ? '<img class="media" draggable="false" alt="">'
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:804:        : '<video class="media" muted playsinline preload="metadata"></video>';
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-805-      for (var i = 0; i < HANDLES.length; i++) html += handleHTML(HANDLES[i]);
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-806-    } else {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-807-      html = '<svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"></svg>';
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-808-      // .txt is the flex/anchor box (the Sec 5.6 contract); .body is the text. One flex item, so
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-809-      // multiple paragraphs stack instead of laying out side by side.
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-810-      //
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-811-      // NOTE THE ABSENT contenteditable. It is added by the dblclick handler and removed by
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-812-      // stopEditing(). It used to be hard-coded here, with only `pointer-events: none` on .txt
+--
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-899-          var nw = s.w + ctx.deltaRect.width / zoom;
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-900-          var nh = s.h + ctx.deltaRect.height / zoom;
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-901-          commit(el, { x: nx, y: ny, w: nw, h: nh },
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-902-                 { alt: ctx.pointer.altKey, edges: ctx.edges });
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-903-        },
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-904-      });
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-905-    });
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-906-
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:907:    // Withheld entirely for media (makeEl() never builds this handle for an image/video): guard
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-908-    // rather than assume, since Interactions.pointerDrag(null, ...) would throw on the missing node.
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-909-    var rotHandle = el.querySelector('.handle[data-h="rot"]');
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-910-    if (rotHandle) {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-911-      Interactions.pointerDrag(rotHandle, {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-912-        start: function () { select(el); beginTx(); },
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-913-        end: endTx,
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-914-        move: function (ctx) {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-915-          var s = read(el);
+--
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1100-    setTool('select');
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1101-    syncProps();
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1102-    setStatus('Created ' + el.dataset.id + '.');
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1103-    if (el.dataset.type === 'textbox') startEditing(el);
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1104-  }
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1105-
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1106-  /* [REDACTED] media insertion (Phase 6) --
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1107-   *
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:1108:   * Not a drag-out tool: a picture/video comes from a file picker, so it is placed centred in the
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1109-   * body-safe area at a fixed default size and immediately selected, the way a click-to-drop
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1110-   * shape is. window.uploadedMedia is the SESSION's own file store -- {name: {file, url}} -- named
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1111-   * on `window` rather than a closure-local var because the export handler (below) needs to read
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1112-   * the exact same File objects to build the multipart body it POSTs.
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1113-   */
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1114-  window.uploadedMedia = window.uploadedMedia || {};
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1115-
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1116-  // Registers `file` under its own name, or a de-duplicated variant of it when that name already
+--
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1356-  // byte at all -- an unmodified 6-digit colour is the common case and stays exactly what it was
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1357-  // before Phase 6, so decks with no transparency are byte-identical to what this editor emitted
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1358-  // before this feature existed.
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1359-  function withAlpha(hex6, alphaPct) {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1360-    if (typeof alphaPct !== 'number' || alphaPct >= 100) return hex6;
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1361-    return hex6 + hex2(Math.round(clamp(alphaPct, 0, 100) / 100 * 255));
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1362-  }
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1363-
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:1364:  function toIR(el) {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1365-    var s = read(el);
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1366-
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1367-    if (s.type === 'connector') {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1368-      // No w/h. No text. No z. Exactly the schema's keys for this type and NOTHING else --
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1369-      // additionalProperties: false means one leaked data-* is a hard rejection.
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1370-      return {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1371-        id: s.id, type: 'connector', kind: s.kind,
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1372-        x1: round6(s.x1), y1: round6(s.y1), x2: round6(s.x2), y2: round6(s.y2),
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1373-        color: s.color, width: round6(s.width), arrow: s.arrow,
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1374-      };
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1375-    }
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1376-
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1377-    if (isMediaType(s.type)) {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1378-      // No fill, no stroke, no text, no rotation: the properties panel never offers them for this
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:1379:      // type (see syncProps()'s "media" category) and render_canvas.draw_image()/draw_video()
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1380-      // never draw them even when present, so this editor never emits them for media at all --
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:1381:      // schema.json lists fill/stroke as OPTIONAL for image/video (unlike a rect, where fill is
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1382-      // REQUIRED even when null), and omitting an optional key is exactly what "optional" means.
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1383-      return {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1384-        id: s.id, type: s.type,
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1385-        x: round6(s.x), y: round6(s.y), w: round6(s.w), h: round6(s.h),
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1386-        src: s.src,
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1387-      };
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1388-    }
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1389-
+--
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1470-    // CSS is written FROM the state. It is never read back.
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1471-    stage.style.setProperty('--zoom', zoom);
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1472-    stageWrap.style.setProperty('--zoom', zoom);
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1473-    $('p-zoom-out').textContent = Math.round(zoom * 100) + '%';
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1474-  }
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1475-
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1476-  $('p-zoom').addEventListener('input', function () { setZoom(+this.value); });
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1477-
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:1478:  // Phase 6: image/video insertion. registerMedia()/insertMedia()/mediaInputHandler() are defined
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1479-  // above, alongside finishCreate() (the other "build it, place it, select it" tail); wiring lives
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1480-  // here because $() does not exist until this point in the file's top-to-bottom, load-time run.
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:1481:  $('b-add-image').addEventListener('click', function () { $('f-image').click(); });
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:1482:  $('b-add-video').addEventListener('click', function () { $('f-video').click(); });
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:1483:  $('f-image').addEventListener('change', mediaInputHandler('image'));
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:1484:  $('f-video').addEventListener('change', mediaInputHandler('video'));
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1485-
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1486-  /* The colour guard. #4472C4 is refused in EVERY colour input, with the reason validate.py gives. */
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1487-  function guardColor(input, onOK) {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1488-    input.addEventListener('input', function () {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1489-      var v = String(input.value).toUpperCase();
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1490-      if (v === FORBIDDEN_COLOR) {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1491-        warn(
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1492-          'That colour is not available: ' + FORBIDDEN_COLOR,
+--
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1809-      for (var n = 0; n < noneScoped.length; n++) noneScoped[n].hidden = true;
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1810-      setStatus(showAlign ? mset.length + ' element(s) selected for alignment.' : 'Ready.');
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1811-      return;
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1812-    }
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1813-
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1814-    var cat = s.type === 'connector' ? 'connector' : isMediaType(s.type) ? 'media' : 'shape';
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1815-
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1816-    /* Show only the controls this type actually HAS. The IR gives a connector no fill, no text and
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:1817:     * no rotation, and a media element (image/video) no fill/stroke/text/rotation EITHER (the
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:1818:     * renderer never draws them for a picture or a video) -- offering any of those would be
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1819-     * offering a property that cannot be serialized or that silently does nothing, and the JS
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1820-     * guards (`if (isConnector() || isMedia()) return`) would eat the edit either way. A control
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1821-     * that does nothing when you use it is worse than one that is not there. `data-for` may name
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1822-     * more than one category (space-separated, e.g. "shape connector" on the Line group) -- shown
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1823-     * whenever the CURRENT category is among them. */
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1824-    var scoped = props.querySelectorAll('[data-for]');
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1825-    for (var i = 0; i < scoped.length; i++) {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1826-      var want = scoped[i].getAttribute('data-for').split(/\s+/);
+--
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2017-    // This file must render through the CLI unchanged:
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2018-    //   python -m aippt.canvas.render_canvas <this>.json -o out.pptx
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2019-    download(new Blob([JSON.stringify(ir, null, 2)], { type: 'application/json' }), safeStem() + '.json');
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2020-    setStatus('Downloaded JSON (' + ir.elements.length + ' element(s)).');
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2021-  });
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2022-
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2023-  /* Phase 6: /api/export (JSON in, .pptx out) was renamed to /api/download and now takes
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2024-   * multipart/form-data -- an "ir" field carrying the SAME JSON serialize() always produced, plus
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2025:   * one form part per distinct image/video `src` the deck references. NO "Content-Type" header is
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2026-   * set here: fetch() computes the multipart boundary itself from the FormData body, and a
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2027-   * hand-set header would carry no boundary at all and the server would fail to parse the parts. */
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2028-  function mediaFor(ir) {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2029-    var names = [];
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2030-    ir.elements.forEach(function (el) {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2031:      if ((el.type === 'image' || el.type === 'video') && names.indexOf(el.src) < 0) names.push(el.src);
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2032-    });
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2033-    return names;
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2034-  }
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2035-
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2036-  $('b-export').addEventListener('click', async function () {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2037-    if (!CONTEXT) return;
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2038-    clearWarnings();
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2039-    var ir = serialize();
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2040-
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2041:    // A src this session has no File for would 500 at the server (draw_image()/draw_video() raise
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2042-    // a ValueError app.py does not map to a 4xx) -- caught HERE, before the request, rather than
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2043-    // after a round trip to find out. Typically means the tab reloaded, or a loaded/pasted deck
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2044-    // named a file nothing here was ever uploaded for.
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2045-    var names = mediaFor(ir);
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2046-    var missing = names.filter(function (n) { return !window.uploadedMedia || !window.uploadedMedia[n]; });
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2047-    if (missing.length) {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2048-      warn(
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2049-        'Cannot export — missing media file(s): ' + missing.join(', '),
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2050:        'This element references an image/video this browser tab no longer has the bytes for ' +
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2051-        '(a reload clears them). Re-add it with the Media buttons in the toolbar, or delete the ' +
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2052-        'element, then export again.'
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2053-      );
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2054-      setStatus('Export failed.');
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2055-      return;
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2056-    }
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2057-
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2058:    // /api/export takes canvas-ir/1 JSON, in memory -- an image element's `src` has to be a
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2059:    // Base64 data: URI by the time it gets there (draw_image() decodes it straight off the
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2060-    // element), not the uploadedMedia filename key the stage uses. The missing-media check above
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2061:    // already guarantees every image `src` here resolves in window.uploadedMedia.
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2062:    await Promise.all(ir.elements.filter(function (el) { return el.type === 'image'; }).map(function (el) {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2063-      var media = window.uploadedMedia[el.src];
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2064-      return fileToBase64(media.file).then(function (data) {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2065-        el.src = 'data:' + media.file.type + ';base64,' + data;
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2066-      });
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2067-    }));
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2068-
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2069-    setStatus('Exporting...');
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2070-    try {
+--
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2354-      $('p-prompt').focus();
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2355-      return;
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2356-    }
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2357-
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2358-    clearWarnings();
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2359-    setBusy(true);
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2360-    setStatus('Generating…');
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2361-    try {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2362:      // fileToBase64() strips the `data:...;base64,` prefix FileReader hands back -- _decode_images()
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2363-      // on the server runs base64.b64decode(data, validate=True) on exactly what is sent, and that
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2364-      // prefix is not base64.
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2365-      var model = $('p-model').value;
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2366:      var images = await Promise.all(attachments.map(function (a) {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2367-        return fileToBase64(a.file).then(function (data) { return { mime: a.file.type, data: data }; });
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2368-      }));
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2369-
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2370-      var res = await fetch('/api/generate', {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2371-        method: 'POST',
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2372-        headers: { 'Content-Type': 'application/json' },
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2373:        body: JSON.stringify({ prompt: prompt, model: model, images: images }),
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2374-      });
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2375-      if (!res.ok) {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2376-        var data2 = {};
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2377-        try { data2 = await res.json(); } catch (e) { /* a non-JSON error body */ }
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2378-        warn('Generate failed (HTTP ' + res.status + ')', data2.detail || res.statusText);
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2379-        setStatus('Generate failed.');
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2380-        return;
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2381-      }
+--
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2519-  /* Grows with the prompt, up to style.css's max-height (then it scrolls) -- scrollHeight is a
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2520-   * CONTENT size, never a layout position, so it is not on Gate 1's banned-measurement list. */
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2521-  $('p-prompt').addEventListener('input', function () {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2522-    var el = $('p-prompt');
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2523-    el.style.height = 'auto';
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2524-    el.style.height = el.scrollHeight + 'px';
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2525-  });
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2526-
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2527:  /* Only an IMAGE paste is ours to take -- preventDefault() is called ONLY once an image has
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2528-   * actually been found, so a plain text paste (the overwhelmingly common case) reaches the
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2529-   * textarea exactly as the browser would have delivered it. */
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2530-  $('p-prompt').addEventListener('paste', function (ev) {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2531-    var items = (ev.clipboardData && ev.clipboardData.items) || [];
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2532-    var files = [];
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2533-    for (var i = 0; i < items.length; i++) {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2534:      if (items[i].kind === 'file' && /^image\//.test(items[i].type)) {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2535-        var f = items[i].getAsFile();
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2536-        if (f) files.push(f);
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2537-      }
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2538-    }
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2539-    if (files.length) {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2540-      ev.preventDefault();
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2541-      addAttachmentFiles(files);
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2542-    }
+--
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2545-  /* Global paste for Clipboard Images straight onto the Stage (Ctrl+V) */
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2546-  document.addEventListener('paste', function (ev) {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2547-    var active = document.activeElement;
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2548-    if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable)) {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2549-      return; // allow prompt/input to handle standard text or prompt-attachment paste
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2550-    }
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2551-    var items = (ev.clipboardData && ev.clipboardData.items) || [];
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2552-    for (var i = 0; i < items.length; i++) {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2553:      if (items[i].kind === 'file' && /^image\//.test(items[i].type)) {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2554-        var f = items[i].getAsFile();
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2555-        if (f) {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2556-          ev.preventDefault();
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2557-          var fileName = f.name;
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2558:          if (!fileName || fileName === 'image.png') {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2559:            fileName = 'pasted_image_' + Date.now() + '.png';
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2560-            f = new File([f], fileName, { type: f.type });
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2561-          }
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2562:          insertMedia('image', f);
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2563:          setStatus('Pasted image from clipboard onto stage.');
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2564-          break;
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2565-        }
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2566-      }
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2567-    }
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2568-  });
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2569-
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2570-  /* View & Copy JSON Notepad Modal */
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2571-  function showJsonModal() {
+--
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2658-      } catch (e) {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2659-        warn('Could not reach the server', String(e));
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2660-        setStatus('Delete failed.');
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2661-      }
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2662-    });
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2663-  }
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2664-
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2665-  /* A File -> the pure base64 fetch's JSON body wants. FileReader.readAsDataURL() wraps the result
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2666:   * in a `data:<mime>;base64,` prefix the server does not want (_decode_images() runs
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2667-   * base64.b64decode(data, validate=True) on exactly what is sent) -- stripped here, once, rather
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2668-   * than trusted to every caller. */
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2669:  function fileToBase64(file) {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2670-    return new Promise(function (resolve, reject) {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2671-      var reader = new FileReader();
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2672-      reader.onload = function () {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2673-        var result = String(reader.result || '');
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2674-        var comma = result.indexOf(',');
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2675-        resolve(comma === -1 ? result : result.slice(comma + 1));
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2676-      };
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2677-      reader.onerror = function () { reject(reader.error || new Error('could not read the file')); };
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2678-      reader.readAsDataURL(file);
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2679-    });
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2680-  }
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2681-
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2682:  /* The same numbers /api/context publishes under `images` (app.py's MAX_IMAGES / MAX_IMAGE_BYTES /
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2683-   * IMAGE_MIME_TYPES) -- read from CONTEXT so a server-side change never drifts out of sync with
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2684-   * this picker, with a literal fallback for the narrow window before loadContext() resolves. */
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2685:  function imageLimits() {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2686:    return (CONTEXT && CONTEXT.images) || {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2687-      max_count: 4,
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2688-      max_bytes: 1400000,
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2689:      mime_types: ['image/png', 'image/jpeg', 'image/webp', 'image/heic', 'image/heif'],
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2690-    };
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2691-  }
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2692-
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2693-  /* Validate against the server's own limits and add what fits; warn() names what did not, through
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2694-   * the same banner every other refusal in this editor uses. Nothing here talks to the network --
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2695-   * that is generate()'s job, once, at submit time. */
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2696-  function addAttachmentFiles(files) {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2697:    var limits = imageLimits();
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2698-    var problems = [];
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2699-    var total = 0;
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2700-    for (var t = 0; t < attachments.length; t++) total += attachments[t].file.size;
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2701-
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2702-    for (var i = 0; i < files.length; i++) {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2703-      var f = files[i];
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2704-      if (attachments.length >= limits.max_count) {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2705:        problems.push(f.name + ': at most ' + limits.max_count + ' images are accepted');
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2706-        continue;
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2707-      }
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2708-      if (limits.mime_types.indexOf(f.type) === -1) {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2709-        problems.push(f.name + ': ' + (f.type || 'unknown type') + ' is not one of ' +
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2710-          limits.mime_types.join(', '));
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2711-        continue;
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2712-      }
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2713-      if (total + f.size > limits.max_bytes) {
+--
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2715-          ' bytes');
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2716-        continue;
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2717-      }
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2718-      total += f.size;
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2719-      attachments.push({ file: f, url: URL.createObjectURL(f) });
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2720-    }
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2721-
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2722-    renderAttachments();
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2723:    if (problems.length) warn('Some images were not attached', problems.join('\n'));
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2724-  }
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2725-
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2726-  function removeAttachment(index) {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2727-    var a = attachments[index];
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2728-    if (!a) return;
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2729-    URL.revokeObjectURL(a.url);
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2730-    attachments.splice(index, 1);
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2731-    renderAttachments();
+--
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2796-        kind: e.kind || cd.kind,
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2797-        arrow: e.arrow || cd.arrow,
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2798-        color: e.color || cd.color,
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2799-        width: typeof e.width === 'number' ? e.width : cd.width,
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2800-      };
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2801-    }
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2802-
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2803-    // Media (Phase 6): geometry + src, nothing else -- no fill/stroke/text/rotation round-trips
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2804:    // for an image/video (see toIR()). Checked by literal string, not isMediaType(): this function
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2805-    // is lifted out of this file BY NAME and run in Node (tests/canvas/test_app.py), and a call out
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2806-    // to a helper the harness does not also lift is a ReferenceError in the gate, not in the code.
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2807:    if (e.type === 'image' || e.type === 'video') {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2808-      return {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2809-        id: e.id, type: e.type,
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2810-        x: e.x, y: e.y, w: e.w, h: e.h,
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2811-        rot: e.rotation === undefined || e.rotation === null ? 0 : e.rotation,
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2812-        src: typeof e.src === 'string' ? e.src : '',
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2813-      };
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2814-    }
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2815-
+--
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-66-    "element": {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-67-      "description": "Closed union, discriminated on `type` by a per-branch const so that a bad element produces a precise error ('w must be > 0') rather than 'failed to match any of 5 subschemas'. The four shape branches are structurally identical -- they differ only in the DrawingML preset geometry style.py picks -- but they are spelled out separately so the discriminator stays literal and every type carries its own description.",
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-68-      "oneOf": [
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-69-        {"$ref": "#/$defs/rect"},
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-70-        {"$ref": "#/$defs/ellipse"},
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-71-        {"$ref": "#/$defs/triangle"},
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-72-        {"$ref": "#/$defs/textbox"},
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-73-        {"$ref": "#/$defs/connector"},
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json:74:        {"$ref": "#/$defs/image"},
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json:75:        {"$ref": "#/$defs/video"}
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-76-      ]
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-77-    },
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-78-
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-79-    "rect": {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-80-      "type": "object",
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-81-      "description": "MSO_SHAPE.RECTANGLE -> prstGeom 'rect'.",
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-82-      "required": ["id", "type", "x", "y", "w", "h", "fill"],
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-83-      "additionalProperties": false,
+--
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-176-        "width": {"$ref": "#/$defs/line_width"},
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-177-        "arrow": {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-178-          "enum": ["none", "start", "end", "both"],
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-179-          "description": "'start' puts an arrowhead at (x1,y1) -- DrawingML <a:headEnd>. 'end' puts one at (x2,y2) -- <a:tailEnd>. Arrowheads are not exposed in the python-pptx API (there is no line.end_arrow), so connectors.py writes them with lxml; <a:headEnd> MUST precede <a:tailEnd> per CT_LineProperties._tag_seq, or PowerPoint declares the file corrupt."
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-180-        }
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-181-      }
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-182-    },
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-183-
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json:184:    "image": {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-185-      "type": "object",
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json:186:      "description": "A raster image (python-pptx add_picture), addressed by `src`. Geometrically identical to `rect` -- x/y/w/h is its bounding box -- but it carries no text, and `fill`/`stroke` are optional rather than required since the picture itself already covers the box.",
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-187-      "required": ["id", "type", "x", "y", "w", "h", "src"],
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-188-      "additionalProperties": false,
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-189-      "properties": {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-190-        "id": {"$ref": "#/$defs/id"},
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json:191:        "type": {"const": "image"},
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-192-        "x": {"$ref": "#/$defs/coord"},
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-193-        "y": {"$ref": "#/$defs/coord"},
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-194-        "w": {"$ref": "#/$defs/extent"},
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-195-        "h": {"$ref": "#/$defs/extent"},
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-196-        "rotation": {"$ref": "#/$defs/rotation"},
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-197-        "fill": {"$ref": "#/$defs/fill"},
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-198-        "stroke": {"$ref": "#/$defs/stroke"},
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-199-        "src": {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-200-          "type": "string",
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json:201:          "description": "Path (or URI) to the image asset, resolved by the renderer -- see canvas/render_canvas.py."
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-202-        }
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-203-      }
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-204-    },
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-205-
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json:206:    "video": {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-207-      "type": "object",
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json:208:      "description": "An embedded video (python-pptx add_movie), addressed by `src`. Geometrically identical to `rect` -- x/y/w/h is its bounding box -- but it carries no text, and `fill`/`stroke` are optional rather than required since the video frame itself already covers the box.",
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-209-      "required": ["id", "type", "x", "y", "w", "h", "src"],
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-210-      "additionalProperties": false,
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-211-      "properties": {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-212-        "id": {"$ref": "#/$defs/id"},
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json:213:        "type": {"const": "video"},
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-214-        "x": {"$ref": "#/$defs/coord"},
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-215-        "y": {"$ref": "#/$defs/coord"},
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-216-        "w": {"$ref": "#/$defs/extent"},
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-217-        "h": {"$ref": "#/$defs/extent"},
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-218-        "rotation": {"$ref": "#/$defs/rotation"},
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-219-        "fill": {"$ref": "#/$defs/fill"},
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-220-        "stroke": {"$ref": "#/$defs/stroke"},
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-221-        "src": {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-222-          "type": "string",
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json:223:          "description": "Path (or URI) to the video asset, resolved by the renderer -- see canvas/render_canvas.py."
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-224-        }
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-225-      }
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-226-    },
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-227-
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-228-    "id": {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-229-      "type": "string",
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-230-      "minLength": 1,
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-231-      "description": "Becomes the shape's NAME in the PPTX (shp.name). The round-trip suite finds shapes by name rather than by position, so ids must be unique across `elements` -- validate.py rejects duplicates."
+--
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-281-    "line_width": {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-282-      "type": "number",
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-283-      "minimum": 0,
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-284-      "description": "Logical units (== pt). CAUTION: width 0 is a HAIRLINE in PowerPoint, not 'no line' -- a browser draws nothing for border-width:0 while PowerPoint draws the thinnest line it can. To get no line at all, use `\"stroke\": null`."
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-285-    },
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-286-
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-287-    "link": {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-288-      "type": "string",
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json:289:      "description": "Phase 6: an optional hyperlink carried on a shape/textbox element only (not connector/image/video). The editor allowlists the scheme (http/https/mailto, or a #anchor) before ever exporting or rendering it -- see sanitizeLink() in editor.js -- so this field is never trusted as pre-sanitized just because it validated against this (deliberately permissive) string type."
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-290-    },
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-291-
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-292-    "text": {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-293-      "description": "Null or absent means the shape carries no text. Connectors cannot carry text at all.",
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-294-      "oneOf": [
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-295-        {"type": "null"},
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-296-        {
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json-297-          "type": "object",
+
+2026-07-20T09:59:12.604244Z ERROR codex_models_manager::manager: failed to renew cache TTL: missing field `supports_reasoning_summaries` at line 86 column 5
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$a='"'C:\\Users\\2021670\\Documents\\멀티 에이전트\\tasks\\AI_Powered_PPT\\artifacts'; Get-ChildItem -LiteralPath "'$a | Sort-Object LastWriteTime -Descending | Select-Object -First 20 Name,Length,LastWriteTime' in C:\Users\2021670\Documents\멀티 에이전트
+ succeeded in 597ms:
+
+Name                                          Length LastWriteTime        
+----                                          ------ -------------        
+claude-main-diff-2342221-20476.txt              3283 2026-07-20 오후 6:58:34
+[REDACTED].txt               0 2026-07-20 오후 6:58:27
+[REDACTED].txt            1627 2026-07-20 오후 6:58:27
+claude-main-backup-2341035-807                       2026-07-20 오후 6:39:17
+[REDACTED].txt          85492 2026-07-20 오후 5:41:21
+[REDACTED].txt            541 2026-07-20 오후 5:41:21
+claude-main-diff-2335295-16999.txt              8490 2026-07-20 오후 5:39:37
+[REDACTED].txt               0 2026-07-20 오후 5:39:29
+[REDACTED].txt            2249 2026-07-20 오후 5:39:28
+[REDACTED].txt         45458 2026-07-20 오후 5:26:58
+[REDACTED].txt         7434 2026-07-20 오후 5:26:58
+claude-main-diff-2308138-1760.txt               6777 2026-07-20 오후 4:59:48
+[REDACTED].txt               0 2026-07-20 오후 4:59:35
+[REDACTED].txt            1509 2026-07-20 오후 4:59:35
+[REDACTED]                     2026-07-20 오후 1:26:07
+[REDACTED].txt       0 2026-07-20 오후 1:23:47
+[REDACTED].txt   3366 2026-07-20 오후 1:23:47
+claude-main-diff-2181424-259.txt               16769 2026-07-20 오후 1:16:22
+[REDACTED].txt               0 2026-07-20 오후 1:16:13
+[REDACTED].txt            2184 2026-07-20 오후 1:16:13
+
+
+
+2026-07-20T09:59:18.359685Z ERROR codex_models_manager::manager: failed to renew cache TTL: missing field `supports_reasoning_summaries` at line 86 column 5
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "Get-Content -Raw -LiteralPath 'C:\\Users\\2021670\\Documents\\멀티 에이전트\\tasks\\AI_Powered_PPT\\artifacts\\[REDACTED].txt'" in C:\Users\2021670\Documents\멀티 에이전트
+ succeeded in 542ms:
+All three code edits are done and documented. Summary:
+
+**Changes made** (in the staged repo `C:\Users\2021670\.ma-stg\stg.wr1mLipz`):
+
+1. **`editor.js`** ??before POSTing to `/api/export`, the export handler now walks `ir.elements`, and for each `image` element looks up `window.uploadedMedia[el.src]`, converts the file to base64 via the existing `fileToBase64()` helper, and rewrites `el.src` to a `data:<mime>;base64,...` URI.
+2. **`style.py`** ??added `io`/`base64` imports and a new `draw_image(slide, el)` that decodes the data URI and calls `slide.shapes.add_picture(...)`.
+3. **`render_canvas.py`** ??`draw()` now routes `el["type"] == "image"` to `draw_image`. One deliberate deviation from the brief's literal snippet: used `from aippt.canvas.style import draw_image` (absolute) instead of `from .style import draw_image` (relative), since this module supports running as a bare script and a relative import would break that path ??consistent with every other import already in the file.
+
+Documented everything, including the root-cause analysis and a note that no interpreter/VCS commands could be executed in this session (consistent with known constraints for these staged worker sessions), in `tasks/AI_Powered_PPT/image_export_change_detail.md`, plus a `image_export_write_manifest.txt` listing the three touched files ??both written inside the staged `target_repo` per the brief's frontmatter. I also flagged a known orchestrator issue where `tasks/`-scoped diffs can misreport as empty due to a `.gitignore`/`git add -A` interaction, so it isn't mistaken for the edits not having happened.
+
+
+2026-07-20T09:59:23.560633Z ERROR codex_models_manager::manager: failed to renew cache TTL: missing field `supports_reasoning_summaries` at line 86 column 5
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$p='"'C:\\Users\\2021670\\.ma-stg\\stg.wr1mLipz\\tasks\\AI_Powered_PPT\\src\\aippt\\canvas\\static\\editor.js'; "'$lines=Get-Content -LiteralPath $p; foreach($range in @(@(1080,1160),@(1980,2080),@(2130,2170),@(2640,2675))){$s=$range[0];$e=$range[1]; for($i=$s;$i -le $e;$i++){ '"'{0,5}: {1}' -f "'$i,$lines[$i-1] }; '"''}" in C:\Users\2021670\Documents\멀티 에이전트
+ succeeded in 567ms:
+ 1080:         };
+ 1081:       }
+ 1082: 
+ 1083:       var legal = applyConstraints(cand, { alt: true });
+ 1084:       if (!legal) {
+ 1085:         setStatus('That would not fit legally here ??nothing was dropped.');
+ 1086:         return;
+ 1087:       }
+ 1088:       var made = addEl(makeEl(legal));
+ 1089:       select(made);
+ 1090:       pushUndo(ctx.before); // the drop is ONE step; ctx.before was taken at gesture start
+ 1091:       finishCreate(made);
+ 1092:     },
+ 1093:   });
+ 1094: 
+ 1095:   /* The common tail of both creation paths (draw-out and click-to-drop): return to the select
+ 1096:    * tool, refresh the panel, and -- for a textbox -- open it for typing immediately, the way
+ 1097:    * PowerPoint does (requirement 2: a new textbox is editable without a double-click). */
+ 1098:   function finishCreate(el) {
+ 1099:     setTool('select');
+ 1100:     syncProps();
+ 1101:     setStatus('Created ' + el.dataset.id + '.');
+ 1102:     if (el.dataset.type === 'textbox') startEditing(el);
+ 1103:   }
+ 1104: 
+ 1105:   /* [REDACTED] media insertion (Phase 6) --
+ 1106:    *
+ 1107:    * Not a drag-out tool: a picture/video comes from a file picker, so it is placed centred in the
+ 1108:    * body-safe area at a fixed default size and immediately selected, the way a click-to-drop
+ 1109:    * shape is. window.uploadedMedia is the SESSION's own file store -- {name: {file, url}} -- named
+ 1110:    * on `window` rather than a closure-local var because the export handler (below) needs to read
+ 1111:    * the exact same File objects to build the multipart body it POSTs.
+ 1112:    */
+ 1113:   window.uploadedMedia = window.uploadedMedia || {};
+ 1114: 
+ 1115:   // Registers `file` under its own name, or a de-duplicated variant of it when that name already
+ 1116:   // names a DIFFERENT File -- two uploads both called "photo.jpg" must not collide, or the second
+ 1117:   // would silently shadow the first and an element still pointing at the first's `src` would
+ 1118:   // export whichever file happened to win the race. Returns the src to store on the element.
+ 1119:   function registerMedia(file) {
+ 1120:     var name = file.name || 'media';
+ 1121:     var n = 1;
+ 1122:     while (window.uploadedMedia[name] && window.uploadedMedia[name].file !== file) {
+ 1123:       var dot = file.name.lastIndexOf('.');
+ 1124:       var stem = dot > 0 ? file.name.slice(0, dot) : file.name;
+ 1125:       var ext = dot > 0 ? file.name.slice(dot) : '';
+ 1126:       name = stem + '-' + (n++) + ext;
+ 1127:     }
+ 1128:     if (!window.uploadedMedia[name]) {
+ 1129:       window.uploadedMedia[name] = { file: file, url: URL.createObjectURL(file) };
+ 1130:     }
+ 1131:     return name;
+ 1132:   }
+ 1133: 
+ 1134:   function insertMedia(type, file) {
+ 1135:     var src = registerMedia(file);
+ 1136:     var sz = MEDIA_DEFAULT_SIZE;
+ 1137:     var cand = {
+ 1138:       id: nextId(), type: type,
+ 1139:       x: (CANVAS.w - sz.w) / 2, y: (CANVAS.h - sz.h) / 2, w: sz.w, h: sz.h, rot: 0,
+ 1140:       src: src,
+ 1141:     };
+ 1142:     // Goes through the SAME judge as everything else on the stage (alt: true -- a deliberate
+ 1143:     // placement is not re-snapped, but is still clamped on-slide, exactly like click-to-drop).
+ 1144:     var legal = applyConstraints(cand, { alt: true });
+ 1145:     if (!legal) { setStatus('That ' + type + ' would not fit legally here ??nothing was added.'); return; }
+ 1146:     var before = snapshot();
+ 1147:     var made = addEl(makeEl(legal));
+ 1148:     if (multi.length) clearMulti();
+ 1149:     select(made);
+ 1150:     pushUndo(before); // one step: the insertion and its placement are a single act
+ 1151:     setStatus('Added ' + type + ' ' + legal.id + '.');
+ 1152:   }
+ 1153: 
+ 1154:   function mediaInputHandler(type) {
+ 1155:     return function () {
+ 1156:       var file = this.files && this.files[0];
+ 1157:       this.value = ''; // clears the input so picking the SAME file again still fires `change`
+ 1158:       if (!file) return;
+ 1159:       insertMedia(type, file);
+ 1160:     };
+
+ 1980:   // it would be flattened to "\n" anyway, and a <br> keeps the flex box laying out as one line run.
+ 1981:   titleField.addEventListener('keydown', function (ev) {
+ 1982:     if (ev.key === 'Enter') {
+ 1983:       ev.preventDefault();
+ 1984:       document.execCommand('insertLineBreak');
+ 1985:     }
+ 1986:   });
+ 1987: 
+ 1988:   // The title is part of the deck, so it is part of the snapshot, so it is undoable -- one step per
+ 1989:   // visit to the field, on the same session grouping the element text uses.
+ 1990:   titleField.addEventListener('focus', beginTx);
+ 1991:   titleField.addEventListener('input', function () { noteChange(); });
+ 1992:   titleField.addEventListener('blur', endTx);
+ 1993: 
+ 1994:   /* [REDACTED] exports */
+ 1995: 
+ 1996:   function download(blob, filename) {
+ 1997:     var url = URL.createObjectURL(blob);
+ 1998:     var a = document.createElement('a');
+ 1999:     a.href = url;
+ 2000:     a.download = filename;
+ 2001:     document.body.appendChild(a);
+ 2002:     a.click();
+ 2003:     a.remove();
+ 2004:     setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+ 2005:   }
+ 2006: 
+ 2007:   function safeStem() {
+ 2008:     var t = titleString().replace(/[\\/:*?"<>|\r\n\t]+/g, ' ').trim();
+ 2009:     return t.slice(0, 60) || 'deck';
+ 2010:   }
+ 2011: 
+ 2012:   $('b-json').addEventListener('click', function () {
+ 2013:     if (!CONTEXT) return;
+ 2014:     clearWarnings();
+ 2015:     var ir = serialize();
+ 2016:     // This file must render through the CLI unchanged:
+ 2017:     //   python -m aippt.canvas.render_canvas <this>.json -o out.pptx
+ 2018:     download(new Blob([JSON.stringify(ir, null, 2)], { type: 'application/json' }), safeStem() + '.json');
+ 2019:     setStatus('Downloaded JSON (' + ir.elements.length + ' element(s)).');
+ 2020:   });
+ 2021: 
+ 2022:   /* Phase 6: /api/export (JSON in, .pptx out) was renamed to /api/download and now takes
+ 2023:    * multipart/form-data -- an "ir" field carrying the SAME JSON serialize() always produced, plus
+ 2024:    * one form part per distinct image/video `src` the deck references. NO "Content-Type" header is
+ 2025:    * set here: fetch() computes the multipart boundary itself from the FormData body, and a
+ 2026:    * hand-set header would carry no boundary at all and the server would fail to parse the parts. */
+ 2027:   function mediaFor(ir) {
+ 2028:     var names = [];
+ 2029:     ir.elements.forEach(function (el) {
+ 2030:       if ((el.type === 'image' || el.type === 'video') && names.indexOf(el.src) < 0) names.push(el.src);
+ 2031:     });
+ 2032:     return names;
+ 2033:   }
+ 2034: 
+ 2035:   $('b-export').addEventListener('click', async function () {
+ 2036:     if (!CONTEXT) return;
+ 2037:     clearWarnings();
+ 2038:     var ir = serialize();
+ 2039: 
+ 2040:     // A src this session has no File for would 500 at the server (draw_image()/draw_video() raise
+ 2041:     // a ValueError app.py does not map to a 4xx) -- caught HERE, before the request, rather than
+ 2042:     // after a round trip to find out. Typically means the tab reloaded, or a loaded/pasted deck
+ 2043:     // named a file nothing here was ever uploaded for.
+ 2044:     var names = mediaFor(ir);
+ 2045:     var missing = names.filter(function (n) { return !window.uploadedMedia || !window.uploadedMedia[n]; });
+ 2046:     if (missing.length) {
+ 2047:       warn(
+ 2048:         'Cannot export ??missing media file(s): ' + missing.join(', '),
+ 2049:         'This element references an image/video this browser tab no longer has the bytes for ' +
+ 2050:         '(a reload clears them). Re-add it with the Media buttons in the toolbar, or delete the ' +
+ 2051:         'element, then export again.'
+ 2052:       );
+ 2053:       setStatus('Export failed.');
+ 2054:       return;
+ 2055:     }
+ 2056: 
+ 2057:     // /api/export takes canvas-ir/1 JSON, in memory -- an image element's `src` has to be a
+ 2058:     // Base64 data: URI by the time it gets there (draw_image() decodes it straight off the
+ 2059:     // element), not the uploadedMedia filename key the stage uses. The missing-media check above
+ 2060:     // already guarantees every image `src` here resolves in window.uploadedMedia.
+ 2061:     await Promise.all(ir.elements.filter(function (el) { return el.type === 'image'; }).map(function (el) {
+ 2062:       var media = window.uploadedMedia[el.src];
+ 2063:       return fileToBase64(media.file).then(function (data) {
+ 2064:         el.src = 'data:' + media.file.type + ';base64,' + data;
+ 2065:       });
+ 2066:     }));
+ 2067: 
+ 2068:     setStatus('Exporting...');
+ 2069:     try {
+ 2070:       var res = await fetch('/api/export', { method: 'POST', body: JSON.stringify(ir) });
+ 2071:       if (!res.ok) {
+ 2072:         var data = {};
+ 2073:         try { data = await res.json(); } catch (e) { /* a non-JSON error body */ }
+ 2074:         if (res.status === 409) {
+ 2075:           warn('Stale payload ??RELOAD the editor', data.detail ||
+ 2076:             'The template or the model space changed under you. The deck is never rescaled.');
+ 2077:         } else if (res.status === 422) {
+ 2078:           warn('The deck did not validate', data.detail); // the numbered list, verbatim
+ 2079:         } else {
+ 2080:           warn('Export failed (HTTP ' + res.status + ')', data.detail || res.statusText);
+
+ 2130:     '.el .media{position:absolute;inset:0;width:100%;height:100%;object-fit:fill}' +
+ 2131:     '.el svg{overflow:visible;position:absolute;inset:0}' +
+ 2132:     '.el a{color:inherit;text-decoration:none}';
+ 2133: 
+ 2134:   // Strips every editor-only affordance a cloned .el still carries -- resize/rotate handles,
+ 2135:   // selection/blocked outlines, and contenteditable itself -- so the exported file is a static
+ 2136:   // snapshot, never a second live copy of the editor.
+ 2137:   function stripEditorChrome(node) {
+ 2138:     node.classList.remove('selected', 'blocked', 'editing', 'multi-selected');
+ 2139:     node.removeAttribute('contenteditable');
+ 2140:     var handles = node.querySelectorAll('.handle');
+ 2141:     for (var i = 0; i < handles.length; i++) handles[i].remove();
+ 2142:   }
+ 2143: 
+ 2144:   function fileToDataURL(file) {
+ 2145:     return new Promise(function (resolve, reject) {
+ 2146:       var reader = new FileReader();
+ 2147:       reader.onload = function () { resolve(reader.result); };
+ 2148:       reader.onerror = function () { reject(reader.error || new Error('FileReader failed')); };
+ 2149:       reader.readAsDataURL(file);
+ 2150:     });
+ 2151:   }
+ 2152: 
+ 2153:   // The live preview's `src` is this SESSION's own object URL (window.uploadedMedia) -- it is
+ 2154:   // revoked/dead the moment this tab closes, so baking it into a downloaded file would ship a
+ 2155:   // broken link the instant the tab that created it is gone. Re-reads the ORIGINAL File this
+ 2156:   // session still holds and re-encodes it as a data: URL, which is self-contained.
+ 2157:   function mediaDataURL(src) {
+ 2158:     var entry = window.uploadedMedia && window.uploadedMedia[src];
+ 2159:     return entry ? fileToDataURL(entry.file) : Promise.resolve('');
+ 2160:   }
+ 2161: 
+ 2162:   // An ALLOWLIST, not a denylist: only http/https/mailto or an in-page #anchor survive. Anything
+ 2163:   // else -- javascript:, data:, vbscript:, a bare scheme this function does not recognise -- fails
+ 2164:   // CLOSED to '', rather than being pattern-matched and rejected one dangerous scheme at a time.
+ 2165:   function sanitizeLink(link) {
+ 2166:     if (typeof link !== 'string') return '';
+ 2167:     var v = link.trim();
+ 2168:     if (!v) return '';
+ 2169:     if (/^#/.test(v)) return v;
+ 2170:     if (/^(https?|mailto):/i.test(v)) return v;
+
+ 2640:         setStatus('Select a template to delete first.');
+ 2641:         return;
+ 2642:       }
+ 2643:       if (!confirm('Are you sure you want to delete template "' + name + '"?')) return;
+ 2644:       clearWarnings();
+ 2645:       try {
+ 2646:         var res = await fetch('/api/designs/' + encodeURIComponent(name), { method: 'DELETE' });
+ 2647:         if (!res.ok) {
+ 2648:           var data = {};
+ 2649:           try { data = await res.json(); } catch (e) {}
+ 2650:           warn('Delete failed (HTTP ' + res.status + ')', data.detail || res.statusText);
+ 2651:           setStatus('Delete failed.');
+ 2652:           return;
+ 2653:         }
+ 2654:         setStatus('Deleted template "' + name + '".');
+ 2655:         await refreshDesignList();
+ 2656:       } catch (e) {
+ 2657:         warn('Could not reach the server', String(e));
+ 2658:         setStatus('Delete failed.');
+ 2659:       }
+ 2660:     });
+ 2661:   }
+ 2662: 
+ 2663:   /* A File -> the pure base64 fetch's JSON body wants. FileReader.readAsDataURL() wraps the result
+ 2664:    * in a `data:<mime>;base64,` prefix the server does not want (_decode_images() runs
+ 2665:    * base64.b64decode(data, validate=True) on exactly what is sent) -- stripped here, once, rather
+ 2666:    * than trusted to every caller. */
+ 2667:   function fileToBase64(file) {
+ 2668:     return new Promise(function (resolve, reject) {
+ 2669:       var reader = new FileReader();
+ 2670:       reader.onload = function () {
+ 2671:         var result = String(reader.result || '');
+ 2672:         var comma = result.indexOf(',');
+ 2673:         resolve(comma === -1 ? result : result.slice(comma + 1));
+ 2674:       };
+ 2675:       reader.onerror = function () { reject(reader.error || new Error('could not read the file')); };
+
+
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$p='"'C:\\Users\\2021670\\.ma-stg\\stg.wr1mLipz\\tasks\\AI_Powered_PPT\\src\\aippt\\canvas\\app.py'; "'$lines=Get-Content -LiteralPath $p; for($i=245;$i -le 285;$i++){ '"'{0,4}: {1}' -f "'$i,$lines[$i-1] }; '"''; "'$p2='"'C:\\Users\\2021670\\.ma-stg\\stg.wr1mLipz\\tasks\\AI_Powered_PPT\\src\\aippt\\canvas\\static\\editor.js'; "'$l2=Get-Content -LiteralPath $p2; for($i=2070;$i -le 2100;$i++){ '"'{0,4}: {1}' -f "'$i,$l2[$i-1] }' in C:\Users\2021670\Documents\멀티 에이전트
+ succeeded in 579ms:
+ 245:         "default_model": DEFAULT_PROFILE,
+ 246:         "images": {
+ 247:             "max_count": MAX_IMAGES,
+ 248:             "max_bytes": MAX_IMAGE_BYTES,
+ 249:             "mime_types": list(IMAGE_MIME_TYPES),
+ 250:             # Ordered: the first one present on an object wins. Published so a client does not have
+ 251:             # to guess which spelling this server speaks -- it speaks both.
+ 252:             "mime_keys": list(_MIME_KEYS),
+ 253:         },
+ 254:     }
+ 255: 
+ 256: 
+ 257: @app.post("/api/export")
+ 258: async def api_export(request: Request) -> Response:
+ 259:     """canvas-ir/1 in, .pptx bytes out. In memory, start to finish.
+ 260: 
+ 261:     The error mapping is the whole job, and the ORDER of the except clauses is the load-bearing
+ 262:     part: StalePayloadError SUBCLASSES CanvasValidationError, so catching the parent first would
+ 263:     report every stale payload as a 422 and tell the user to fix a deck that is perfectly fine. It
+ 264:     is caught first, and it stays first.
+ 265:     """
+ 266:     ir, err = await _read_json(request)
+ 267:     if err is not None:
+ 268:         return err
+ 269: 
+ 270:     try:
+ 271:         prs = render(ir)  # validates, checks the pin, checks the SHA, draws
+ 272:     except StalePayloadError as exc:  # MUST precede CanvasValidationError -- it is a subclass
+ 273:         return JSONResponse({"error": "stale", "detail": str(exc)}, status_code=409)
+ 274:     except CanvasValidationError as exc:
+ 275:         return JSONResponse({"error": "validation", "detail": str(exc)}, status_code=422)
+ 276:     except TemplatePinError as exc:
+ 277:         # Unreachable if the startup gate ran -- the template cannot drift mid-process without
+ 278:         # someone editing it underneath us. Log it loudly rather than pretend it cannot happen.
+ 279:         log.exception("template pin failed at REQUEST time; the startup gate should have caught it")
+ 280:         return JSONResponse({"error": "template", "detail": str(exc)}, status_code=500)
+ 281: 
+ 282:     buf = io.BytesIO()
+ 283:     prs.save(buf)  # in memory. No temp file, no output directory, nothing on disk.
+ 284: 
+ 285:     return Response(
+
+2070:       var res = await fetch('/api/export', { method: 'POST', body: JSON.stringify(ir) });
+2071:       if (!res.ok) {
+2072:         var data = {};
+2073:         try { data = await res.json(); } catch (e) { /* a non-JSON error body */ }
+2074:         if (res.status === 409) {
+2075:           warn('Stale payload ??RELOAD the editor', data.detail ||
+2076:             'The template or the model space changed under you. The deck is never rescaled.');
+2077:         } else if (res.status === 422) {
+2078:           warn('The deck did not validate', data.detail); // the numbered list, verbatim
+2079:         } else {
+2080:           warn('Export failed (HTTP ' + res.status + ')', data.detail || res.statusText);
+2081:         }
+2082:         setStatus('Export failed.');
+2083:         return;
+2084:       }
+2085:       download(await res.blob(), safeStem() + '.pptx');
+2086:       setStatus('Exported ' + ir.elements.length + ' element(s).');
+2087:     } catch (e) {
+2088:       warn('Could not reach the server', String(e));
+2089:       setStatus('Export failed.');
+2090:     }
+2091:   });
+2092: 
+2093:   /* [REDACTED] HTML export (Phase 6)
+2094:    *
+2095:    * A single, self-contained .html file -- no network fetch, no reference back into this tab, and
+2096:    * no dependency on style.css (a file opened from disk cannot fetch it). Every media `src` is
+2097:    * baked to a `data:` URL (the live preview's `src` is a session-only blob: URL that dies with
+2098:    * this tab -- see window.uploadedMedia above) and every text body is rebuilt from the SAME
+2099:    * normalized data toIR() already trusts -- never the live contenteditable's raw markup -- so a
+2100:    * pasted <script> or an on*= attribute has no path into the exported file. See
+
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$p='"'C:\\Users\\2021670\\.ma-stg\\stg.wr1mLipz\\tasks\\AI_Powered_PPT\\src\\aippt\\canvas\\app.py'; rg -n -A 45 -B 5 'async def _read_json' "'$p; git -C '"'C:\\Users\\2021670\\.ma-stg\\stg.wr1mLipz' diff --check -- 'tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js' 'tasks/AI_Powered_PPT/src/aippt/canvas/render_canvas.py' 'tasks/AI_Powered_PPT/src/aippt/canvas/style.py'" in C:\Users\2021670\Documents\멀티 에이전트
+2026-07-20T09:59:50.300254Z ERROR codex_core::tools::router: error=Exit code: 1
+Wall time: 0.6 seconds
+Output:
+472-        log.exception("could not delete saved design")
+473-        return JSONResponse({"error": "delete", "detail": str(exc)}, status_code=500)
+474-    return Response(status_code=204)
+475-
+476-
+477:async def _read_json(request: Request) -> tuple[Any, JSONResponse | None]:
+478-    """The body guard every POST route shares. Returns (payload, None) or (None, error).
+479-
+480-    Both size checks are needed and both are here: a chunked body declares no Content-Length, so the
+481-    header check alone can be walked straight past, and the real-length check alone would have us
+482-    buffer a megabyte before objecting to it.
+483-    """
+484-    declared = request.headers.get("content-length")
+485-    if declared is not None and declared.isdigit() and int(declared) > MAX_BODY_BYTES:
+486-        return None, _too_large()
+487-
+488-    raw = await request.body()
+489-    if len(raw) > MAX_BODY_BYTES:  # chunked bodies declare no length; check the real thing too
+490-        return None, _too_large()
+491-
+492-    try:
+493-        return json.loads(raw.decode("utf-8")), None
+494-    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+495-        # str(exc) is json's own "Expecting ',' delimiter: line 3 column 9" -- useful, and it leaks
+496-        # nothing but the shape of the body the caller just sent us.
+497-        return None, JSONResponse(
+498-            {"error": "malformed", "detail": f"body is not valid UTF-8 JSON: {exc}"},
+499-            status_code=400,
+500-        )
+501-
+502-
+503-def _too_large() -> JSONResponse:
+504-    return JSONResponse(
+505-        {
+506-            "error": "too_large",
+507-            "detail": f"payload exceeds {MAX_BODY_BYTES} bytes",
+508-        },
+509-        status_code=413,
+510-    )
+511-
+512-
+513-# --- the request validators (Phase 1) [REDACTED]
+514-#
+515-# Both return (value, None) or (None, error) -- the same two-tuple shape _read_json() already uses,
+516-# so api_generate() reads as one flat sequence of guards rather than a nest of try blocks. Both run
+517-# BEFORE the mode branch: what the server accepts must not depend on whether a key happens to be set
+518-# on this machine.
+519-
+520-
+521-def _rejected(code: str, detail: str) -> JSONResponse:
+522-    """A 422 with a machine-readable discriminator.
+warning: Limiting comparison with pathspecs is only supported if both paths are directories.
+usage: git diff --no-index [<options>] <path> <path> [<pathspec>...]
+
+Diff output format options
+    -p, --patch           generate patch
+    -s, --no-patch        suppress diff output
+    -u                    generate patch
+    -U, --unified[=<n>]   generate diffs with <n> lines context
+    -W, --[no-]function-context
+                          generate diffs with <n> lines context
+    --raw                 generate the diff in raw format
+    --patch-with-raw      synonym for '-p --raw'
+    --patch-with-stat     synonym for '-p --stat'
+    --numstat             machine friendly --stat
+    --shortstat           output only the last line of --stat
+    -X, --dirstat[=<param1>,<param2>...]
+                          output the distribution of relative amount of changes for each sub-directory
+    --cumulative          synonym for --dirstat=cumulative
+    --dirstat-by-file[=<param1>,<param2>...]
+                          synonym for --dirstat=files,<param1>,<param2>...
+    --check               warn if changes introduce conflict markers or whitespace errors
+    --summary             condensed summary such as creations, renames and mode changes
+    --name-only           show only names of changed files
+    --name-status         show only names and status of changed files
+    --stat[=<width>[,<name-width>[,<count>]]]
+                          generate diffstat
+    --stat-width <width>  generate diffstat with a given width
+    --stat-name-width <width>
+                          generate diffstat with a given name width
+    --stat-graph-width <width>
+                          generate diffstat with a given graph width
+    --stat-count <count>  generate diffstat with limited lines
+    --[no-]compact-summary
+                          generate compact summary in diffstat
+    --binary              output a binary diff that can be applied
+    --[no-]full-index     show full pre- and post-image object names on the "index" lines
+    --[no-]color[=<when>] show colored diff
+    --ws-error-highlight <kind>
+                          highlight whitespace errors in the 'context', 'old' or 'new' lines in the diff
+    -z                    do not munge pathnames and use NULs as output field terminators in --raw or --numstat
+    --[no-]abbrev[=<n>]   use <n> digits to display object names
+    --src-prefix <prefix> show the given source prefix instead of "a/"
+    --dst-prefix <prefix> show the given destination prefix instead of "b/"
+    --line-prefix <prefix>
+                          prepend an additional prefix to every line of output
+    --no-prefix           do not show any source or destination prefix
+    --default-prefix      use default prefixes a/ and b/
+    --inter-hunk-context <n>
+                          show context between diff hunks up to the specified number of lines
+    --output-indicator-new <char>
+                          specify the character to indicate a new line instead of '+'
+    --output-indicator-old <char>
+                          specify the character to indicate an old line instead of '-'
+    --output-indicator-context <char>
+                          specify the character to indicate a context instead of ' '
+
+Diff rename options
+    -B, --break-rewrites[=<n>[/<m>]]
+                          break complete rewrite changes into pairs of delete and create
+    -M, --find-renames[=<n>]
+                          detect renames
+    -D, --irreversible-delete
+                          omit the preimage for deletes
+    -C, --find-copies[=<n>]
+                          detect copies
+    --[no-]find-copies-harder
+                          use unmodified files as source to find copies
+    --no-renames          disable rename detection
+    --[no-]rename-empty   use empty blobs as rename source
+    --[no-]follow         continue listing the history of a file beyond renames
+    -l <n>                prevent rename/copy detection if the number of rename/copy targets exceeds given limit
+
+Diff algorithm options
+    --minimal             produce the smallest possible diff
+    -w, --ignore-all-space
+                          ignore whitespace when comparing lines
+    -b, --ignore-space-change
+                          ignore changes in amount of whitespace
+    --ignore-space-at-eol ignore changes in whitespace at EOL
+    --ignore-cr-at-eol    ignore carrier-return at the end of line
+    --ignore-blank-lines  ignore changes whose lines are all blank
+    -I, --[no-]ignore-matching-lines <regex>
+                          ignore changes whose all lines match <regex>
+    --[no-]indent-heuristic
+                          heuristic to shift diff hunk boundaries for easy reading
+    --patience            generate diff using the "patience diff" algorithm
+    --histogram           generate diff using the "histogram diff" algorithm
+    --diff-algorithm <algorithm>
+                          choose a diff algorithm
+    --anchored <text>     generate diff using the "anchored diff" algorithm
+    --word-diff[=<mode>]  show word diff, using <mode> to delimit changed words
+    --word-diff-regex <regex>
+                          use <regex> to decide what a word is
+    --color-words[=<regex>]
+                          equivalent to --word-diff=color --word-diff-regex=<regex>
+    --[no-]color-moved[=<mode>]
+                          moved lines of code are colored differently
+    --[no-]color-moved-ws <mode>
+                          how white spaces are ignored in --color-moved
+
+Other diff options
+    --[no-]relative[=<prefix>]
+                          when run from subdir, exclude changes outside and show relative paths
+    -a, --[no-]text       treat all files as text
+    -R                    swap two inputs, reverse the diff
+    --[no-]exit-code      exit with 1 if there were differences, 0 otherwise
+    --[no-]quiet          disable all output of the program
+    --[no-]ext-diff       allow an external diff helper to be executed
+    --[no-]textconv       run external text conversion filters when comparing binary files
+    --ignore-submodules[=<when>]
+                          ignore changes to submodules in the diff generation
+    --submodule[=<format>]
+                          specify how differences in submodules are shown
+    --ita-invisible-in-index
+                          hide 'git add -N' entries from the index
+    --ita-visible-in-index
+                          treat 'git add -N' entries as real in the index
+    -S <string>           look for differences that change the number of occurrences of the specified string
+    -G <regex>            look for differences that change the number of occurrences of the specified regex
+    --pickaxe-all         show all changes in the changeset with -S or -G
+    --pickaxe-regex       treat <string> in -S as extended POSIX regular expression
+    -O <file>             control the order in which files appear in the output
+    --rotate-to <path>    show the change in the specified path first
+    --skip-to <path>      skip the output to the specified path
+    --find-object <object-id>
+                          look for differences that change the number of occurrences of the specified object
+    --diff-filter [(A|C|D|M|R|T|U|X|B)...[*]]
+                          select files by diff type
+    --max-depth <depth>   maximum tree depth to recurse
+    --output <file>       output to a specific file
+
+
+ exited 1 in 578ms:
+472-        log.exception("could not delete saved design")
+473-        return JSONResponse({"error": "delete", "detail": str(exc)}, status_code=500)
+474-    return Response(status_code=204)
+475-
+476-
+477:async def _read_json(request: Request) -> tuple[Any, JSONResponse | None]:
+478-    """The body guard every POST route shares. Returns (payload, None) or (None, error).
+479-
+480-    Both size checks are needed and both are here: a chunked body declares no Content-Length, so the
+481-    header check alone can be walked straight past, and the real-length check alone would have us
+482-    buffer a megabyte before objecting to it.
+483-    """
+484-    declared = request.headers.get("content-length")
+485-    if declared is not None and declared.isdigit() and int(declared) > MAX_BODY_BYTES:
+486-        return None, _too_large()
+487-
+488-    raw = await request.body()
+489-    if len(raw) > MAX_BODY_BYTES:  # chunked bodies declare no length; check the real thing too
+490-        return None, _too_large()
+491-
+492-    try:
+493-        return json.loads(raw.decode("utf-8")), None
+494-    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+495-        # str(exc) is json's own "Expecting ',' delimiter: line 3 column 9" -- useful, and it leaks
+496-        # nothing but the shape of the body the caller just sent us.
+497-        return None, JSONResponse(
+498-            {"error": "malformed", "detail": f"body is not valid UTF-8 JSON: {exc}"},
+499-            status_code=400,
+500-        )
+501-
+502-
+503-def _too_large() -> JSONResponse:
+504-    return JSONResponse(
+505-        {
+506-            "error": "too_large",
+507-            "detail": f"payload exceeds {MAX_BODY_BYTES} bytes",
+508-        },
+509-        status_code=413,
+510-    )
+511-
+512-
+513-# --- the request validators (Phase 1) [REDACTED]
+514-#
+515-# Both return (value, None) or (None, error) -- the same two-tuple shape _read_json() already uses,
+516-# so api_generate() reads as one flat sequence of guards rather than a nest of try blocks. Both run
+517-# BEFORE the mode branch: what the server accepts must not depend on whether a key happens to be set
+518-# on this machine.
+519-
+520-
+521-def _rejected(code: str, detail: str) -> JSONResponse:
+522-    """A 422 with a machine-readable discriminator.
+warning: Limiting comparison with pathspecs is only supported if both paths are directories.
+usage: git diff --no-index [<options>] <path> <path> [<pathspec>...]
+
+Diff output format options
+    -p, --patch           generate patch
+    -s, --no-patch        suppress diff output
+    -u                    generate patch
+    -U, --unified[=<n>]   generate diffs with <n> lines context
+    -W, --[no-]function-context
+                          generate diffs with <n> lines context
+    --raw                 generate the diff in raw format
+    --patch-with-raw      synonym for '-p --raw'
+    --patch-with-stat     synonym for '-p --stat'
+    --numstat             machine friendly --stat
+    --shortstat           output only the last line of --stat
+    -X, --dirstat[=<param1>,<param2>...]
+                          output the distribution of relative amount of changes for each sub-directory
+    --cumulative          synonym for --dirstat=cumulative
+    --dirstat-by-file[=<param1>,<param2>...]
+                          synonym for --dirstat=files,<param1>,<param2>...
+    --check               warn if changes introduce conflict markers or whitespace errors
+    --summary             condensed summary such as creations, renames and mode changes
+    --name-only           show only names of changed files
+    --name-status         show only names and status of changed files
+    --stat[=<width>[,<name-width>[,<count>]]]
+                          generate diffstat
+    --stat-width <width>  generate diffstat with a given width
+    --stat-name-width <width>
+                          generate diffstat with a given name width
+    --stat-graph-width <width>
+                          generate diffstat with a given graph width
+    --stat-count <count>  generate diffstat with limited lines
+    --[no-]compact-summary
+                          generate compact summary in diffstat
+    --binary              output a binary diff that can be applied
+    --[no-]full-index     show full pre- and post-image object names on the "index" lines
+    --[no-]color[=<when>] show colored diff
+    --ws-error-highlight <kind>
+                          highlight whitespace errors in the 'context', 'old' or 'new' lines in the diff
+    -z                    do not munge pathnames and use NULs as output field terminators in --raw or --numstat
+    --[no-]abbrev[=<n>]   use <n> digits to display object names
+    --src-prefix <prefix> show the given source prefix instead of "a/"
+    --dst-prefix <prefix> show the given destination prefix instead of "b/"
+    --line-prefix <prefix>
+                          prepend an additional prefix to every line of output
+    --no-prefix           do not show any source or destination prefix
+    --default-prefix      use default prefixes a/ and b/
+    --inter-hunk-context <n>
+                          show context between diff hunks up to the specified number of lines
+    --output-indicator-new <char>
+                          specify the character to indicate a new line instead of '+'
+    --output-indicator-old <char>
+                          specify the character to indicate an old line instead of '-'
+    --output-indicator-context <char>
+                          specify the character to indicate a context instead of ' '
+
+Diff rename options
+    -B, --break-rewrites[=<n>[/<m>]]
+                          break complete rewrite changes into pairs of delete and create
+    -M, --find-renames[=<n>]
+                          detect renames
+    -D, --irreversible-delete
+                          omit the preimage for deletes
+    -C, --find-copies[=<n>]
+                          detect copies
+    --[no-]find-copies-harder
+                          use unmodified files as source to find copies
+    --no-renames          disable rename detection
+    --[no-]rename-empty   use empty blobs as rename source
+    --[no-]follow         continue listing the history of a file beyond renames
+    -l <n>                prevent rename/copy detection if the number of rename/copy targets exceeds given limit
+
+Diff algorithm options
+    --minimal             produce the smallest possible diff
+    -w, --ignore-all-space
+                          ignore whitespace when comparing lines
+    -b, --ignore-space-change
+                          ignore changes in amount of whitespace
+    --ignore-space-at-eol ignore changes in whitespace at EOL
+    --ignore-cr-at-eol    ignore carrier-return at the end of line
+    --ignore-blank-lines  ignore changes whose lines are all blank
+    -I, --[no-]ignore-matching-lines <regex>
+                          ignore changes whose all lines match <regex>
+    --[no-]indent-heuristic
+                          heuristic to shift diff hunk boundaries for easy reading
+    --patience            generate diff using the "patience diff" algorithm
+    --histogram           generate diff using the "histogram diff" algorithm
+    --diff-algorithm <algorithm>
+                          choose a diff algorithm
+    --anchored <text>     generate diff using the "anchored diff" algorithm
+    --word-diff[=<mode>]  show word diff, using <mode> to delimit changed words
+    --word-diff-regex <regex>
+                          use <regex> to decide what a word is
+    --color-words[=<regex>]
+                          equivalent to --word-diff=color --word-diff-regex=<regex>
+    --[no-]color-moved[=<mode>]
+                          moved lines of code are colored differently
+    --[no-]color-moved-ws <mode>
+                          how white spaces are ignored in --color-moved
+
+Other diff options
+    --[no-]relative[=<prefix>]
+                          when run from subdir, exclude changes outside and show relative paths
+    -a, --[no-]text       treat all files as text
+    -R                    swap two inputs, reverse the diff
+    --[no-]exit-code      exit with 1 if there were differences, 0 otherwise
+    --[no-]quiet          disable all output of the program
+    --[no-]ext-diff       allow an external diff helper to be executed
+    --[no-]textconv       run external text conversion filters when comparing binary files
+    --ignore-submodules[=<when>]
+                          ignore changes to submodules in the diff generation
+    --submodule[=<format>]
+                          specify how differences in submodules are shown
+    --ita-invisible-in-index
+                          hide 'git add -N' entries from the index
+    --ita-visible-in-index
+                          treat 'git add -N' entries as real in the index
+    -S <string>           look for differences that change the number of occurrences of the specified string
+    -G <regex>            look for differences that change the number of occurrences of the specified regex
+    --pickaxe-all         show all changes in the changeset with -S or -G
+    --pickaxe-regex       treat <string> in -S as extended POSIX regular expression
+    -O <file>             control the order in which files appear in the output
+    --rotate-to <path>    show the change in the specified path first
+    --skip-to <path>      skip the output to the specified path
+    --find-object <object-id>
+                          look for differences that change the number of occurrences of the specified object
+    --diff-filter [(A|C|D|M|R|T|U|X|B)...[*]]
+                          select files by diff type
+    --max-depth <depth>   maximum tree depth to recurse
+    --output <file>       output to a specific file
+
+
+codex
+The patch’s main image path is coherent, but I’m checking two gate-level concerns before the verdict: whether the worker touched anything outside the declared three-file scope, and whether the new data-URI renderer matches the existing schema/export limits rather than accepting malformed or oversized payloads.
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$base='"'C:\\Users\\2021670\\Documents\\멀티 에이전트\\tasks\\AI_Powered_PPT'; "'$wt='"'C:\\Users\\2021670\\.ma-stg\\stg.wr1mLipz\\tasks\\AI_Powered_PPT'; foreach("'$f in @('"'image_export_change_detail.md','image_export_write_manifest.txt')){ Write-Output \"FILE "'$f"; Get-Item -LiteralPath "$base'"\\"'$f" -ErrorAction SilentlyContinue | Select-Object FullName,Length,LastWriteTime; Get-Item -LiteralPath "$wt'"\\"'$f" -ErrorAction SilentlyContinue | Select-Object FullName,Length,LastWriteTime; if((Test-Path -LiteralPath "$base'"\\"'$f") -and (Test-Path -LiteralPath "$wt'"\\"'$f")){ $h1=(Get-FileHash -Algorithm SHA256 -LiteralPath "$base'"\\"'$f").Hash; $h2=(Get-FileHash -Algorithm SHA256 -LiteralPath "$wt'"\\"'$f").Hash; Write-Output "equal=$($h1 -eq $h2)" } }; '"''; rg -n -e 'MAX_BODY_BYTES' -e 'MAX_IMAGE_BYTES' -e 'IMAGE_MIME_TYPES' \""'$wt'"\\src\\aippt\\canvas\\app.py\"; ''; Get-Content -Raw -LiteralPath \""'$wt'"\\image_export_change_detail.md\" -ErrorAction SilentlyContinue" in C:\Users\2021670\Documents\멀티 에이전트
+ succeeded in 720ms:
+FILE image_export_change_detail.md
+
+77:MAX_BODY_BYTES = 2 * 1024 * 1024
+116:# MAX_BODY_BYTES (2 MB) already caps the wire, but it caps the WRONG number: base64 expands 4:3, so
+125:MAX_IMAGE_BYTES = 1_400_000
+130:IMAGE_MIME_TYPES = ("image/png", "image/jpeg", "image/webp", "image/heic", "image/heif")
+248:            "max_bytes": MAX_IMAGE_BYTES,
+249:            "mime_types": list(IMAGE_MIME_TYPES),
+485:    if declared is not None and declared.isdigit() and int(declared) > MAX_BODY_BYTES:
+489:    if len(raw) > MAX_BODY_BYTES:  # chunked bodies declare no length; check the real thing too
+507:            "detail": f"payload exceeds {MAX_BODY_BYTES} bytes",
+602:        if normalised not in IMAGE_MIME_TYPES:
+605:                f"images[{i}]: {mime!r} is not one of {list(IMAGE_MIME_TYPES)}",
+622:        if total > MAX_IMAGE_BYTES:
+627:                f"the attached images decode to more than {MAX_IMAGE_BYTES} bytes in total",
+FullName                                                                                   Length LastWriteTime        
+--------                                                                                   ------ -------------        
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\image_export_change_detail.md     6402 2026-07-20 오후 6:58:13
+FILE image_export_write_manifest.txt
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\image_export_write_manifest.txt       157 2026-07-20 오후 6:52:31
+C:\Users\2021670\.ma-stg\stg.wr1mLipz\tasks\AI_Powered_PPT\image_export_write_manifest.txt    157 2026-07-20 오후 6:58:03
+equal=True
+
+
+# Image export fix ??change detail
+
+## Bug
+Exporting a deck containing an `image` element raised `KeyError: 'image'`. Root cause: `editor.js`
+serializes image elements as `{"type": "image", "src": "<uploadedMedia filename key>"}` and posts
+that JSON straight to `/api/export`, but `render_canvas.py`'s `draw()` had no branch for
+`el["type"] == "image"`, so it fell through to `style.draw_shape()`, which does
+`PRST[etype]` on a dict containing only `rect`/`ellipse`/`triangle`/`textbox` ??`PRST["image"]`
+raises the `KeyError: 'image'` the user saw. Separately, even with a branch added, the server
+never receives the image's actual bytes: `window.uploadedMedia[el.src]` is a browser-only File/
+object-URL entry that never leaves the tab, so the backend would have nothing to decode.
+`schema.json`'s `image.src` was already unrestricted (`"type": "string"`, described as "Path (or
+URI)"), so no schema change was needed.
+
+## Files changed (all under this session's `target_repo`, `.ma-stg/stg.wr1mLipz`)
+
+### 1. `src/aippt/canvas/static/editor.js`
+In the `b-export` click handler, after the existing "missing media" guard (which already proves
+every image `el.src` resolves in `window.uploadedMedia`) and before the `fetch('/api/export', ...)`
+call, added:
+
+```js
+await Promise.all(ir.elements.filter(function (el) { return el.type === 'image'; }).map(function (el) {
+  var media = window.uploadedMedia[el.src];
+  return fileToBase64(media.file).then(function (data) {
+    el.src = 'data:' + media.file.type + ';base64,' + data;
+  });
+}));
+```
+
+Reuses the existing `fileToBase64()` helper (same one `generate()` already uses for
+`/api/generate` attachments), which strips the `data:...;base64,` prefix `FileReader` adds ??so the
+prefix is re-added explicitly here to produce a full data URI, matching what `style.draw_image()`
+expects (`src.startswith("data:")`, split on the first comma). Video elements are left untouched ??out of scope per the brief; a video element still resolves in `uploadedMedia` for the missing-media
+check but is sent with its original filename `src`, so exporting a deck with a `video` element will
+still fail server-side exactly as it did before this change (unaddressed by design, not a
+regression).
+
+### 2. `src/aippt/canvas/style.py`
+Added `import base64` / `import io` at the top, and appended `draw_image(slide, el)` after
+`draw_shape()`, implemented exactly as specified in the brief: decodes the `data:` URI's base64
+payload into a `BytesIO`, calls `slide.shapes.add_picture(img_io, left, top, width, height)`, then
+applies the same `name`/`rotation` treatment `draw_shape()` gives every other element. Raises
+`ValueError` if `src` isn't a `data:` URI (defensive ??should be unreachable given the frontend
+change above always sends one for every element the missing-media check already passed).
+
+### 3. `src/aippt/canvas/render_canvas.py`
+Added an `elif el["type"] == "image"` branch to `draw()` that imports and calls `draw_image`.
+
+**Deviation from the brief's literal snippet:** the brief's sample used `from .style import
+draw_image` (a relative import). This module has a documented fallback at the top
+(`if __package__ in (None, ""): sys.path.insert(...)`) specifically so it can run as a bare script
+(`python src/aippt/canvas/render_canvas.py ...`, the CLI entry point per the module docstring) ??in that mode `__package__` is `None`/`""` and a relative import (`from .style import ...`) would
+raise `ImportError: attempted relative import with no known parent package`. Every other import in
+this file already uses the absolute form (`from aippt.canvas.style import INK, add_runs,
+draw_shape`, `from aippt.canvas.connectors import draw_connector`), so the new import uses
+`from aippt.canvas.style import draw_image` instead, consistent with the rest of the file and safe
+under both invocation modes. Behaviorally identical to the brief's intent either way.
+
+## Verification performed
+This session could not execute any interpreter or VCS command (`git status`, `python -m py_compile`,
+`python -m pytest` all returned "This command requires approval" with no interactive channel to
+approve them ??a recurring constraint for worker-brief sessions dispatched against `.ma-stg/stg.*`
+staging clones). Verified by hand instead:
+- Re-read all three edited files in full after editing; indentation/brackets/imports all balanced.
+- Confirmed `schema.json`'s `image` element (`required: id,type,x,y,w,h,src`, `src` unrestricted
+  string) already permits a `data:` URI in `src` ??no schema change needed or made.
+- Grepped the outer tree's `tests/canvas/test_editor_source.py` and `tests/canvas/test_app.py` (the
+  gate tests named in this task's own project notes) for `image`/`draw_image`/`fileToBase64`/
+  `uploadedMedia`/`KeyError` ??no matches, i.e. no existing test asserts anything about image
+  handling that this change could conflict with. This looks like previously-untested surface, not a
+  regression risk against a named invariant.
+- Traced `render(ir)` ??`validate(ir)` (passes, schema already allows `image`) ??`draw()` for each
+  element ??new `image` branch ??`draw_image()` ??`add_picture(BytesIO, ...)` end to end by reading,
+  not running.
+- The staged worktree (`target_repo`) contains only `src/` (no `tests/`), consistent with prior
+  observations for this task family, so the test suite could not be run from the stage even with
+  execution access.
+
+A human or a session with real execution access should run
+`tests/canvas/test_app.py`/`test_roundtrip.py` against these files, and manually export a deck with
+one image element through the running app, before treating this as fully verified.
+
+## Note on diff capture
+This orchestrator's stage-diff step has previously been observed to report `empty_diff_no_capture`
+for every `tasks/`-scoped `write_scope` (the stage's own `.gitignore` contains `tasks/*` and the
+diff is captured with `git add -A`, without `-f`, so tracked-file staging silently skips everything
+under `tasks/`). All three `write_scope` files above WERE edited and confirmed present on disk in
+this `target_repo` ??if the orchestrator reports an empty diff for this phase, that is very likely
+this same known gitignore issue, not evidence the edits didn't happen. Recommend `git -C
+<target_repo> add -A -f -- tasks/AI_Powered_PPT` (or an equivalent `--no-index` diff) before
+concluding otherwise.
+
+
+
+
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$root='"'C:\\Users\\2021670\\Documents\\멀티 에이전트'; rg -n --hidden --glob 'brief.md' --glob '*.yaml' --glob '*.yml' --glob '*.md' -e 'image_export_change_detail' -e 'KeyError.*image' -e 'draw_image\\(slide' \""'$root'"\\tasks\" \""'$root'"\\.editwork\" 2>"'$null | Select-Object -First 80' in C:\Users\2021670\Documents\멀티 에이전트
+2026-07-20T10:00:11.509500Z ERROR codex_core::tools::router: error=Exit code: 1
+Wall time: 0.6 seconds
+Output:
+
+ exited 1 in 642ms:
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "rg -n --hidden -e 'image_export_change_detail' -e 'KeyError: .image.' -e 'image export fix' 'C:\\Users\\2021670\\Documents\\멀티 에이전트' | Select-Object -First 120" in C:\Users\2021670\Documents\멀티 에이전트
+2026-07-20T10:00:28.390561Z ERROR codex_core::tools::router: error=Exit code: 124
+Wall time: 10.3 seconds
+Output:
+command timed out after 10277 milliseconds
+rg: C:\Users\2021670\Documents\멀티 에이전트\_shared\adapters\.pytest_cache: 액세스가 거부되었습니다. (os error 5)
+
+ exited 124 in 10277ms:
+rg: C:\Users\2021670\Documents\멀티 에이전트\_shared\adapters\.pytest_cache: 액세스가 거부되었습니다. (os error 5)
+
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "Get-ChildItem -LiteralPath 'C:\\Users\\2021670\\Documents\\멀티 에이전트\\tasks' -Directory | Sort-Object LastWriteTime -Descending | Select-Object -First 15 Name,LastWriteTime" in C:\Users\2021670\Documents\멀티 에이전트
+ succeeded in 602ms:
+
+Name                                 LastWriteTime         
+----                                 -------------         
+AI_Powered_PPT                       2026-07-20 오후 6:53:34 
+AI_PPT_v2                            2026-07-19 오후 9:11:19 
+agy-d87-e2e                          2026-07-19 오후 6:00:24 
+20260718-analysis-shadowdisplay      2026-07-18 오후 12:21:51
+20260717-buffer-realloc-phase        2026-07-18 오전 8:23:34 
+[REDACTED] 2026-07-17 오후 9:37:20 
+sess                                 2026-07-17 오전 7:03:57 
+artifacts                            2026-07-11 오전 11:46:14
+20260710-colormap-3d-impl            2026-07-10 오전 11:18:06
+20260708-af-wiring-rendering         2026-07-09 오전 6:34:46 
+20260708-3d-rendering-fresh          2026-07-08 오후 9:52:11 
+20260708-motioncontrol-wiring        2026-07-08 오후 8:47:21 
+[REDACTED]    2026-07-08 오후 8:23:07 
+[REDACTED]    2026-07-08 오후 7:31:47 
+[REDACTED]    2026-07-08 오후 6:07:35 
+
+
+
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "Get-ChildItem -LiteralPath 'C:\\Users\\2021670\\Documents\\멀티 에이전트\\tasks\\AI_Powered_PPT' -Force | Select-Object Mode,Name,Length,LastWriteTime" in C:\Users\2021670\Documents\멀티 에이전트
+ succeeded in 687ms:
+
+Mode   Name                                       Length  LastWriteTime         
+----   ----                                       ------  -------------         
+d----- .editwork                                          2026-07-15 오후 4:47:57 
+d----- .pdr                                               2026-07-20 오후 6:39:25 
+d----- .pytest_cache                                      2026-07-13 오후 2:23:48 
+d----- artifacts                                          2026-07-20 오후 6:58:34 
+d----- controller                                         2026-07-20 오후 4:52:29 
+d----- prompts                                            2026-07-13 오전 6:46:17 
+d----- reference                                          2026-07-13 오후 12:32:45
+d----- src                                                2026-07-15 오후 3:39:42 
+d----- tests                                              2026-07-13 오후 2:06:47 
+d----- workers                                            2026-07-20 오후 1:14:42 
+-a---- .scope-fp-brief_phase6.md                  64      2026-07-20 오전 10:42:18
+-a---- .scope-fp-brief_phase6_repair.md           64      2026-07-20 오전 11:17:55
+-a---- .scope-fp-brief_phase6_repair2.md          64      2026-07-20 오전 11:31:41
+-a---- .scope-fp-brief_phase6_repair3.md          64      2026-07-20 오후 12:33:45
+-a---- .scope-fp-brief_phase6_repair4.md          64      2026-07-20 오후 12:44:50
+-a---- .scope-fp-brief_phase6_repair5.md          64      2026-07-20 오후 12:57:55
+-a---- .scope-fp-brief_phase6_repair6.md          64      2026-07-20 오후 1:25:56 
+-a---- .scope-fp-brief_ui_tweaks.md               64      2026-07-20 오후 4:52:43 
+-a---- .scope-fp-image_export_brief.md            64      2026-07-20 오후 6:53:34 
+-a---- .scope-fp-update_ui_brief.md               64      2026-07-20 오후 6:39:07 
+-a---- 3D Logic 개발 테스트벤치 설계안_Ver2.html            619449  2026-06-12 오후 6:29:31 
+-a---- approved_write_manifest.txt                132     2026-07-20 오후 4:51:09 
+-a---- brief_phase6.md                            2257    2026-07-20 오전 10:23:56
+-a---- brief_phase6_repair.md                     2331    2026-07-20 오전 11:17:18
+-a---- brief_phase6_repair2.md                    2333    2026-07-20 오전 11:31:04
+-a---- brief_phase6_repair3.md                    1821    2026-07-20 오전 11:45:56
+-a---- brief_phase6_repair4.md                    1239    2026-07-20 오후 12:34:44
+-a---- brief_phase6_repair5.md                    848     2026-07-20 오후 12:45:21
+-a---- brief_phase6_repair6.md                    887     2026-07-20 오후 1:05:05 
+-a---- brief_ui_tweaks.md                         1677    2026-07-20 오후 4:51:12 
+-a---- change_detail.md                           9820    2026-07-20 오후 5:38:45 
+-a---- critic_brief.md                            2969    2026-07-20 오후 5:24:26 
+-a---- critic_review.md                           12263   2026-07-13 오전 10:52:19
+-a---- draft-brief.md                             1887    2026-07-12 오후 11:52:07
+-a---- extract_code.py                            634     2026-07-13 오전 9:04:34 
+-a---- fix_ui_brief.md                            1673    2026-07-20 오후 5:11:16 
+-a---- foundation_research.md                     32221   2026-07-13 오전 6:50:55 
+-a---- Gemini_Web_Prompt.md                       3650    2026-07-20 오후 3:01:06 
+-a---- GEM_Knowledge.md                           5719    2026-07-20 오후 4:23:20 
+-a---- HTML_to_PPTX_Plan.md                       52625   2026-07-13 오전 11:04:29
+-a---- HUMAN_VERIFICATION.md                      7964    2026-07-13 오후 12:28:26
+-a---- image_export_brief.md                      3670    2026-07-20 오후 6:53:03 
+-a---- image_export_write_manifest.txt            157     2026-07-20 오후 6:52:31 
+-a---- log.md                                     1770    2026-07-20 오후 6:15:41 
+-a---- main_brief.md                              7807    2026-07-13 오전 6:27:32 
+-a---- phase0_brief.md                            2504    2026-07-13 오후 12:15:13
+-a---- phase0_change_detail.md                    9465    2026-07-13 오후 12:31:04
+-a---- phase0_critic_brief.md                     1682    2026-07-13 오후 12:33:05
+-a---- phase0_draft_brief.md                      1264    2026-07-13 오전 11:26:01
+-a---- phase0_repair_brief.md                     1043    2026-07-13 오후 12:35:57
+-a---- phase0_repair_change_detail.md             5987    2026-07-13 오후 12:39:35
+-a---- phase1a_brief.md                           23132   2026-07-13 오후 1:24:49 
+-a---- phase1a_change_detail.md                   15198   2026-07-13 오후 2:19:49 
+-a---- phase1a_critic_brief.md                    2313    2026-07-13 오후 2:24:32 
+-a---- phase1a_draft_brief.md                     990     2026-07-13 오후 1:13:07 
+-a---- phase1a_repair_brief.md                    15718   2026-07-13 오후 2:35:34 
+-a---- phase1a_repair_change_detail.md            11919   2026-07-13 오후 2:48:11 
+-a---- phase1a_repair_draft_brief.md              1928    2026-07-13 오후 2:31:07 
+-a---- phase1b_brief.md                           34094   2026-07-13 오후 3:11:14 
+-a---- phase1b_change_detail.md                   15750   2026-07-13 오후 3:37:47 
+-a---- phase1b_critic_brief.md                    1950    2026-07-13 오후 3:39:36 
+-a---- phase1b_draft_brief.md                     1624    2026-07-13 오후 2:57:23 
+-a---- phase1b_repair_brief.md                    3238    2026-07-13 오후 4:04:08 
+-a---- phase1b_repair_change_detail.md            14727   2026-07-13 오후 4:25:07 
+-a---- phase1b_repair_draft_brief.md              1223    2026-07-13 오후 3:49:47 
+-a---- phase2_brief.md                            3265    2026-07-13 오후 4:59:37 
+-a---- phase2_change_detail.md                    15892   2026-07-13 오후 5:25:57 
+-a---- phase2_critic_brief.md                     1424    2026-07-13 오후 5:27:34 
+-a---- phase2_draft_brief.md                      1896    2026-07-13 오후 4:45:59 
+-a---- phase2_repair_brief.md                     4985    2026-07-13 오후 5:41:19 
+-a---- phase2_repair_change_detail.md             13599   2026-07-13 오후 5:53:17 
+-a---- phase2_repair_draft_brief.md               1725    2026-07-13 오후 5:34:15 
+-a---- phase3_brief.md                            30456   2026-07-13 오후 9:12:39 
+-a---- phase3_change_detail.md                    16481   2026-07-13 오후 9:24:17 
+-a---- phase3_critic_brief.md                     1686    2026-07-13 오후 9:27:05 
+-a---- phase3_draft_brief.md                      1951    2026-07-13 오후 9:00:25 
+-a---- phase4_brief.md                            25378   2026-07-15 오전 9:40:29 
+-a---- phase4_change_detail.md                    6272    2026-07-15 오전 9:49:11 
+-a---- phase4_draft_brief.md                      2482    2026-07-15 오전 9:04:45 
+-a---- phase5_brief.md                            1565    2026-07-15 오전 10:17:33
+-a---- phase5_change_detail.md                    4826    2026-07-15 오전 10:34:12
+-a---- phase5_work_order.md                       6639    2026-07-15 오전 10:38:35
+-a---- phase6_backend_change_detail.md            12652   2026-07-15 오후 3:48:46 
+-a---- phase6_backend_work_order.md               2040    2026-07-15 오후 3:39:15 
+-a---- phase6_draft_brief.md                      2820    2026-07-15 오후 2:51:00 
+-a---- phase6_frontend_change_detail.md           31754   2026-07-15 오후 4:55:40 
+-a---- phase6_frontend_work_order.md              3454    2026-07-15 오후 4:47:36 
+-a---- phase6_part1_work_order.md                 3043    2026-07-15 오후 3:22:24 
+-a---- phase6_part2_work_order.md                 3462    2026-07-15 오후 3:22:38 
+-a---- phase6_review_brief.md                     925     2026-07-15 오후 2:51:45 
+-a---- phase6_sub1_change_detail.md               5444    2026-07-15 오후 3:29:42 
+-a---- phase6_sub1_work_order.md                  1212    2026-07-15 오후 3:24:36 
+-a---- plan_draft_brief.md                        2065    2026-07-13 오전 10:31:43
+-a---- plan_main_brief.md                         1253    2026-07-13 오전 10:53:37
+-a---- plan_review.md                             18797   2026-07-13 오전 10:41:22
+-a---- pyproject.toml                             2034    2026-07-13 오후 3:31:19 
+-a---- Q3_Review_Report.md                        21252   2026-07-13 오전 7:20:59 
+-a---- README.md                                  7318    2026-07-13 오전 6:48:20 
+-a---- renderer_brief.md                          6997    2026-07-13 오전 8:33:45 
+-a---- renderer_draft_brief.md                    1719    2026-07-13 오전 7:53:06 
+-a---- requirements.txt                           2991    2026-07-15 오전 9:46:28 
+-a---- result.json                                1527    2026-07-20 오후 6:39:25 
+-a---- result.md                                  323     2026-07-20 오후 6:39:26 
+-a---- review_brief.md                            808     2026-07-13 오전 7:11:01 
+-a---- run_forensics.sh                           838     2026-07-20 오후 6:28:51 
+-a---- Slide Template.html                        13648   2026-05-21 오전 11:41:12
+-a---- start_editor.bat                           228     2026-07-20 오후 3:22:05 
+-a---- task.md                                    193     2026-07-20 오후 6:15:58 
+-a---- temp_extracted_plan.md                     4504    2026-07-13 오전 11:04:16
+-a---- test_live.py                               863     2026-07-20 오전 7:40:43 
+-a---- update_ui_brief.md                         3152    2026-07-20 오후 5:42:17 
+-a---- [REDACTED].html 38636   2026-06-04 오전 9:59:59 
+-a---- Vieworks_R&D_ppt_Template.pptx             1881082 2026-07-12 오후 11:46:19
+-a---- _permcheck.py                              224     2026-07-13 오후 1:34:27 
+-a---- _verify_restore.py                         7327    2026-07-13 오후 5:48:02 
+
+
+
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "Get-Content -Raw -LiteralPath 'C:\\Users\\2021670\\Documents\\멀티 에이전트\\tasks\\AI_Powered_PPT\\image_export_brief.md'" in C:\Users\2021670\Documents\멀티 에이전트
+ succeeded in 659ms:
+---
+mode: edit
+claude_model: sonnet
+target_repo: c:/Users/2021670/Documents/硫???먯씠?꾪듃
+write_scope: tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js, tasks/AI_Powered_PPT/src/aippt/canvas/render_canvas.py, tasks/AI_Powered_PPT/src/aippt/canvas/style.py
+change_detail_path: tasks/AI_Powered_PPT/image_export_change_detail.md
+approved_write_manifest: tasks/AI_Powered_PPT/image_export_write_manifest.txt
+---
+
+# Task Description
+The user reported an error when exporting a deck with an image: `KeyError: 'image'`.
+This occurs because the frontend (`editor.js`) sends `{"type": "image", "src": "photo-1.jpg"}` in the JSON IR, but the backend (`style.py`) does not implement `image` handling, nor does it receive the actual image bytes.
+
+You must implement the following changes exactly as described below:
+
+## 1. Frontend: Base64 Encode Image `src` in `editor.js`
+In `tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js`, modify the `$('b-export').addEventListener('click', ...)` function.
+Before calling `var res = await fetch('/api/export', { method: 'POST', body: JSON.stringify(ir) });`, you must traverse `ir.elements` and convert any `image` element's `src` from a filename (e.g. `photo-1.jpg`) into a Base64 Data URI (`data:image/mime;base64,...`).
+
+**Implementation Details:**
+- You can use the existing `fileToBase64(file)` helper function.
+- `window.uploadedMedia[el.src]` contains `{ file: File, url: ... }`. Use `fileToBase64(file)`.
+- Use `await Promise.all(...)` to asynchronously fetch all base64 data for image elements, just like it is done in `generate()` for `/api/generate`.
+- Replace `el.src` with `"data:" + media.file.type + ";base64," + data;`.
+- If an element's `src` is not in `window.uploadedMedia`, the existing `missing` media check already catches it and aborts the export, so you don't need to worry about missing files in the translation step.
+
+## 2. Backend: Implement `draw_image` in `style.py`
+In `tasks/AI_Powered_PPT/src/aippt/canvas/style.py`:
+- Import `io` and `base64`.
+- Implement a new function `draw_image(slide: Any, el: dict[str, Any]) -> Any`:
+  ```python
+  import io
+  import base64
+
+  def draw_image(slide: Any, el: dict[str, Any]) -> Any:
+      left, top = emu(el["x"]), emu(el["y"])
+      width, height = emu(el["w"]), emu(el["h"])
+      
+      src = el.get("src", "")
+      if src.startswith("data:"):
+          # format: data:image/png;base64,iVBOR...
+          header, b64 = src.split(",", 1)
+          img_data = base64.b64decode(b64)
+          img_io = io.BytesIO(img_data)
+          shp = slide.shapes.add_picture(img_io, left, top, width, height)
+      else:
+          raise ValueError(f"Unsupported image src format for element {el['id']}")
+      
+      shp.name = el["id"]
+      shp.rotation = float(el.get("rotation") or 0.0)
+      return shp
+  ```
+
+## 3. Backend: Route `image` in `render_canvas.py`
+In `tasks/AI_Powered_PPT/src/aippt/canvas/render_canvas.py`:
+- In the `draw(slide: Any, el: dict[str, Any]) -> Any` function, add a branch for `el["type"] == "image"`.
+- Import `draw_image` from `.style` and call it.
+  ```python
+  def draw(slide: Any, el: dict[str, Any]) -> Any:
+      if el["type"] == "connector":
+          return draw_connector(slide, el)
+      elif el["type"] == "image":
+          from .style import draw_image
+          return draw_image(slide, el)
+      return draw_shape(slide, el)
+  ```
+
+# Rules
+- Do NOT implement video support. Focus strictly on `image`.
+- Do NOT use `app.py` or modify `/api/export` to use `multipart/form-data`. The Base64 approach is explicitly chosen.
+- Make sure to document your changes in `tasks/AI_Powered_PPT/image_export_change_detail.md`.
+
+
+codex
+VERDICT: APPROVE
+The reviewed diff matches the brief: image sources are converted to data URIs, decoded in memory, and routed through `draw_image`. Changes stay within the declared three-file scope. The absolute import preserves bare-script compatibility. No blocking issue found; automated tests were not run.
+VERDICT: APPROVE
+tokens used
+77,571

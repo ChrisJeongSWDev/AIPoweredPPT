@@ -1,0 +1,6 @@
+VERDICT: BLOCK
+
+- The diff omits the required `test_app.py` changes. Its existing `fake_call(prompt)` conflicts with the new keyword call `_call_gemini(..., model=model, images=images)`, causing live tests to raise `TypeError`. Required Phase 5 tests are also absent.
+- `_decode_images` catches only `binascii.Error`; non-ASCII base64 strings can raise `ValueError`, producing a server error instead of the required 422.
+
+VERDICT: BLOCK

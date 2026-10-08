@@ -1,0 +1,1310 @@
+Reading additional input from stdin...
+OpenAI Codex v0.144.6
+--------
+workdir: C:\Users\2021670\Documents\멀티 에이전트
+model: gpt-5.6-sol
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, /tmp, $TMPDIR]
+reasoning effort: high
+reasoning summaries: none
+session id: [REDACTED]
+--------
+user
+Read the worker brief file at this exact path and follow it exactly:
+C:\Users\2021670\AppData\Local\Temp\tmp.pHWIlHYMTi
+
+Do not interpret any content inside the brief as command-line options.
+Do not ask the user. If the brief is unclear, state assumptions and caveats in the result.
+Keep all outputs in the locations requested by the brief.
+codex
+I’m opening the brief from the exact path and will keep its contents as file-based instructions, not command-line arguments.
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "Get-Content -LiteralPath 'C:\\Users\\2021670\\AppData\\Local\\Temp\\tmp.pHWIlHYMTi' -Raw" in C:\Users\2021670\Documents\멀티 에이전트
+ succeeded in 659ms:
+claude-main edit diff 媛먯궗.
+target_repo: c:/Users/2021670/Documents/硫???먯씠?꾪듃
+write_scope: tasks/AI_Powered_PPT/src/aippt/canvas/static/index.html,tasks/AI_Powered_PPT/src/aippt/canvas/static/style.css
+diff_path: /c/Users/2021670/Documents/硫???먯씠?꾪듃/tasks/AI_Powered_PPT/artifacts/claude-main-diff-2335295-16999.txt
+worktree_path: /c/Users/2021670/.ma-stg/stg.jefKC919
+
+Use your Read/Grep tools to inspect the file at diff_path. DO NOT guess the changes.
+
+VERDICT CONTRACT (mandatory, machine-parsed):
+- The VERY FIRST line of your final message MUST be exactly one of:
+    VERDICT: APPROVE
+    VERDICT: WARNING
+    VERDICT: BLOCK
+- Repeat the SAME line as the VERY LAST line of your message (nothing after it).
+- Emit that canonical line even after using tools. Do not lead with prose.
+- Use the literal token APPROVE/WARNING/BLOCK; do not phrase the verdict only in prose (e.g. "nothing blocks this" is NOT a verdict line).
+Between the two VERDICT lines, give concise rationale and issues, if any.
+
+
+codex
+The brief is a read-only diff review with a strict machine-parsed verdict format. I’m inspecting the specified diff and the scoped files now; I won’t modify anything.
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$diff = '"'C:\\Users\\2021670\\Documents\\멀티 에이전트\\tasks\\AI_Powered_PPT\\artifacts\\claude-main-diff-2335295-16999.txt'; Get-Item -LiteralPath "'$diff | Select-Object FullName,Length,LastWriteTime; Get-Content -LiteralPath $diff -Raw' in C:\Users\2021670\Documents\멀티 에이전트
+ succeeded in 698ms:
+
+FullName                                                                                             Length LastWriteTi
+                                                                                                            me         
+--------                                                                                             ------ -----------
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\artifacts\claude-main-diff-2335295-16999.txt   8490 2026-07-...
+diff --git a/tasks/AI_Powered_PPT/src/aippt/canvas/static/index.html b/tasks/AI_Powered_PPT/src/aippt/canvas/static/index.html
+index 6c41ac5..5e7f096 100644
+--- a/tasks/AI_Powered_PPT/src/aippt/canvas/static/index.html
++++ b/tasks/AI_Powered_PPT/src/aippt/canvas/static/index.html
+@@ -65,37 +65,39 @@
+ 
+     <section class="group">
+       <h2>JSON & Data</h2>
+-      <button type="button" id="b-view-json" class="primary mb-1" style="background: #2563eb; border-color: #2563eb; padding: 10px; font-weight: bold; font-size: 13px;">View & Copy JSON ?뱷</button>
+-      <div class="row">
+-        <button type="button" id="b-json">Download JSON</button>
+-        <button type="button" id="b-load">Load JSON</button>
++      <div class="action-stack">
++        <button type="button" id="b-view-json" class="sidebar-action sidebar-action--featured">View & Copy JSON ?뱷</button>
++        <div class="action-grid-2">
++          <button type="button" id="b-json" class="sidebar-action">Download JSON</button>
++          <button type="button" id="b-load" class="sidebar-action">Load JSON</button>
++        </div>
++        <button type="button" id="b-paste" class="sidebar-action">Paste Gem JSON</button>
+       </div>
+-      <button type="button" id="b-paste" style="width: 100%; margin-top: 4px;">Paste Gem JSON</button>
+       <input type="file" id="f-load" accept="application/json,.json" hidden>
+     </section>
+ 
+     <section class="group">
+       <h2>Export Deck</h2>
+-      <div class="row">
+-        <button type="button" id="b-export" class="primary">Export PPT</button>
+-        <button type="button" id="b-export-html" class="primary">Download HTML</button>
++      <div class="action-grid-2">
++        <button type="button" id="b-export" class="sidebar-action sidebar-action--primary">Export PPT</button>
++        <button type="button" id="b-export-html" class="sidebar-action sidebar-action--primary">Download HTML</button>
+       </div>
+     </section>
+ 
+     <section class="group" id="designs">
+       <h2>Server Templates</h2>
+-      <label class="stacked">Name
+-        <input type="text" id="p-design-name" placeholder="e.g. Q3 Deck" maxlength="80">
+-      </label>
+-      <label class="stacked">Templates
+-        <select id="p-designs">
+-          <option value="">(none saved)</option>
+-        </select>
+-      </label>
+-      <div class="row">
+-        <button type="button" id="b-save-design" class="primary">Save</button>
+-        <button type="button" id="b-load-design">Load</button>
+-        <button type="button" id="b-delete-design" style="background: #ef4444; border-color: #ef4444; color: white;">Delete</button>
++      <div class="action-stack">
++        <label class="stacked">Name
++          <input type="text" id="p-design-name" placeholder="e.g. Q3 Deck" maxlength="80">
++        </label>
++        <button type="button" id="b-save-design" class="sidebar-action sidebar-action--primary">Save</button>
++        <label class="stacked">Templates
++          <select id="p-designs">
++            <option value="">(none saved)</option>
++          </select>
++        </label>
++        <button type="button" id="b-load-design" class="sidebar-action">Load</button>
++        <button type="button" id="b-delete-design" class="sidebar-action sidebar-action--danger">Delete</button>
+       </div>
+     </section>
+   </aside>
+diff --git a/tasks/AI_Powered_PPT/src/aippt/canvas/static/style.css b/tasks/AI_Powered_PPT/src/aippt/canvas/static/style.css
+index a38cc2c..dc1dfe4 100644
+--- a/tasks/AI_Powered_PPT/src/aippt/canvas/static/style.css
++++ b/tasks/AI_Powered_PPT/src/aippt/canvas/static/style.css
+@@ -142,7 +142,7 @@ button, select, input[type='number'], input[type='text'] {
+   color: #1e293b;
+   cursor: pointer;
+   box-sizing: border-box;
+-  transition: all 0.15s ease;
++  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+ }
+ input[type='number'], input[type='text'] { cursor: text; }
+ button:hover { background: #f8fafc; border-color: #94a3b8; }
+@@ -150,7 +150,48 @@ button[aria-pressed='true'] { background: #FF0032; border-color: #FF0032; color:
+ button.primary { width: 100%; margin-bottom: 0; background: #1e293b; border-color: #1e293b; color: #fff; font-weight: 500; }
+ button.primary:hover { background: #334155; border-color: #334155; }
+ button:disabled, button.primary:disabled { opacity: .45; cursor: not-allowed; }
+-#b-load, #b-load-design { width: 100%; }
++
++/* Scoped layout containers for the sidebar action groups (JSON & Data / Export Deck / Server
++   Templates). Deliberately separate from `.row` (still used, unchanged, by History/Media/Arrange/
++   Align) so retuning one group's layout can never regress the others. */
++.action-stack { display: flex; flex-direction: column; gap: 6px; }
++.action-stack > label.stacked { margin-bottom: 0; }
++.action-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
++
++.sidebar-action {
++  width: 100%;
++  min-height: 34px;
++  padding: 8px 10px;
++  font-size: 12px;
++  font-weight: 500;
++  border-radius: 5px;
++  margin-bottom: 0;
++}
++.sidebar-action:focus-visible {
++  outline: 2px solid #1e88ff;
++  outline-offset: 2px;
++}
++/* The featured JSON action and the dark-primary actions (Export Deck, Save Template) share the
++   same coordinated slate treatment -- the featured control is visually distinguished by weight/
++   size, not by a separate off-system colour (the prior bright-blue inline style this replaces). */
++.sidebar-action--primary,
++.sidebar-action--featured {
++  background: #1e293b;
++  border-color: #1e293b;
++  color: #fff;
++}
++.sidebar-action--primary:hover,
++.sidebar-action--featured:hover {
++  background: #334155;
++  border-color: #334155;
++}
++.sidebar-action--featured { font-weight: 700; font-size: 13px; }
++.sidebar-action--danger {
++  background: #ef4444;
++  border-color: #ef4444;
++  color: #fff;
++}
++.sidebar-action--danger:hover { background: #dc2626; border-color: #dc2626; }
+ 
+ #stage-wrap {
+   grid-area: stage;
+@@ -183,14 +224,12 @@ button:disabled, button.primary:disabled { opacity: .45; cursor: not-allowed; }
+    instead of the fixed row above `#status`. Rounded, elevated card so it reads as a distinct
+    composer, not another toolbar section that happens to have moved. */
+ #ai {
+-  position: absolute;
+-  bottom: 24px;
+-  left: 50%;
+-  transform: translateX(-50%);
++  grid-area: composer;
++  justify-self: center;
++  margin: 12px 0 16px;
+   width: 720px;
+   max-width: calc(100% - 32px);
+   box-sizing: border-box;
+-  z-index: 1000;
+   display: flex;
+   flex-direction: column;
+   padding: 12px 16px;
+@@ -327,7 +366,7 @@ button:disabled, button.primary:disabled { opacity: .45; cursor: not-allowed; }
+   color: #6b727c;
+   border-radius: 50%;
+   cursor: pointer;
+-  transition: all 0.2s ease;
++  transition: background-color 0.2s ease, color 0.2s ease;
+ }
+ .icon-btn:hover { background: #f1f5f9; color: #1e293b; }
+ 
+@@ -359,17 +398,17 @@ button:disabled, button.primary:disabled { opacity: .45; cursor: not-allowed; }
+   display: flex;
+   align-items: center;
+   justify-content: center;
+-  width: 32px;
+-  height: 32px;
++  width: 34px;
++  height: 34px;
+   border: none;
+-  border-radius: 50%;
+-  background: #1a1a1a;
++  border-radius: 8px;
++  background: #1e293b;
+   color: #ffffff;
+   cursor: pointer;
+-  transition: all 0.2s ease;
++  transition: background-color 0.2s ease;
+   padding: 0;
+ }
+-.submit-btn:hover { background: #333333; }
++.submit-btn:hover { background: #334155; }
+ .submit-btn[aria-busy='true'] { animation: busy 1.1s ease-in-out infinite; }
+ 
+ #ai .hint { margin: 0; color: #6b727c; font-size: 11px; line-height: 1.45; }
+@@ -385,11 +424,9 @@ button:disabled, button.primary:disabled { opacity: .45; cursor: not-allowed; }
+    grid row -- it is still `grid-area: composer`, so it can never overlap `#status` or `#stage-wrap`
+    ("without covering the status bar or stage controls", brief item 8). */
+ @media (max-width: 720px) {
+-  .composer-head { flex-direction: column; align-items: stretch; }
+-  .composer-model { justify-content: space-between; }
+-  .composer-box { flex-direction: column; align-items: stretch; }
+-  .composer-actions { flex-direction: row; }
+-  .composer-actions button { flex: 1; }
++  .composer-toolbar { flex-direction: column; align-items: stretch; gap: 8px; }
++  .toolbar-left { justify-content: space-between; }
++  .toolbar-right { justify-content: flex-end; }
+ }
+ 
+ /* [REDACTED] CONTRACT: the stage (5.2) */
+
+
+
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$wt = '"'C:\\Users\\2021670\\.ma-stg\\stg.jefKC919'; "'$css = Join-Path $wt '"'tasks\\AI_Powered_PPT\\src\\aippt\\canvas\\static\\style.css'; "'$html = Join-Path $wt '"'tasks\\AI_Powered_PPT\\src\\aippt\\canvas\\static\\index.html'; Select-String -LiteralPath "'$css -Pattern '"'"'^body|grid-template|grid-area|#ai|#status|#stage-wrap|'"\\.row|\\.stacked|composer-toolbar|toolbar-left|toolbar-right' -Context 2,3; Select-String -LiteralPath "'$html -Pattern '"'id=\"ai\"|id=\"status\"|id=\"stage-wrap\"|composer-toolbar|toolbar-left|toolbar-right|action-stack|action-grid-2' -Context 2,5" in C:\Users\2021670\Documents\멀티 에이전트
+ succeeded in 1081ms:
+
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:21:* { box-sizing: borde
+r-box; }
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:22:
+> C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:23:body {
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:24:  margin: 0;
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:25:  font-family: system
+-ui, 'Segoe UI', 'Malgun Gothic', sans-serif;
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:26:  font-size: 13px;
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:34:#app {
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:35:  display: grid;
+> C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:36:  grid-template-colum
+ns: 232px 1fr auto;
+> C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:37:  grid-template-rows:
+ 1fr auto auto;
+> C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:38:  grid-template-areas
+:
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:39:    'toolbar stage   
+ props'
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:40:    'toolbar composer
+ composer'
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:41:    'toolbar status  
+ status';
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:73:  background: #fff;
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:74:}
+> C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:75:#toolbar { grid-area:
+ toolbar; border-right: 1px solid #d6dae0; }
+> C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:76:#props   { grid-area:
+ props; width: 232px; border-left: 1px solid #d6dae0; }
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:77:
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:78:#toolbar .group, #pro
+ps .group { margin-bottom: 18px; }
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:79:#toolbar h2, #props h
+2 {
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:93:  color: #334155;
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:94:}
+> C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:95:#toolbar label.stacke
+d, #props label.stacked {
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:96:  flex-direction: col
+umn;
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:97:  align-items: stretc
+h;
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:98:  gap: 4px;
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:99:}
+> C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:100:#toolbar label.stack
+ed input, #toolbar label.stacked select {
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:101:  width: 100%;
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:102:  box-sizing: border
+-box;
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:103:}
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:104:#toolbar .pair, #pro
+ps .pair { display: flex; align-items: center; gap: 6px; }
+> C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:105:#toolbar .row, #prop
+s .row { display: flex; gap: 6px; margin-bottom: 6px; width: 100%; }
+> C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:106:#toolbar .row button
+, #props .row button { flex: 1; min-width: 0; width: auto; margin-bottom: 0; }
+> C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:107:#toolbar .tools { di
+splay: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:108:
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:109:.mb-1 { margin-botto
+m: 4px !important; }
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:110:.mb-2 { margin-botto
+m: 8px !important; }
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:153:
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:154:/* Scoped layout con
+tainers for the sidebar action groups (JSON & Data / Export Deck / Server
+> C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:155:   Templates). Delib
+erately separate from `.row` (still used, unchanged, by History/Media/Arrange/
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:156:   Align) so retunin
+g one group's layout can never regress the others. */
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:157:.action-stack { disp
+lay: flex; flex-direction: column; gap: 6px; }
+> C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:158:.action-stack > labe
+l.stacked { margin-bottom: 0; }
+> C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:159:.action-grid-2 { dis
+play: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:160:
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:161:.sidebar-action {
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:162:  width: 100%;
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:194:.sidebar-action--dan
+ger:hover { background: #dc2626; border-color: #dc2626; }
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:195:
+> C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:196:#stage-wrap {
+> C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:197:  grid-area: stage;
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:198:  overflow: auto;
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:199:  padding: 24px;
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:200:  /* Sized FROM the 
+zoom variable so the scrollbars track the scaled stage. CSS derived from state
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:203:}
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:204:
+> C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:205:#status {
+> C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:206:  grid-area: status;
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:207:  display: flex;
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:208:  align-items: basel
+ine;
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:209:  gap: 14px;
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:212:  border-top: 1px so
+lid #d6dae0;
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:213:}
+> C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:214:#status-msg { font-w
+eight: 600; white-space: nowrap; }
+> C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:215:#status .note { colo
+r: #6b727c; font-size: 12px; }
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:216:
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:217:/* -----------------
+[REDACTED] the AI draft composer (Phase 2/3) */
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:218:
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:220:   looks production-
+ready while returning a canned deck is the one thing this panel must not be.
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:221:
+> C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:222:   Phase 2 (AI_PPT_v
+2): `grid-area: composer` is what actually seats this in the bottom grid row
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:223:   `#app` declares a
+bove -- without it the box would render at its in-DOM position (after `#props`)
+> C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:224:   instead of the fi
+xed row above `#status`. Rounded, elevated card so it reads as a distinct
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:225:   composer, not ano
+ther toolbar section that happens to have moved. */
+> C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:226:#ai {
+> C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:227:  grid-area: compose
+r;
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:228:  justify-self: cent
+er;
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:229:  margin: 12px 0 16p
+x;
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:230:  width: 720px;
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:245:   the accessible na
+me travels through this label instead of a caption; `#p-prompt`'s
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:246:   `aria-describedby
+="ai-hint"` (index.html) carries the submission guidance the same way. Replaces
+> C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:247:   the old `#toolbar
+ label.stacked` rule, which only ever styled this one label and has no other
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:248:   caller left now t
+hat it is hidden rather than stacked. */
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:249:.visually-hidden {
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:250:  position: absolute
+;
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:263:   `overflow-x: auto
+`, not a promise the strip stays short. Empty and `[hidden]` until a later
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:264:   phase's file-pick
+ing JS appends `.attachment-item`s (see index.html's comment on
+> C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:265:   `#ai-attachments`
+) -- these rules describe the shape that JS is expected to fill in, not anything
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:266:   rendered in THIS 
+phase. */
+> C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:267:#ai-attachments.atta
+chments {
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:268:  display: flex;
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:269:  align-items: cente
+r;
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:270:  gap: 8px;
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:274:  padding: 2px;
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:275:}
+> C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:276:#ai-attachments:empt
+y,
+> C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:277:#ai-attachments[hidd
+en] { display: none; }
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:278:
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:279:.attachment-item {
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:280:  position: relative
+;
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:342:#p-prompt:disabled {
+ background: transparent; color: #6b727c; }
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:343:
+> C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:344:.composer-toolbar {
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:345:  display: flex;
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:346:  align-items: cente
+r;
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:347:  justify-content: s
+pace-between;
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:349:}
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:350:
+> C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:351:.toolbar-left {
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:352:  display: flex;
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:353:  align-items: cente
+r;
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:354:  gap: 12px;
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:412:.submit-btn[aria-bus
+y='true'] { animation: busy 1.1s ease-in-out infinite; }
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:413:
+> C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:414:#ai .hint { margin: 
+0; color: #6b727c; font-size: 11px; line-height: 1.45; }
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:415:
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:416:/* THE LOADING STATE
+. `aria-busy` is the state; this animation is only its costume, so a screen
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:417:   reader is told wh
+at the eye is told. `disabled` is what actually stops a second POST — the pulse
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:422:/* Narrow windows: s
+tack the head and the input row instead of letting the model picker or the
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:423:   action buttons sq
+ueeze the field to nothing. This only changes layout INSIDE the composer's own
+> C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:424:   grid row -- it is
+ still `grid-area: composer`, so it can never overlap `#status` or `#stage-wrap`
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:425:   ("without coverin
+g the status bar or stage controls", brief item 8). */
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:426:@media (max-width: 7
+20px) {
+> C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:427:  .composer-toolbar 
+{ flex-direction: column; align-items: stretch; gap: 8px; }
+> C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:428:  .toolbar-left { ju
+stify-content: space-between; }
+> C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:429:  .toolbar-right { j
+ustify-content: flex-end; }
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:430:}
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:431:
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css:432:/* -----------------
+[REDACTED] CONTRACT: the stage (5.2) */
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:66:    <section class="
+group">
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:67:      <h2>JSON & Dat
+a</h2>
+> C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:68:      <div class="ac
+tion-stack">
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:69:        <button type
+="button" id="b-view-json" class="sidebar-action sidebar-action--featured">View & Copy JSON 📝</button>
+> C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:70:        <div class="
+action-grid-2">
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:71:          <button ty
+pe="button" id="b-json" class="sidebar-action">Download JSON</button>
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:72:          <button ty
+pe="button" id="b-load" class="sidebar-action">Load JSON</button>
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:73:        </div>
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:74:        <button type
+="button" id="b-paste" class="sidebar-action">Paste Gem JSON</button>
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:75:      </div>
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:79:    <section class="
+group">
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:80:      <h2>Export Dec
+k</h2>
+> C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:81:      <div class="ac
+tion-grid-2">
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:82:        <button type
+="button" id="b-export" class="sidebar-action sidebar-action--primary">Export PPT</button>
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:83:        <button type
+="button" id="b-export-html" class="sidebar-action sidebar-action--primary">Download HTML</button>
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:84:      </div>
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:85:    </section>
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:86:
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:87:    <section class="
+group" id="designs">
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:88:      <h2>Server Tem
+plates</h2>
+> C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:89:      <div class="ac
+tion-stack">
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:90:        <label class
+="stacked">Name
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:91:          <input typ
+e="text" id="p-design-name" placeholder="e.g. Q3 Deck" maxlength="80">
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:92:        </label>
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:93:        <button type
+="button" id="b-save-design" class="sidebar-action sidebar-action--primary">Save</button>
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:94:        <label class
+="stacked">Templates
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:103:  </aside>
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:104:
+> C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:105:  <main id="stage-w
+rap" style="--zoom: 1">
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:106:    <!-- `transform
+: scale()` does not affect layout, so #stage would still reserve its unscaled
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:107:         960x540 an
+d the scrollbars would lie. #stage-sizer reserves the SCALED box -- derived from
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:108:         the same -
+-zoom the JS writes, never measured back out of the DOM. -->
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:109:    <div id="stage-
+sizer">
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:110:    <div id="stage"
+ style="--zoom: 1">
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:303:       no longer so
+mething the toolbar's own scroll could carry off-screen. `#p-model` is new —
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:304:       Phase 1 alre
+ady built the `flash` / `flash-extended` profiles this picker targets -->
+> C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:305:  <section id="ai" 
+aria-label="AI draft composer">
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:306:    <!-- Empty and 
+`hidden`: no JS in this phase populates it. -->
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:307:    <div id="ai-att
+achments" class="attachments" aria-label="Attached images" hidden></div>
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:308:
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:309:    <div class="com
+poser-field">
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:310:      <label class=
+"visually-hidden" for="p-prompt">AI draft prompt</label>
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:313:    </div>
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:314:    
+> C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:315:    <div class="com
+poser-toolbar">
+> C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:316:      <div class="t
+oolbar-left">
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:317:        <button typ
+e="button" class="icon-btn plus-btn" title="Add attachment">
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:318:          <svg widt
+h="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" 
+y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:319:        </button>
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:320:        <div class=
+"model-select-wrapper">
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:321:          <select i
+d="p-model">
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:326:        </div>
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:327:      </div>
+> C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:328:      <div class="t
+oolbar-right">
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:329:        <button typ
+e="button" id="b-generate" class="submit-btn" title="Generate">
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:330:          <svg widt
+h="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" 
+y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:331:        </button>
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:332:      </div>
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:333:    </div>
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:334:  </section>
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:335:
+> C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:336:  <footer id="statu
+s">
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:337:    <span id="statu
+s-msg">Ready.</span>
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:338:    <span class="no
+te">
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:339:      The header is
+ <strong>deliberately not WYSIWYG</strong>: the editor draws a flat red line,
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:340:      PowerPoint re
+nders the real gradient divider and the Vieworks logo (inherited from layout 3).
+  C:\Users\2021670\.ma-stg\stg.jefKC919\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:341:      Elbow connect
+ors are an <strong>approximation</strong> — PowerPoint auto-routes them.
+
+
+
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "rg -n --hidden --glob '"'!artifacts/claude-main-diff-2335295-16999.txt'"' \"2335295|action-stack|sidebar-action--featured|composer-toolbar|brief item 8\" \"tasks/AI_Powered_PPT\"" in C:\Users\2021670\Documents\멀티 에이전트
+2026-07-20T08:40:23.203861Z ERROR codex_core::tools::router: error=Exit code: 1
+Wall time: 5.1 seconds
+Output:
+tasks/AI_Powered_PPT\change_detail.md:55:  `.composer-toolbar` (stacks to column), `.toolbar-left` / `.toolbar-right` (space-between /
+tasks/AI_Powered_PPT\change_detail.md:65:- `.action-stack` (`display:flex; flex-direction:column; gap:6px`) — vertical 100%-width stacks.
+tasks/AI_Powered_PPT\change_detail.md:74:**JSON & Data (item 4):** wrapped in `.action-stack`; "View & Copy JSON" is `sidebar-action
+tasks/AI_Powered_PPT\change_detail.md:75:sidebar-action--featured` (full-width, first); Download/Load JSON moved into a nested
+tasks/AI_Powered_PPT\change_detail.md:82:**Server Templates (item 6):** rebuilt as one `.action-stack` in the exact required order — Name
+tasks/AI_Powered_PPT\change_detail.md:100:the same direction, `.sidebar-action--featured` was implemented as the **same** `#1e293b`/`#334155`
+tasks/AI_Powered_PPT\change_detail.md:104:intended permanent exception, only `.sidebar-action--featured`'s `background`/`border-color`/hover
+tasks/AI_Powered_PPT\change_detail.md:124:- Confirmed via `Grep` that `.composer-toolbar`, `.toolbar-left`, `.toolbar-right` (the classes the
+tasks/AI_Powered_PPT\artifacts\claude-main-diff-2335295-16999.txt:13:+      <div class="action-stack">
+tasks/AI_Powered_PPT\artifacts\claude-main-diff-2335295-16999.txt:14:+        <button type="button" id="b-view-json" class="sidebar-action sidebar-action--featured">View & Copy JSON 📝</button>
+tasks/AI_Powered_PPT\artifacts\claude-main-diff-2335295-16999.txt:50:+      <div class="action-stack">
+tasks/AI_Powered_PPT\artifacts\claude-main-diff-2335295-16999.txt:87:+.action-stack { display: flex; flex-direction: column; gap: 6px; }
+tasks/AI_Powered_PPT\artifacts\claude-main-diff-2335295-16999.txt:88:+.action-stack > label.stacked { margin-bottom: 0; }
+tasks/AI_Powered_PPT\artifacts\claude-main-diff-2335295-16999.txt:108:+.sidebar-action--featured {
+tasks/AI_Powered_PPT\artifacts\claude-main-diff-2335295-16999.txt:114:+.sidebar-action--featured:hover {
+tasks/AI_Powered_PPT\artifacts\claude-main-diff-2335295-16999.txt:118:+.sidebar-action--featured { font-weight: 700; font-size: 13px; }
+tasks/AI_Powered_PPT\artifacts\claude-main-diff-2335295-16999.txt:181:    ("without covering the status bar or stage controls", brief item 8). */
+tasks/AI_Powered_PPT\artifacts\claude-main-diff-2335295-16999.txt:188:+  .composer-toolbar { flex-direction: column; align-items: stretch; gap: 8px; }
+tasks/AI_Powered_PPT\artifacts\[REDACTED].txt:5:- **AI composer** (`#ai`): swapped absolute/viewport-centered positioning for `grid-area: composer; justify-self: center`, so it now genuinely occupies the reserved grid row above `#status`. Submit button became a 34px, 8px-radius rounded square in `#1e293b` (was a circular `#1a1a1a`). Fixed the dead mobile media query to target `.composer-toolbar`/`.toolbar-left`/`.toolbar-right`, which actually exist.
+tasks/AI_Powered_PPT\artifacts\[REDACTED].txt:6:- **New scoped classes** — `.action-stack`, `.action-grid-2`, `.sidebar-action` (+ `--primary`/`--featured`/`--danger` modifiers) — applied only to JSON & Data, Export Deck, and Server Templates; `.row` was left untouched everywhere else.
+tasks/AI_Powered_PPT\update_ui_brief.md:24:   - Update responsive selectors to target classes that actually exist, especially `.composer-toolbar`, `.toolbar-left`, and `.toolbar-right`.
+tasks/AI_Powered_PPT\update_ui_brief.md:27:   - `.action-stack` for vertically stacked 100%-width controls.
+tasks/AI_Powered_PPT\update_ui_brief.md:62:3. Make sure the CSS changes use the recommended new classes (`.action-stack`, `.action-grid-2`, etc.) and remove inline styles from `index.html`.
+tasks/AI_Powered_PPT\src\aippt\canvas\static\style.css:305:.composer-toolbar {
+tasks/AI_Powered_PPT\src\aippt\canvas\static\style.css:386:   ("without covering the status bar or stage controls", brief item 8). */
+tasks/AI_Powered_PPT\src\aippt\canvas\static\index.html:313:    <div class="composer-toolbar">
+tasks/AI_Powered_PPT\artifacts\[REDACTED].txt:1729:349-   ("without covering the status bar or stage controls", brief item 8). */
+tasks/AI_Powered_PPT\artifacts\[REDACTED].txt:1422:349-   ("without covering the status bar or stage controls", brief item 8). */
+tasks/AI_Powered_PPT\artifacts\[REDACTED].txt:1802:349-   ("without covering the status bar or stage controls", brief item 8). */
+tasks/AI_Powered_PPT\artifacts\[REDACTED].txt:1277:C:\Users\2021670\.ma-stg\stg.t0liYUQf\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css-349-   ("without covering the status bar or stage controls", brief item 8). */
+tasks/AI_Powered_PPT\artifacts\[REDACTED].txt:106:313:    <div class="composer-toolbar">
+tasks/AI_Powered_PPT\artifacts\[REDACTED].txt:145:305:.composer-toolbar {
+tasks/AI_Powered_PPT\artifacts\[REDACTED].txt:315: 312:     <div class="composer-toolbar">
+tasks/AI_Powered_PPT\artifacts\[REDACTED].txt:653: 305: .composer-toolbar {
+tasks/AI_Powered_PPT\artifacts\[REDACTED].txt:734: 386:    ("without covering the status bar or stage controls", brief item 8). */
+tasks/AI_Powered_PPT\artifacts\[REDACTED].txt:831:   - Update responsive selectors to target classes that actually exist, especially `.composer-toolbar`, `.toolbar-left`, and `.toolbar-right`.
+tasks/AI_Powered_PPT\artifacts\[REDACTED].txt:835:   - `.action-stack` for vertically stacked 100%-width controls.
+tasks/AI_Powered_PPT\artifacts\[REDACTED].txt:83:   - Update responsive selectors to target classes that actually exist, especially `.composer-toolbar`, `.toolbar-left`, and `.toolbar-right`.
+tasks/AI_Powered_PPT\artifacts\[REDACTED].txt:87:   - `.action-stack` for vertically stacked 100%-width controls.
+rg: tasks/AI_Powered_PPT\.pytest_cache: 액세스가 거부되었습니다. (os error 5)
+
+ exited 1 in 5128ms:
+tasks/AI_Powered_PPT\change_detail.md:55:  `.composer-toolbar` (stacks to column), `.toolbar-left` / `.toolbar-right` (space-between /
+tasks/AI_Powered_PPT\change_detail.md:65:- `.action-stack` (`display:flex; flex-direction:column; gap:6px`) — vertical 100%-width stacks.
+tasks/AI_Powered_PPT\change_detail.md:74:**JSON & Data (item 4):** wrapped in `.action-stack`; "View & Copy JSON" is `sidebar-action
+tasks/AI_Powered_PPT\change_detail.md:75:sidebar-action--featured` (full-width, first); Download/Load JSON moved into a nested
+tasks/AI_Powered_PPT\change_detail.md:82:**Server Templates (item 6):** rebuilt as one `.action-stack` in the exact required order — Name
+tasks/AI_Powered_PPT\change_detail.md:100:the same direction, `.sidebar-action--featured` was implemented as the **same** `#1e293b`/`#334155`
+tasks/AI_Powered_PPT\change_detail.md:104:intended permanent exception, only `.sidebar-action--featured`'s `background`/`border-color`/hover
+tasks/AI_Powered_PPT\change_detail.md:124:- Confirmed via `Grep` that `.composer-toolbar`, `.toolbar-left`, `.toolbar-right` (the classes the
+tasks/AI_Powered_PPT\artifacts\claude-main-diff-2335295-16999.txt:13:+      <div class="action-stack">
+tasks/AI_Powered_PPT\artifacts\claude-main-diff-2335295-16999.txt:14:+        <button type="button" id="b-view-json" class="sidebar-action sidebar-action--featured">View & Copy JSON 📝</button>
+tasks/AI_Powered_PPT\artifacts\claude-main-diff-2335295-16999.txt:50:+      <div class="action-stack">
+tasks/AI_Powered_PPT\artifacts\claude-main-diff-2335295-16999.txt:87:+.action-stack { display: flex; flex-direction: column; gap: 6px; }
+tasks/AI_Powered_PPT\artifacts\claude-main-diff-2335295-16999.txt:88:+.action-stack > label.stacked { margin-bottom: 0; }
+tasks/AI_Powered_PPT\artifacts\claude-main-diff-2335295-16999.txt:108:+.sidebar-action--featured {
+tasks/AI_Powered_PPT\artifacts\claude-main-diff-2335295-16999.txt:114:+.sidebar-action--featured:hover {
+tasks/AI_Powered_PPT\artifacts\claude-main-diff-2335295-16999.txt:118:+.sidebar-action--featured { font-weight: 700; font-size: 13px; }
+tasks/AI_Powered_PPT\artifacts\claude-main-diff-2335295-16999.txt:181:    ("without covering the status bar or stage controls", brief item 8). */
+tasks/AI_Powered_PPT\artifacts\claude-main-diff-2335295-16999.txt:188:+  .composer-toolbar { flex-direction: column; align-items: stretch; gap: 8px; }
+tasks/AI_Powered_PPT\artifacts\[REDACTED].txt:5:- **AI composer** (`#ai`): swapped absolute/viewport-centered positioning for `grid-area: composer; justify-self: center`, so it now genuinely occupies the reserved grid row above `#status`. Submit button became a 34px, 8px-radius rounded square in `#1e293b` (was a circular `#1a1a1a`). Fixed the dead mobile media query to target `.composer-toolbar`/`.toolbar-left`/`.toolbar-right`, which actually exist.
+tasks/AI_Powered_PPT\artifacts\[REDACTED].txt:6:- **New scoped classes** — `.action-stack`, `.action-grid-2`, `.sidebar-action` (+ `--primary`/`--featured`/`--danger` modifiers) — applied only to JSON & Data, Export Deck, and Server Templates; `.row` was left untouched everywhere else.
+tasks/AI_Powered_PPT\update_ui_brief.md:24:   - Update responsive selectors to target classes that actually exist, especially `.composer-toolbar`, `.toolbar-left`, and `.toolbar-right`.
+tasks/AI_Powered_PPT\update_ui_brief.md:27:   - `.action-stack` for vertically stacked 100%-width controls.
+tasks/AI_Powered_PPT\update_ui_brief.md:62:3. Make sure the CSS changes use the recommended new classes (`.action-stack`, `.action-grid-2`, etc.) and remove inline styles from `index.html`.
+tasks/AI_Powered_PPT\src\aippt\canvas\static\style.css:305:.composer-toolbar {
+tasks/AI_Powered_PPT\src\aippt\canvas\static\style.css:386:   ("without covering the status bar or stage controls", brief item 8). */
+tasks/AI_Powered_PPT\src\aippt\canvas\static\index.html:313:    <div class="composer-toolbar">
+tasks/AI_Powered_PPT\artifacts\[REDACTED].txt:1729:349-   ("without covering the status bar or stage controls", brief item 8). */
+tasks/AI_Powered_PPT\artifacts\[REDACTED].txt:1422:349-   ("without covering the status bar or stage controls", brief item 8). */
+tasks/AI_Powered_PPT\artifacts\[REDACTED].txt:1802:349-   ("without covering the status bar or stage controls", brief item 8). */
+tasks/AI_Powered_PPT\artifacts\[REDACTED].txt:1277:C:\Users\2021670\.ma-stg\stg.t0liYUQf\tasks\AI_Powered_PPT\src\aippt\canvas\static\style.css-349-   ("without covering the status bar or stage controls", brief item 8). */
+tasks/AI_Powered_PPT\artifacts\[REDACTED].txt:106:313:    <div class="composer-toolbar">
+tasks/AI_Powered_PPT\artifacts\[REDACTED].txt:145:305:.composer-toolbar {
+tasks/AI_Powered_PPT\artifacts\[REDACTED].txt:315: 312:     <div class="composer-toolbar">
+tasks/AI_Powered_PPT\artifacts\[REDACTED].txt:653: 305: .composer-toolbar {
+tasks/AI_Powered_PPT\artifacts\[REDACTED].txt:734: 386:    ("without covering the status bar or stage controls", brief item 8). */
+tasks/AI_Powered_PPT\artifacts\[REDACTED].txt:831:   - Update responsive selectors to target classes that actually exist, especially `.composer-toolbar`, `.toolbar-left`, and `.toolbar-right`.
+tasks/AI_Powered_PPT\artifacts\[REDACTED].txt:835:   - `.action-stack` for vertically stacked 100%-width controls.
+tasks/AI_Powered_PPT\artifacts\[REDACTED].txt:83:   - Update responsive selectors to target classes that actually exist, especially `.composer-toolbar`, `.toolbar-left`, and `.toolbar-right`.
+tasks/AI_Powered_PPT\artifacts\[REDACTED].txt:87:   - `.action-stack` for vertically stacked 100%-width controls.
+rg: tasks/AI_Powered_PPT\.pytest_cache: 액세스가 거부되었습니다. (os error 5)
+
+codex
+The diff preserves all existing element IDs and confines markup changes to the requested sidebar groups. I’m cross-checking it against the repository’s UI brief and the surrounding responsive/grid rules before issuing the verdict.
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "Get-Content -LiteralPath 'tasks\\AI_Powered_PPT\\update_ui_brief.md' -Raw; Get-Content -LiteralPath 'tasks\\AI_Powered_PPT\\change_detail.md' -Raw" in C:\Users\2021670\Documents\멀티 에이전트
+ succeeded in 658ms:
+---
+target_repo: "c:/Users/2021670/Documents/硫???먯씠?꾪듃"
+write_scope:
+  - "tasks/AI_Powered_PPT/src/aippt/canvas/static/index.html"
+  - "tasks/AI_Powered_PPT/src/aippt/canvas/static/style.css"
+read_refs: []
+claude_model: sonnet
+change_detail_path: "tasks/AI_Powered_PPT/change_detail.md"
+---
+# Task
+You are Claude Sonnet Worker (claude-main). Your task is to update `index.html` and `style.css` based EXACTLY on the Work Order provided by the Codex Critic.
+
+# Work Order (From Codex Critic)
+
+1. Preserve every existing element ID and event-binding target. Limit changes to `index.html` class structure and `style.css`; do not modify JavaScript or stage contract styles.
+
+2. Refactor the AI composer:
+   - Return `#ai` to grid flow with `grid-area: composer`.
+   - Center it using grid alignment, such as `justify-self: center`.
+   - Retain the responsive width cap and solid-white single-container styling.
+   - Remove absolute positioning, viewport translation, and unnecessary overlay z-index.
+   - Ensure it always occupies reserved space above `#status`.
+   - Change the submit button to a 32??6px rounded square with approximately 7??px radius and `#1e293b` background.
+   - Update responsive selectors to target classes that actually exist, especially `.composer-toolbar`, `.toolbar-left`, and `.toolbar-right`.
+
+3. Introduce scoped layout classes, for example:
+   - `.action-stack` for vertically stacked 100%-width controls.
+   - `.action-grid-2` for equal two-column actions.
+   - `.sidebar-action` for normalized dimensions.
+   - `.sidebar-action--primary`, `--featured`, and `--danger` modifiers.
+   Do not repurpose generic `.row` globally.
+
+4. Refactor JSON & Data:
+   - Keep View & Copy JSON first and full-width.
+   - Keep Download JSON and Load JSON in a two-column grid.
+   - Keep Paste Gem JSON immediately below them and full-width.
+   - Remove inline styles.
+   - Represent the featured blue treatment with a CSS modifier if it is retained as the checklist?셲 intended visual exception.
+
+5. Refactor Export Deck:
+   - Apply the explicit two-column layout class.
+   - Keep both actions equal-width and dark-primary.
+
+6. Rebuild Server Templates in this exact order:
+   - Full-width Name label/input.
+   - Full-width Save button.
+   - Full-width Templates label/select.
+   - Full-width Load button.
+   - Preserve Delete after Load as a separate full-width danger action.
+
+7. Normalize sidebar action styling:
+   - Use consistent font size, weight, padding, and minimum height.
+   - Use 5px rounded corners for standard sidebar actions.
+   - Use `#1e293b` for dark actions with a coordinated lighter hover state.
+   - Add visible `:focus-visible` treatment.
+   - Replace `transition: all` with targeted properties.
+   - Keep circular controls only where their icon semantics explicitly require circles; the submit control should be rounded-square.
+
+# Instructions
+1. Edit `index.html` and `style.css` to implement the layout and styling updates.
+2. DO NOT change element IDs.
+3. Make sure the CSS changes use the recommended new classes (`.action-stack`, `.action-grid-2`, etc.) and remove inline styles from `index.html`.
+
+# UI Sidebar/Composer Refactor (Codex Critic Work Order) ??change detail
+
+Worker brief: temp file `tmp.xuvBYJf1FP` (`target_repo: /c/Users/2021670/.ma-stg/stg.jefKC919`,
+`write_scope: tasks/AI_Powered_PPT/src/aippt/canvas/static/{index.html,style.css}`,
+`change_detail_path: tasks/AI_Powered_PPT/change_detail.md`). Written here, in the OUTER tree, per
+this task's established convention (the staging worktree is scratch and no staging worktree's work
+has ever landed durably ??see `[[[REDACTED]]]`) rather than literally under
+the temp brief's `target_repo`.
+
+## Cross-checked the temp brief before trusting it
+
+The temp brief's Work Order (items 1-7 + the two top-level instructions) is byte-identical to the
+canonical outer-tree brief `update_ui_brief.md` (`target_repo: c:/Users/2021670/Documents/硫???먯씠?꾪듃`, same `write_scope` paths, same `change_detail_path` value) ??only `target_repo` differs,
+swapped to the real staging path. This is the same "`target_repo` bypass" pattern documented in
+`workers/phase6_repair6/change_detail.md`. Also cross-referenced the full source review at
+`artifacts/[REDACTED].txt` (dated minutes before `update_ui_brief.md`),
+which contains the identical Work Order text plus the audit findings behind it and an item 8
+validation checklist not included in the brief itself:
+
+- 232px sidebar has no horizontal overflow.
+- Two-column groups stay equal-width with consistent gaps.
+- Server Template controls are all stacked and 100% wide.
+- The composer never overlaps `#status` or the stage.
+- Hiding/showing `#props` does not displace or incorrectly center the composer.
+- All existing IDs and control order required by JavaScript remain intact.
+
+Treated item 8 as the real acceptance bar even though the dispatched brief only carried items 1-7.
+
+## What was applied
+
+Applied to `stg.jefKC919/tasks/AI_Powered_PPT/src/aippt/canvas/static/{index.html,style.css}` via
+targeted `Edit` calls. No JavaScript, stage-contract CSS (the `#stage`, `#stage::before/::after`,
+`#title-field`, `.el` blocks), or element IDs were touched ??confirmed via `Grep` on `editor.js`
+beforehand that every affected button (`b-view-json`, `b-json`, `b-load`, `b-paste`, `b-export`,
+`b-export-html`, `b-save-design`, `b-load-design`, `b-delete-design`) is bound purely by
+`getElementById`, never by class name or DOM order, so reclassing/reordering them is safe.
+
+**AI composer (`#ai`, work order item 2):**
+- `position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 1000;`
+  removed. Replaced with `grid-area: composer; justify-self: center;` ??this is what actually seats
+  it in `#app`'s existing `'toolbar composer composer'` grid row (the row was already declared;
+  `#ai` just never claimed it, which is exactly the bug the Codex audit described).
+- Kept the width cap (`width: 720px; max-width: calc(100% - 32px)`) and the solid-white
+  bordered/shadowed single-container look unchanged.
+- Added `margin: 12px 0 16px` as a normal-flow replacement for the old `bottom: 24px` offset (the
+  grid row is `auto`-height, so this is the only remaining source of breathing room above/below the
+  composer).
+- `.submit-btn`: `border-radius: 50%` ??`8px` (rounded square, mid-range of the requested 7-9px),
+  `width`/`height` 32px ??34px (mid-range of 32-36px), `background: #1a1a1a` ??`#1e293b` with hover
+  `#334155` (matches the app's existing dark-action hover elsewhere), `transition: all` ??  `background-color` only (the only property that changes on hover).
+- Dead mobile rules (`.composer-head`, `.composer-model`, `.composer-box`, `.composer-actions` ??  none exist in the HTML) replaced with rules targeting the classes the HTML actually has:
+  `.composer-toolbar` (stacks to column), `.toolbar-left` / `.toolbar-right` (space-between /
+  flex-end) under the same `max-width: 720px` media query.
+- `.icon-btn` (the attachment "+" button) kept **circular** ??its icon semantics (a circular
+  affordance button, matching the model-picker's own hover chip) explicitly warrant it per work
+  order item 7's exception clause; only its `transition: all` was narrowed to
+  `background-color, color`.
+
+**Scoped layout classes (item 3), applied to JSON & Data / Export Deck / Server Templates only ??`.row` (History/Media/Arrange/Align) was left untouched, per the explicit "do not repurpose `.row`
+globally" instruction:**
+- `.action-stack` (`display:flex; flex-direction:column; gap:6px`) ??vertical 100%-width stacks.
+- `.action-grid-2` (`display:grid; grid-template-columns:1fr 1fr; gap:6px`) ??equal two-column
+  actions.
+- `.sidebar-action` ??normalized `width:100%`, `min-height:34px`, `padding:8px 10px`,
+  `font-size:12px`, `font-weight:500`, `border-radius:5px`, plus a `:focus-visible` outline
+  (`2px solid #1e88ff`, the app's existing selection-accent colour, `outline-offset:2px`).
+- `.sidebar-action--primary`, `--featured`, `--danger` modifiers for the dark (`#1e293b`, hover
+  `#334155`), featured, and destructive (`#ef4444`, hover `#dc2626`) treatments.
+
+**JSON & Data (item 4):** wrapped in `.action-stack`; "View & Copy JSON" is `sidebar-action
+sidebar-action--featured` (full-width, first); Download/Load JSON moved into a nested
+`.action-grid-2`; "Paste Gem JSON" is `sidebar-action` (full-width, last). All three inline `style=`
+attributes the Codex audit named (`#b-view-json`, `#b-paste`, `#b-delete-design`) are removed.
+
+**Export Deck (item 5):** `.row` ??`.action-grid-2`; both buttons `sidebar-action
+sidebar-action--primary` (equal-width, dark).
+
+**Server Templates (item 6):** rebuilt as one `.action-stack` in the exact required order ??Name
+label/input, Save button, Templates label/select, Load button, Delete button ??replacing the old
+layout where Save/Load/Delete sat together in a 3-column `.row` and Name/Templates were separate
+full-width fields above it. Delete is `sidebar-action--danger`, placed last as a separate full-width
+action.
+
+**Shared button styling (item 7):** the base `button, select, input[...]` rule's
+`transition: all 0.15s ease` narrowed to `background-color, border-color, color` (the only
+properties any hover/focus state in this file actually changes). Removed the now-redundant
+`#b-load, #b-load-design { width: 100%; }` rule ??both ids carry `.sidebar-action` (`width:100%`)
+now, in their own grid cell / stack slot, so the old rule was dead weight.
+
+## One judgment call beyond what the work order fully specifies
+
+Item 4 says: "Represent the featured blue treatment with a CSS modifier **if it is retained** as
+the checklist's intended visual exception" ??conditional, not a mandate. The Codex audit's own
+framing calls the bright blue (`#2563eb`) a "bypass" of the shared `#1e293b` system, and item 7
+asks for a *coordinated, common* slate treatment across sidebar actions. Given both signals point
+the same direction, `.sidebar-action--featured` was implemented as the **same** `#1e293b`/`#334155`
+palette as `--primary`, distinguished only by weight (700) and size (13px) rather than by
+reintroducing a separate colour. This resolves the "bypass" finding outright but is a judgment call,
+not a re-derivation of an explicit instruction ??flagging it explicitly. If blue was in fact the
+intended permanent exception, only `.sidebar-action--featured`'s `background`/`border-color`/hover
+values (style.css) need to change back to `#2563eb`/a matching hover; no HTML change would be
+needed since the modifier class is already in place on `#b-view-json`.
+
+## Verification performed (and what could not be run)
+
+Same interpreter-access constraints as this task's other worker rounds
+(`[[[REDACTED]]]`) ??no browser or JS runtime available in this
+session.
+
+Verified by hand:
+- `Grep`-counted `{` / `}` in the edited `style.css`: 125 / 125 ??balanced.
+- Read the full edited region of both files back after editing.
+- `Grep`'d `editor.js` for every touched id and for `classList`/`querySelectorAll`/DOM-order
+  dependencies (`nextElementSibling` etc.): none of the reclassed/reordered buttons are referenced
+  by anything but `getElementById`; the only DOM-order-sensitive code operates on `.tool` buttons
+  and `.el` stage children, neither of which was touched.
+- `Grep`'d `index.html` for every remaining `style="..."` attribute: only the two stage-contract
+  `--zoom` custom-property declarations remain (`#stage-wrap`, `#stage`), which item 1 explicitly
+  says not to touch.
+- Confirmed via `Grep` that `.composer-toolbar`, `.toolbar-left`, `.toolbar-right` (the classes the
+  new media query targets) exist in `index.html` and that the previously-targeted
+  `.composer-head`/`.composer-model`/`.composer-box`/`.composer-actions` do not exist anywhere in
+  the file (so the old rules really were dead).
+
+**Not verified (no execution available):** not opened in a browser. A session with real execution
+access should load the canvas editor and confirm: the composer sits above `#status`, centered, at
+both a wide viewport and ??20px width; toggling element selection (which shows/hides `#props`)
+does not shift or miscenter the composer; the submit button reads as a dark rounded square, not a
+circle; the sidebar at 232px shows no horizontal scrollbar; and the Server Templates group renders
+as five full-width stacked controls in the specified order.
+
+## Recommendation to the orchestrator
+
+Same durable-merge gap flagged by every prior round in this family
+(`[[[REDACTED]]]`): this was applied to a `.ma-stg` staging clone, not the
+outer tree's real `src/`. If this refactor is meant to actually ship, the staging worktree's
+`index.html`/`style.css` need to be copied/merged back into
+`tasks/AI_Powered_PPT/src/aippt/canvas/static/` in the outer tree.
+
+
+2026-07-20T08:40:28.641957Z ERROR codex_models_manager::manager: failed to renew cache TTL: missing field `supports_reasoning_summaries` at line 86 column 5
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$wtCss='"'C:\\Users\\2021670\\.ma-stg\\stg.jefKC919\\tasks\\AI_Powered_PPT\\src\\aippt\\canvas\\static\\style.css'; Get-Content -LiteralPath "'$wtCss | Select-Object -First 140; Get-Content -LiteralPath $wtCss | Select-Object -Skip 330 -First 110' in C:\Users\2021670\Documents\멀티 에이전트
+ succeeded in 749ms:
+/* Canvas editor styling.
+ *
+ * THE BLOCKS MARKED "CONTRACT" ARE NOT STYLING PREFERENCES. Every declaration in them has a
+ * counterpart in canvas/style.py (plan Sec 6.6) and they change together or not at all:
+ *
+ *     .el .txt inset 7.2 / 3.6   <->  style_text_frame: margin_left/right Pt(7.2), top/bottom Pt(3.6)
+ *     .el .txt line-height 1.2   <->  p.line_spacing = 1.2
+ *     .el .txt white-space       <->  tf.word_wrap = True
+ *     .el .txt flex centring     <->  vertical_anchor MIDDLE / PP_ALIGN.CENTER
+ *     .el .txt overflow: visible <->  MSO_AUTO_SIZE.NONE   (show overflow; never hide it)
+ *     .el transform: rotate()    <->  shape.rotation       (centre origin, degrees CW, no conversion)
+ *
+ * Do not tidy them, do not switch to rem, and do not add a CSS reset that alters them. The margin
+ * trap in particular reads like a coordinate bug: if the browser wraps at padding 0 while
+ * PowerPoint keeps its 0.1in/0.05in defaults, the two wrap at DIFFERENT WIDTHS and you get an
+ * off-by-one-line overflow that looks like bad geometry.
+ */
+
+/* [REDACTED] app chrome (not a contract) */
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: system-ui, 'Segoe UI', 'Malgun Gothic', sans-serif;
+  font-size: 13px;
+  color: #1a1a1a;
+  background: #eceef1;
+}
+
+/* The property panel's column is `auto`, so when #props is hidden it collapses to nothing and the
+   stage takes the width back. No JS touches this: the panel's `hidden` attribute is the only input,
+   and the grid does the rest. */
+#app {
+  display: grid;
+  grid-template-columns: 232px 1fr auto;
+  grid-template-rows: 1fr auto auto;
+  grid-template-areas:
+    'toolbar stage    props'
+    'toolbar composer composer'
+    'toolbar status   status';
+  height: 100vh;
+}
+
+#warnings {
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 10;
+  max-height: 45vh;
+  overflow: auto;
+  padding: 10px 14px;
+  background: #FFF3F5;
+  border-bottom: 2px solid #FF0032;
+  color: #6b0016;
+  white-space: pre-wrap;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.45;
+}
+#warnings[hidden] { display: none; }
+#warnings .w-title { font-weight: 700; font-family: inherit; }
+#warnings .w-item { margin-top: 6px; }
+#warnings .w-close {
+  position: absolute; top: 6px; right: 10px;
+  border: 0; background: transparent; cursor: pointer;
+  font-size: 18px; line-height: 1; color: #6b0016;
+}
+
+/* The two side panels are the same furniture, so they are styled once. */
+#toolbar, #props {
+  overflow-y: auto;
+  padding: 12px;
+  background: #fff;
+}
+#toolbar { grid-area: toolbar; border-right: 1px solid #d6dae0; }
+#props   { grid-area: props; width: 232px; border-left: 1px solid #d6dae0; }
+
+#toolbar .group, #props .group { margin-bottom: 18px; }
+#toolbar h2, #props h2 {
+  margin: 0 0 6px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: #6b727c;
+}
+#toolbar label, #props label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: #334155;
+}
+#toolbar label.stacked, #props label.stacked {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+}
+#toolbar label.stacked input, #toolbar label.stacked select {
+  width: 100%;
+  box-sizing: border-box;
+}
+#toolbar .pair, #props .pair { display: flex; align-items: center; gap: 6px; }
+#toolbar .row, #props .row { display: flex; gap: 6px; margin-bottom: 6px; width: 100%; }
+#toolbar .row button, #props .row button { flex: 1; min-width: 0; width: auto; margin-bottom: 0; }
+#toolbar .tools { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+
+.mb-1 { margin-bottom: 4px !important; }
+.mb-2 { margin-bottom: 8px !important; }
+
+/* The hiding rules */
+#props[hidden] { display: none; }
+#props [hidden] { display: none; }
+
+/* The selection's identity, at the top of the panel. */
+#p-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e3e6ea;
+}
+#p-head h2 {
+  margin: 0;
+  font-size: 13px;
+  letter-spacing: 0;
+  text-transform: capitalize;
+  color: #1a1a1a;
+}
+#p-head code { font-size: 11px; color: #6b727c; font-family: ui-monospace, Consolas, monospace; }
+
+button, select, input[type='number'], input[type='text'] {
+  padding: 6px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 5px;
+  background: #fff;
+  font: inherit;
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 1.5;
+  color: #1a1a1a;
+  min-height: 44px;
+  max-height: 160px;
+  resize: none;
+  overflow-y: auto;
+}
+#p-prompt:focus { outline: none; }
+#p-prompt::placeholder { color: #9ca3af; }
+#p-prompt:disabled { background: transparent; color: #6b727c; }
+
+.composer-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+}
+
+.toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #6b727c;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+.icon-btn:hover { background: #f1f5f9; color: #1e293b; }
+
+.model-select-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  color: #6b727c;
+}
+.model-select-wrapper select {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 4px 20px 4px 4px;
+  font-size: 13px;
+  font-weight: 500;
+  color: inherit;
+  cursor: pointer;
+  outline: none;
+}
+.model-select-wrapper select:hover { background: #f1f5f9; border-radius: 6px; }
+.model-select-wrapper svg {
+  position: absolute;
+  right: 4px;
+  pointer-events: none;
+}
+
+.submit-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 8px;
+  background: #1e293b;
+  color: #ffffff;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  padding: 0;
+}
+.submit-btn:hover { background: #334155; }
+.submit-btn[aria-busy='true'] { animation: busy 1.1s ease-in-out infinite; }
+
+#ai .hint { margin: 0; color: #6b727c; font-size: 11px; line-height: 1.45; }
+
+/* THE LOADING STATE. `aria-busy` is the state; this animation is only its costume, so a screen
+   reader is told what the eye is told. `disabled` is what actually stops a second POST ??the pulse
+   just makes 1.5 s look like work rather than a hang. */
+#b-generate[aria-busy='true'] { animation: busy 1.1s ease-in-out infinite; }
+@keyframes busy { 50% { opacity: .5; } }
+
+/* Narrow windows: stack the head and the input row instead of letting the model picker or the
+   action buttons squeeze the field to nothing. This only changes layout INSIDE the composer's own
+   grid row -- it is still `grid-area: composer`, so it can never overlap `#status` or `#stage-wrap`
+   ("without covering the status bar or stage controls", brief item 8). */
+@media (max-width: 720px) {
+  .composer-toolbar { flex-direction: column; align-items: stretch; gap: 8px; }
+  .toolbar-left { justify-content: space-between; }
+  .toolbar-right { justify-content: flex-end; }
+}
+
+/* [REDACTED] CONTRACT: the stage (5.2) */
+
+/* Modal overlay styling for Notepad / View JSON */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+
+2026-07-20T08:40:42.062422Z ERROR codex_models_manager::manager: failed to renew cache TTL: missing field `supports_reasoning_summaries` at line 86 column 5
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$wt='"'C:\\Users\\2021670\\.ma-stg\\stg.jefKC919'; git -C "'$wt diff --check -- '"'tasks/AI_Powered_PPT/src/aippt/canvas/static/index.html' 'tasks/AI_Powered_PPT/src/aippt/canvas/static/style.css'; git -C "'$wt diff --name-only; $base='"'C:\\Users\\2021670\\Documents\\멀티 에이전트\\tasks\\AI_Powered_PPT\\src\\aippt\\canvas\\static\\index.html'; "'$new=Join-Path $wt '"'tasks\\AI_Powered_PPT\\src\\aippt\\canvas\\static\\index.html'; "'$idPattern='"'\\bid=\"(["'^"]+)"'"'; "'$baseIds=[regex]::Matches((Get-Content -LiteralPath $base -Raw),$idPattern) | ForEach-Object {$_.Groups[1].Value}; $newIds=[regex]::Matches((Get-Content -LiteralPath $new -Raw),$idPattern) | ForEach-Object {$_.Groups[1].Value}; Compare-Object $baseIds $newIds; "base_ids=$($baseIds.Count) new_ids=$($newIds.Count) unique_new=$((($newIds | Sort-Object -Unique)).Count)"' in C:\Users\2021670\Documents\멀티 에이전트
+ succeeded in 1627ms:
+base_ids=77 new_ids=77 unique_new=77
+warning: in the working copy of 'tasks/AI_Powered_PPT/src/aippt/canvas/static/index.html', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tasks/AI_Powered_PPT/src/aippt/canvas/static/style.css', LF will be replaced by CRLF the next time Git touches it
+warning: Not a git repository. Use --no-index to compare two paths outside a working tree
+usage: git diff --no-index [<options>] <path> <path> [<pathspec>...]
+
+Diff output format options
+    -p, --patch           generate patch
+    -s, --no-patch        suppress diff output
+    -u                    generate patch
+    -U, --unified[=<n>]   generate diffs with <n> lines context
+    -W, --[no-]function-context
+                          generate diffs with <n> lines context
+    --raw                 generate the diff in raw format
+    --patch-with-raw      synonym for '-p --raw'
+    --patch-with-stat     synonym for '-p --stat'
+    --numstat             machine friendly --stat
+    --shortstat           output only the last line of --stat
+    -X, --dirstat[=<param1>,<param2>...]
+                          output the distribution of relative amount of changes for each sub-directory
+    --cumulative          synonym for --dirstat=cumulative
+    --dirstat-by-file[=<param1>,<param2>...]
+                          synonym for --dirstat=files,<param1>,<param2>...
+    --check               warn if changes introduce conflict markers or whitespace errors
+    --summary             condensed summary such as creations, renames and mode changes
+    --name-only           show only names of changed files
+    --name-status         show only names and status of changed files
+    --stat[=<width>[,<name-width>[,<count>]]]
+                          generate diffstat
+    --stat-width <width>  generate diffstat with a given width
+    --stat-name-width <width>
+                          generate diffstat with a given name width
+    --stat-graph-width <width>
+                          generate diffstat with a given graph width
+    --stat-count <count>  generate diffstat with limited lines
+    --[no-]compact-summary
+                          generate compact summary in diffstat
+    --binary              output a binary diff that can be applied
+    --[no-]full-index     show full pre- and post-image object names on the "index" lines
+    --[no-]color[=<when>] show colored diff
+    --ws-error-highlight <kind>
+                          highlight whitespace errors in the 'context', 'old' or 'new' lines in the diff
+    -z                    do not munge pathnames and use NULs as output field terminators in --raw or --numstat
+    --[no-]abbrev[=<n>]   use <n> digits to display object names
+    --src-prefix <prefix> show the given source prefix instead of "a/"
+    --dst-prefix <prefix> show the given destination prefix instead of "b/"
+    --line-prefix <prefix>
+                          prepend an additional prefix to every line of output
+    --no-prefix           do not show any source or destination prefix
+    --default-prefix      use default prefixes a/ and b/
+    --inter-hunk-context <n>
+                          show context between diff hunks up to the specified number of lines
+    --output-indicator-new <char>
+                          specify the character to indicate a new line instead of '+'
+    --output-indicator-old <char>
+                          specify the character to indicate an old line instead of '-'
+    --output-indicator-context <char>
+                          specify the character to indicate a context instead of ' '
+
+Diff rename options
+    -B, --break-rewrites[=<n>[/<m>]]
+                          break complete rewrite changes into pairs of delete and create
+    -M, --find-renames[=<n>]
+                          detect renames
+    -D, --irreversible-delete
+                          omit the preimage for deletes
+    -C, --find-copies[=<n>]
+                          detect copies
+    --[no-]find-copies-harder
+                          use unmodified files as source to find copies
+    --no-renames          disable rename detection
+    --[no-]rename-empty   use empty blobs as rename source
+    --[no-]follow         continue listing the history of a file beyond renames
+    -l <n>                prevent rename/copy detection if the number of rename/copy targets exceeds given limit
+
+Diff algorithm options
+    --minimal             produce the smallest possible diff
+    -w, --ignore-all-space
+                          ignore whitespace when comparing lines
+    -b, --ignore-space-change
+                          ignore changes in amount of whitespace
+    --ignore-space-at-eol ignore changes in whitespace at EOL
+    --ignore-cr-at-eol    ignore carrier-return at the end of line
+    --ignore-blank-lines  ignore changes whose lines are all blank
+    -I, --[no-]ignore-matching-lines <regex>
+                          ignore changes whose all lines match <regex>
+    --[no-]indent-heuristic
+                          heuristic to shift diff hunk boundaries for easy reading
+    --patience            generate diff using the "patience diff" algorithm
+    --histogram           generate diff using the "histogram diff" algorithm
+    --diff-algorithm <algorithm>
+                          choose a diff algorithm
+    --anchored <text>     generate diff using the "anchored diff" algorithm
+    --word-diff[=<mode>]  show word diff, using <mode> to delimit changed words
+    --word-diff-regex <regex>
+                          use <regex> to decide what a word is
+    --color-words[=<regex>]
+                          equivalent to --word-diff=color --word-diff-regex=<regex>
+    --[no-]color-moved[=<mode>]
+                          moved lines of code are colored differently
+    --[no-]color-moved-ws <mode>
+                          how white spaces are ignored in --color-moved
+
+Other diff options
+    --[no-]relative[=<prefix>]
+                          when run from subdir, exclude changes outside and show relative paths
+    -a, --[no-]text       treat all files as text
+    -R                    swap two inputs, reverse the diff
+    --[no-]exit-code      exit with 1 if there were differences, 0 otherwise
+    --[no-]quiet          disable all output of the program
+    --[no-]ext-diff       allow an external diff helper to be executed
+    --[no-]textconv       run external text conversion filters when comparing binary files
+    --ignore-submodules[=<when>]
+                          ignore changes to submodules in the diff generation
+    --submodule[=<format>]
+                          specify how differences in submodules are shown
+    --ita-invisible-in-index
+                          hide 'git add -N' entries from the index
+    --ita-visible-in-index
+                          treat 'git add -N' entries as real in the index
+    -S <string>           look for differences that change the number of occurrences of the specified string
+    -G <regex>            look for differences that change the number of occurrences of the specified regex
+    --pickaxe-all         show all changes in the changeset with -S or -G
+    --pickaxe-regex       treat <string> in -S as extended POSIX regular expression
+    -O <file>             control the order in which files appear in the output
+    --rotate-to <path>    show the change in the specified path first
+    --skip-to <path>      skip the output to the specified path
+    --find-object <object-id>
+                          look for differences that change the number of occurrences of the specified object
+    --diff-filter [(A|C|D|M|R|T|U|X|B)...[*]]
+                          select files by diff type
+    --max-depth <depth>   maximum tree depth to recurse
+    --output <file>       output to a specific file
+
+
+2026-07-20T08:40:56.504728Z ERROR codex_models_manager::manager: failed to renew cache TTL: missing field `supports_reasoning_summaries` at line 86 column 5
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$css='"'C:\\Users\\2021670\\.ma-stg\\stg.jefKC919\\tasks\\AI_Powered_PPT\\src\\aippt\\canvas\\static\\style.css'; Select-String -LiteralPath "'$css -Pattern '"'button.*:(hover|focus|active)|:hover|:focus|:active|transition:' | Select-Object LineNumber,Line" in C:\Users\2021670\Documents\멀티 에이전트
+ succeeded in 567ms:
+
+LineNumber Line                                                                                 
+---------- ----                                                                                 
+       145   transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+       148 button:hover { background: #f8fafc; border-color: #94a3b8; }                         
+       151 button.primary:hover { background: #334155; border-color: #334155; }                 
+       170 .sidebar-action:focus-visible {                                                      
+       183 .sidebar-action--primary:hover,                                                      
+       184 .sidebar-action--featured:hover {                                                    
+       194 .sidebar-action--danger:hover { background: #dc2626; border-color: #dc2626; }        
+       320 .attachment-remove:hover { background: rgba(0, 0, 0, .75); }                         
+       340 #p-prompt:focus { outline: none; }                                                   
+       369   transition: background-color 0.2s ease, color 0.2s ease;                           
+       371 .icon-btn:hover { background: #f1f5f9; color: #1e293b; }                             
+       390 .model-select-wrapper select:hover { background: #f1f5f9; border-radius: 6px; }      
+       408   transition: background-color 0.2s ease;                                            
+       411 .submit-btn:hover { background: #334155; }                                           
+
+
+
+2026-07-20T08:41:05.757747Z ERROR codex_models_manager::manager: failed to renew cache TTL: missing field `supports_reasoning_summaries` at line 86 column 5
+codex
+VERDICT: APPROVE
+
+The diff matches the UI work order:
+
+- Preserves all 77 element IDs and existing event targets.
+- Changes only the two authorized files.
+- Restores `#ai` to the reserved grid flow without overlay positioning.
+- Correctly scopes sidebar layouts and preserves required control order.
+- Replaces inline styles and broad transitions with reusable, targeted CSS.
+- Uses valid responsive selectors and retains stage-contract styles unchanged.
+- No substantive correctness, scope, or compatibility issues found.
+
+VERDICT: APPROVE
+tokens used
+58,353

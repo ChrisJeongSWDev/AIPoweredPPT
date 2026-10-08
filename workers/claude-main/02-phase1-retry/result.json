@@ -1,0 +1,14 @@
+{
+  "status": "ok",
+  "exit_code": 0,
+  "backend": "claude-edit",
+  "model": "sonnet",
+  "applied": false,
+  "review_verdict": "REVIEW_ERROR",
+  "reviewer": "codex-critic",
+  "reviewer_model": "unknown",
+  "reviewer_source": "brief",
+  "review_decision": "abort",
+  "diff_path": "C:/Users/2021670/Documents/멀티 에이전트/tasks/AI_Powered_PPT/workers/claude-main/02-phase1-retry/artifacts/claude-main-diff-273749-18964.txt",
+  "stdout": "Review gate decision aborted by user. Target repo was not modified."
+}

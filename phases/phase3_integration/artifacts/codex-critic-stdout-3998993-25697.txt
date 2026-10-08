@@ -1,0 +1,7 @@
+VERDICT: BLOCK
+
+`generate_deck` accepts any manifest-valid `layout_id` returned by `fill_slide`; it never verifies it matches `entry["layout_id"]`. This breaks the stage-1 layout decision and can validate content against one layout’s budget while rendering it with another’s.
+
+Raise `CliWorkerSchemaError` when the returned slide layout differs from the outline entry, so the existing repair loop retries it.
+
+VERDICT: BLOCK

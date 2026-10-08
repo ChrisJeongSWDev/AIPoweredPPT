@@ -1,0 +1,29 @@
+Done. Here's what happened.
+
+## The headline caveat first
+
+**I could not run the tests.** This sandbox's permission layer denies all code execution — `python --version` and `node --version` are allowed, but `python -m pytest`, `node script.js` and `node -e` are all refused, and the session is non-interactive so nothing can approve them. I didn't route around the denial. **Someone needs to run `pytest tests/canvas`.**
+
+What I could verify, I did: Gate 1 *is* a substring grep, so I ran every one of its assertions with ripgrep (all green — `getBoundingClientRect` still exactly once at `editor.js:98` inside `toModel()`, zero banned-measurement hits, all four `deltaRect` reads still divided by zoom, `#4472C4` still only in the rejection path). Gate 4b is safe by construction rather than by testing: it lifts `loadIR()` and friends out of the file by name and runs them in Node, and I kept every one of those functions byte-identical.
+
+## Two problems with the brief
+
+The temp brief was **corrupted** — a bad substitution replaced every `.` with the literal path `/c/…/.editwork`, so `editor.js` read as `editor/c/…/.editworkjs`. I recovered the clean original from `tasks/AI_Powered_PPT/phase2_brief.md`.
+
+But that file is **also truncated at source** — it stops mid-sentence inside invariant #1, and §2/§3 never exist even though the requirements table forward-references §3. Rather than guess, I took the missing rules from `test_editor_source.py` (which says of itself "this file *is* the spec") and the intact `phase2_draft_brief.md`. **Both brief files should be regenerated before the next phase.**
+
+Separately, the `.editwork` worktree the brief pointed at was a dead end and always would have been: `git ls-files tasks/AI_Powered_PPT` returns **zero** files, so a worktree can never materialise this project. I edited in place.
+
+## The work
+
+The brief was right that three of four requirements already shipped, so the real work was **undo/redo**. I built it snapshot-based rather than as inverse commands — raise/lower reorder the DOM, delete must remember its z-position, load replaces the whole stage, and each subtly-wrong inverse is a corruption that surfaces three undos later. A snapshot has one inverse and every mutation shares it. Crucially, restoring rebuilds through `makeEl()`, back down the same one-way state→CSS path, so undo *structurally cannot* reintroduce a device pixel.
+
+Gestures are grouped (`beginTx` at drag start, push on first successful commit, drop at pointerup if nothing committed), so one drag is one step and a click-that-merely-selects costs nothing. A refused frame pushes nothing.
+
+The panel moved to the right and hides when nothing is selected, scoped by `data-for` so a connector isn't offered a fill it can't serialize. **One real trap there**: `[hidden]` is specificity `(0,0,1,0)` and `#props label {display:flex}` is `(0,1,0,1)` — the ID selector wins, so a hidden label would be announced as hidden and still be painted and clickable. `#props [hidden]` at `(0,1,1,0)` fixes it, and a test pins it.
+
+For `run.bold`/`run.italic`, the non-obvious part is that turning bold **off** must also strip `<b>`/`<strong>` from the body — bold comes from tags as well as the flag, so an "off" that only stopped *adding* bold would leave the text bold with the button un-pressed. And `stateFromIR` *summarises* the flag across all runs rather than reading the first one: the flag is OR-ed back into every run on export, so peeking at run one would make a deck with a single bold word re-export with the whole sentence bold.
+
+Delete/Backspace and double-click I left alone, and added regression tests so Phase 2 can't quietly take them away.
+
+Full write-up including the unverified-code caveats is at `tasks/AI_Powered_PPT/phase2_change_detail.md`. The Node-executed and structural tests I added in `test_app.py` are the part most likely to still contain a mistake — they're the only new code that has never run, and I already caught three bugs in them by re-reading.

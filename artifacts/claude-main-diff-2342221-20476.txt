@@ -1,0 +1,75 @@
+diff --git a/tasks/AI_Powered_PPT/src/aippt/canvas/render_canvas.py b/tasks/AI_Powered_PPT/src/aippt/canvas/render_canvas.py
+index 2e3909d..de90bf5 100644
+--- a/tasks/AI_Powered_PPT/src/aippt/canvas/render_canvas.py
++++ b/tasks/AI_Powered_PPT/src/aippt/canvas/render_canvas.py
+@@ -87,6 +87,10 @@ def set_title(slide: Any, text: str) -> None:
+ def draw(slide: Any, el: dict[str, Any]) -> Any:
+     if el["type"] == "connector":
+         return draw_connector(slide, el)
++    elif el["type"] == "image":
++        from aippt.canvas.style import draw_image
++
++        return draw_image(slide, el)
+     return draw_shape(slide, el)
+ 
+ 
+diff --git a/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js b/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js
+index c4a2448..31c18ea 100644
+--- a/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js
++++ b/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js
+@@ -2055,6 +2055,17 @@
+       return;
+     }
+ 
++    // /api/export takes canvas-ir/1 JSON, in memory -- an image element's `src` has to be a
++    // Base64 data: URI by the time it gets there (draw_image() decodes it straight off the
++    // element), not the uploadedMedia filename key the stage uses. The missing-media check above
++    // already guarantees every image `src` here resolves in window.uploadedMedia.
++    await Promise.all(ir.elements.filter(function (el) { return el.type === 'image'; }).map(function (el) {
++      var media = window.uploadedMedia[el.src];
++      return fileToBase64(media.file).then(function (data) {
++        el.src = 'data:' + media.file.type + ';base64,' + data;
++      });
++    }));
++
+     setStatus('Exporting...');
+     try {
+       var res = await fetch('/api/export', { method: 'POST', body: JSON.stringify(ir) });
+diff --git a/tasks/AI_Powered_PPT/src/aippt/canvas/style.py b/tasks/AI_Powered_PPT/src/aippt/canvas/style.py
+index fa5ba57..54b87ea 100644
+--- a/tasks/AI_Powered_PPT/src/aippt/canvas/style.py
++++ b/tasks/AI_Powered_PPT/src/aippt/canvas/style.py
+@@ -31,6 +31,8 @@ standalone. De-duping it re-opens a passing gate and is a separate, reviewed cha
+ 
+ from __future__ import annotations
+ 
++import base64
++import io
+ from typing import Any
+ 
+ from pptx.dml.color import RGBColor
+@@ -227,3 +229,24 @@ def draw_shape(slide: Any, el: dict[str, Any]) -> Any:
+     style_text_frame(shp.text_frame, el.get("text"))
+     strip_style(shp)
+     return shp
++
++
++def draw_image(slide: Any, el: dict[str, Any]) -> Any:
++    """image -> a picture on `slide`. `src` is a Base64 data: URI, decoded straight into memory --
++    the editor sends the bytes inline; there is no upload directory or filename to trust."""
++    left, top = emu(el["x"]), emu(el["y"])
++    width, height = emu(el["w"]), emu(el["h"])
++
++    src = el.get("src", "")
++    if src.startswith("data:"):
++        # format: data:image/png;base64,iVBOR...
++        header, b64 = src.split(",", 1)
++        img_data = base64.b64decode(b64)
++        img_io = io.BytesIO(img_data)
++        shp = slide.shapes.add_picture(img_io, left, top, width, height)
++    else:
++        raise ValueError(f"Unsupported image src format for element {el['id']}")
++
++    shp.name = el["id"]
++    shp.rotation = float(el.get("rotation") or 0.0)
++    return shp

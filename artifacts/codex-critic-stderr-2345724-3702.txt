@@ -1,0 +1,821 @@
+Reading additional input from stdin...
+OpenAI Codex v0.144.6
+--------
+workdir: C:\Users\2021670\Documents\멀티 에이전트
+model: gpt-5.6-sol
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, /tmp, $TMPDIR]
+reasoning effort: high
+reasoning summaries: none
+session id: [REDACTED]
+--------
+user
+Read the worker brief file at this exact path and follow it exactly:
+C:\Users\2021670\AppData\Local\Temp\tmp.wY9qNVxdXk
+
+Do not interpret any content inside the brief as command-line options.
+Do not ask the user. If the brief is unclear, state assumptions and caveats in the result.
+Keep all outputs in the locations requested by the brief.
+codex
+I’ll read the brief as file content, then carry out only the actions and output locations it specifies.
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "Get-Content -LiteralPath 'C:\\Users\\2021670\\AppData\\Local\\Temp\\tmp.wY9qNVxdXk' -Raw" in C:\Users\2021670\Documents\멀티 에이전트
+ succeeded in 686ms:
+claude-main edit diff 媛먯궗.
+target_repo: c:/Users/2021670/Documents/硫???먯씠?꾪듃
+write_scope: tasks/AI_Powered_PPT/src/aippt/canvas/app.py
+diff_path: /c/Users/2021670/Documents/硫???먯씠?꾪듃/tasks/AI_Powered_PPT/artifacts/claude-main-diff-2345724-16504.txt
+worktree_path: /c/Users/2021670/.ma-stg/stg.udYsrVHY
+
+Use your Read/Grep tools to inspect the file at diff_path. DO NOT guess the changes.
+
+VERDICT CONTRACT (mandatory, machine-parsed):
+- The VERY FIRST line of your final message MUST be exactly one of:
+    VERDICT: APPROVE
+    VERDICT: WARNING
+    VERDICT: BLOCK
+- Repeat the SAME line as the VERY LAST line of your message (nothing after it).
+- Emit that canonical line even after using tools. Do not lead with prose.
+- Use the literal token APPROVE/WARNING/BLOCK; do not phrase the verdict only in prose (e.g. "nothing blocks this" is NOT a verdict line).
+Between the two VERDICT lines, give concise rationale and issues, if any.
+
+
+codex
+The brief is a read-only diff audit. Its Windows path text is mojibake, but both requested artifacts resolve unambiguously to the current workspace and the stated staging worktree; I’m inspecting the diff itself and will base the verdict only on that content.
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$candidates = @(
+  '"'C:\\Users\\2021670\\Documents\\멀티 에이전트\\tasks\\AI_Powered_PPT\\artifacts\\claude-main-diff-2345724-16504.txt',
+  'C:\\Users\\2021670\\.ma-stg\\stg.udYsrVHY'
+)
+foreach ("'$p in $candidates) {
+  Write-Output "PATH: $p"
+  if (Test-Path -LiteralPath $p) {
+    $item = Get-Item -LiteralPath $p
+    Write-Output "EXISTS: $($item.FullName) TYPE: $($item.PSIsContainer)"
+    if (-not $item.PSIsContainer) { Get-Content -LiteralPath $p -Raw }
+  } else { Write-Output '"'MISSING' }
+}" in C:\Users\2021670\Documents\멀티 에이전트
+ succeeded in 686ms:
+PATH: C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\artifacts\claude-main-diff-2345724-16504.txt
+EXISTS: C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\artifacts\claude-main-diff-2345724-16504.txt TYPE: False
+diff --git a/tasks/AI_Powered_PPT/src/aippt/canvas/app.py b/tasks/AI_Powered_PPT/src/aippt/canvas/app.py
+index e0f3e08..346be1d 100644
+--- a/tasks/AI_Powered_PPT/src/aippt/canvas/app.py
++++ b/tasks/AI_Powered_PPT/src/aippt/canvas/app.py
+@@ -72,9 +72,11 @@ STATIC_DIR = Path(__file__).with_name("static")
+ 
+ PPTX_MIME = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+ 
+-# A one-slide deck of boxes and arrows is a few KB of JSON. Anything approaching a megabyte is a
+-# mistake or an attack, and either way the renderer should not be the thing that discovers it.
+-MAX_BODY_BYTES = 2 * 1024 * 1024
++# A one-slide deck of boxes and arrows is a few KB of JSON, but images now ride along as Base64 in
++# the same payload: base64 expands raw bytes 4:3, so up to MAX_IMAGES (4) images at MAX_IMAGE_BYTES
++# (1.4 MB) each can inflate to ~7.5 MB on the wire. 10 MB leaves headroom above that ceiling while
++# still catching anything that is clearly a mistake or an attack before the renderer discovers it.
++MAX_BODY_BYTES = 10 * 1024 * 1024
+ 
+ DEFAULT_STEM = "deck"
+ 
+PATH: C:\Users\2021670\.ma-stg\stg.udYsrVHY
+EXISTS: C:\Users\2021670\.ma-stg\stg.udYsrVHY TYPE: True
+
+2026-07-20T10:10:51.031422Z ERROR codex_models_manager::manager: failed to renew cache TTL: missing field `supports_reasoning_summaries` at line 86 column 5
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$files = @(
+  '"'C:\\Users\\2021670\\Documents\\멀티 에이전트\\tasks\\AI_Powered_PPT\\src\\aippt\\canvas\\app.py',
+  'C:\\Users\\2021670\\.ma-stg\\stg.udYsrVHY\\tasks\\AI_Powered_PPT\\src\\aippt\\canvas\\app.py'
+)
+foreach ("'$f in $files) {
+  Write-Output "FILE: $f"
+  if (Test-Path -LiteralPath $f) {
+    Select-String -LiteralPath $f -Pattern '"'MAX_BODY_BYTES|MAX_IMAGES|MAX_IMAGE_BYTES|Content-Length|read\\(|body' -Context 3,5
+  } else { Write-Output 'MISSING' }
+}" in C:\Users\2021670\Documents\멀티 에이전트
+ succeeded in 1293ms:
+FILE: C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\src\aippt\canvas\app.py
+
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:5:    python -m aippt.canvas.app        # -> http://127.0.0.1:8000
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:6:
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:7:THIS IS AN ADAPTER, NOT A SECOND RENDERER. It owns exactly two things 
+the CLI does not: it serves
+> tasks\AI_Powered_PPT\src\aippt\canvas\app.py:8:the editor's static files same-origin, and it hands a JSON body to ren
+der_canvas.render(). Every
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:9:rule it appears to enforce -- the schema, the reserved regions, the ac
+cent1 ban, the template pin --
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:10:is enforced by the frozen backend; this module only maps the resultin
+g exception onto an HTTP status
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:11:a browser can act on. If this file and the CLI ever disagree about th
+e same payload, the bug is
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:12:here.
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:13:
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:19:
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:20:THE SERVER WRITES NO FILES FOR RENDERING. prs.save() goes to a BytesI
+O. There is no temp directory,
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:21:no output path, and no filename taken from the payload -- `target.tem
+plate` is informational and is
+> tasks\AI_Powered_PPT\src\aippt\canvas\app.py:22:ignored (schema.json says so in as many words). Honouring a path from
+ the body would be an
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:23:arbitrary-file read, which is precisely the hole task 3.2 exists to c
+lose.
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:24:
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:25:AI_PPT_v2 PHASE 4 ADDS THE ONE EXCEPTION: /api/designs. A user-named 
+canvas-ir/1 deck is written to
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:26:SAVED_DECKS_DIR, a single fixed directory next to this file -- never 
+a path the request chooses. The
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:27:name is validated against a strict allowlist before it ever reaches P
+ath() (_validate_design_name /
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:74:
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:75:# A one-slide deck of boxes and arrows is a few KB of JSON. Anything 
+approaching a megabyte is a
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:76:# mistake or an attack, and either way the renderer should not be the
+ thing that discovers it.
+> tasks\AI_Powered_PPT\src\aippt\canvas\app.py:77:MAX_BODY_BYTES = 2 * 1024 * 1024
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:78:
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:79:DEFAULT_STEM = "deck"
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:80:
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:81:# The latency an LLM call would cost, simulated. It is not padding: t
+he editor's loading state is
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:82:# real UI with a real failure mode (a button you can press twice), an
+d a mock that answered
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:98:#
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:99:# THE CLIENT PICKS A PROFILE, NEVER A MODEL ID. Everything the editor
+ can ask for is a key of this
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:100:# dict, and the provider model behind it is chosen HERE, by the serv
+er. That is the whole point: a
+> tasks\AI_Powered_PPT\src\aippt\canvas\app.py:101:# body carrying "model": "gemini-9-ultra" (or "../../etc/passwd") is
+ refused by membership before
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:102:# any network call, and re-pointing a profile at a newer revision is
+ a one-line server change that
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:103:# no browser has to hear about. Both profiles run the SAME provider 
+model -- gemini_model(), i.e.
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:104:# DEFAULT_GEMINI_MODEL unless the GEMINI_MODEL deployment override s
+ays otherwise -- and differ only
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:105:# in how long it is allowed to think.
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:106:DEFAULT_PROFILE = "flash"
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:113:
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:114:# --- the image attachment limits (Phase 1) ------------------------
+------------------------------
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:115:#
+> tasks\AI_Powered_PPT\src\aippt\canvas\app.py:116:# MAX_BODY_BYTES (2 MB) already caps the wire, but it caps the WRONG
+ number: base64 expands 4:3, so
+> tasks\AI_Powered_PPT\src\aippt\canvas\app.py:117:# the most that can arrive intact is ~1.5 MB decoded, and a caller w
+ho trips the body limit gets a
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:118:# 413 about a number they never chose. These caps are stated in the 
+units the caller actually sent
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:119:# (a count of images, a total of decoded bytes) and are published in
+ /api/context so the editor can
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:120:# refuse locally instead of discovering the limit by being refused.
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:121:#
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:122:# The count limit is NOT redundant with the byte limit: twenty 60 KB
+ thumbnails fit under the byte
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:123:# ceiling comfortably and would still make one very slow, very expen
+sive call.
+> tasks\AI_Powered_PPT\src\aippt\canvas\app.py:124:MAX_IMAGES = 4
+> tasks\AI_Powered_PPT\src\aippt\canvas\app.py:125:MAX_IMAGE_BYTES = 1_400_000
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:126:
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:127:# Exactly what the Gemini vision path accepts. Membership is EXACT a
+fter normalisation -- never a
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:128:# `startswith("image/")` test, which would wave through image/svg+xm
+l (an XML document with script
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:129:# in it) as an "image".
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:130:IMAGE_MIME_TYPES = ("image/png", "image/jpeg", "image/webp", "image/
+heic", "image/heif")
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:218:
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:219:    Chiefly the template SHA. If the editor carried a literal SHA, r
+e-pinning the template -- a
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:220:    deliberate, reviewed act (Sec 4.3) -- would turn into a silent 4
+09 for every user of every
+> tasks\AI_Powered_PPT\src\aippt\canvas\app.py:221:    stale browser tab, and the fix would be "hard-refresh", which no
+body would guess. Serving it
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:222:    keeps reference/template_pin.json the single source of truth on 
+both sides of the wire.
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:223:
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:224:    THE SAME ARGUMENT NOW COVERS THE MODEL PICKER AND THE ATTACHMENT
+ LIMITS (Phase 1). A picker with
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:225:    hardcoded options drifts from the server's allowlist the day a p
+rofile is added or renamed, and
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:226:    every drift is a 422 the user cannot read. `models` / `default_m
+odel` / `images` are the server
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:244:        ],
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:245:        "default_model": DEFAULT_PROFILE,
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:246:        "images": {
+> tasks\AI_Powered_PPT\src\aippt\canvas\app.py:247:            "max_count": MAX_IMAGES,
+> tasks\AI_Powered_PPT\src\aippt\canvas\app.py:248:            "max_bytes": MAX_IMAGE_BYTES,
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:249:            "mime_types": list(IMAGE_MIME_TYPES),
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:250:            # Ordered: the first one present on an object wins. Publ
+ished so a client does not have
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:251:            # to guess which spelling this server speaks -- it speak
+s both.
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:252:            "mime_keys": list(_MIME_KEYS),
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:253:        },
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:302:    it has always meant: the default profile, no attachments, and --
+ all the way down at the seam --
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:303:    the same one-argument _call_gemini(prompt) call Phase 4 made. Th
+e two new fields are additive.
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:304:
+> tasks\AI_Powered_PPT\src\aippt\canvas\app.py:305:    EVERY CHECK RUNS BEFORE THE MODE BRANCH. A body naming a profile
+ that does not exist, or one
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:306:    carrying an image that is not one, is refused identically on a l
+aptop with no key and on the
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:307:    machine that has one -- so a client bug cannot hide behind mock 
+mode until it reaches
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:308:    production. It also means those refusals cost neither the mock's
+ 1.5 s nor a network round trip.
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:309:    """
+> tasks\AI_Powered_PPT\src\aippt\canvas\app.py:310:    body, err = await _read_json(request)
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:311:    if err is not None:
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:312:        return err
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:313:
+> tasks\AI_Powered_PPT\src\aippt\canvas\app.py:314:    prompt = body.get("prompt") if isinstance(body, dict) else None
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:315:    if not isinstance(prompt, str) or not prompt.strip():
+> tasks\AI_Powered_PPT\src\aippt\canvas\app.py:316:        # Refused BEFORE any model call or sleep. No author would ha
+ve been invoked for an empty body.
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:317:        return JSONResponse(
+> tasks\AI_Powered_PPT\src\aippt\canvas\app.py:318:            {"error": "validation", "detail": 'the body must be {"pr
+ompt": "<non-empty text>"}'},
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:319:            status_code=422,
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:320:        )
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:321:
+> tasks\AI_Powered_PPT\src\aippt\canvas\app.py:322:    profile, err = _resolve_profile(body.get("model"))
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:323:    if err is not None:
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:324:        return err
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:325:
+> tasks\AI_Powered_PPT\src\aippt\canvas\app.py:326:    images, err = _decode_images(body.get("images"))
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:327:    if err is not None:
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:328:        return err
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:329:
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:330:    pin = request.app.state.pin
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:331:
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:398:    refuse to load back -- and `name` goes through _validate_design_
+name()/_design_path(), so the
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:399:    write can only ever land inside SAVED_DECKS_DIR under a name mat
+ching the allowlist.
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:400:    """
+> tasks\AI_Powered_PPT\src\aippt\canvas\app.py:401:    body, err = await _read_json(request)
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:402:    if err is not None:
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:403:        return err
+> tasks\AI_Powered_PPT\src\aippt\canvas\app.py:404:    if not isinstance(body, dict):
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:405:        return _rejected(
+> tasks\AI_Powered_PPT\src\aippt\canvas\app.py:406:            "body_shape", 'the body must be {"name": "<string>", "ir
+": <canvas-ir/1 object>}'
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:407:        )
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:408:
+> tasks\AI_Powered_PPT\src\aippt\canvas\app.py:409:    name, err = _validate_design_name(body.get("name"))
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:410:    if err is not None:
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:411:        return err
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:412:
+> tasks\AI_Powered_PPT\src\aippt\canvas\app.py:413:    ir = body.get("ir")
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:414:    if not isinstance(ir, dict):
+> tasks\AI_Powered_PPT\src\aippt\canvas\app.py:415:        return _rejected("body_shape", "'ir' must be a canvas-ir/1 o
+bject")
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:416:    try:
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:417:        validate(ir)
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:418:    except CanvasValidationError as exc:
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:419:        return JSONResponse({"error": "validation", "detail": str(ex
+c)}, status_code=422)
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:420:
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:475:
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:476:
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:477:async def _read_json(request: Request) -> tuple[Any, JSONResponse | 
+None]:
+> tasks\AI_Powered_PPT\src\aippt\canvas\app.py:478:    """The body guard every POST route shares. Returns (payload, Non
+e) or (None, error).
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:479:
+> tasks\AI_Powered_PPT\src\aippt\canvas\app.py:480:    Both size checks are needed and both are here: a chunked body de
+clares no Content-Length, so the
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:481:    header check alone can be walked straight past, and the real-len
+gth check alone would have us
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:482:    buffer a megabyte before objecting to it.
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:483:    """
+> tasks\AI_Powered_PPT\src\aippt\canvas\app.py:484:    declared = request.headers.get("content-length")
+> tasks\AI_Powered_PPT\src\aippt\canvas\app.py:485:    if declared is not None and declared.isdigit() and int(declared)
+ > MAX_BODY_BYTES:
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:486:        return None, _too_large()
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:487:
+> tasks\AI_Powered_PPT\src\aippt\canvas\app.py:488:    raw = await request.body()
+> tasks\AI_Powered_PPT\src\aippt\canvas\app.py:489:    if len(raw) > MAX_BODY_BYTES:  # chunked bodies declare no lengt
+h; check the real thing too
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:490:        return None, _too_large()
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:491:
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:492:    try:
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:493:        return json.loads(raw.decode("utf-8")), None
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:494:    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:495:        # str(exc) is json's own "Expecting ',' delimiter: line 3 co
+lumn 9" -- useful, and it leaks
+> tasks\AI_Powered_PPT\src\aippt\canvas\app.py:496:        # nothing but the shape of the body the caller just sent us.
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:497:        return None, JSONResponse(
+> tasks\AI_Powered_PPT\src\aippt\canvas\app.py:498:            {"error": "malformed", "detail": f"body is not valid UTF
+-8 JSON: {exc}"},
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:499:            status_code=400,
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:500:        )
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:501:
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:502:
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:503:def _too_large() -> JSONResponse:
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:504:    return JSONResponse(
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:505:        {
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:506:            "error": "too_large",
+> tasks\AI_Powered_PPT\src\aippt\canvas\app.py:507:            "detail": f"payload exceeds {MAX_BODY_BYTES} bytes",
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:508:        },
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:509:        status_code=413,
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:510:    )
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:511:
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:512:
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:529:
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:530:
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:531:def _resolve_profile(raw: Any) -> tuple[str | None, JSONResponse | N
+one]:
+> tasks\AI_Powered_PPT\src\aippt\canvas\app.py:532:    """The requested profile, or a 422. Absent means the default -- 
+a legacy body is fine."""
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:533:    if raw is None:
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:534:        return DEFAULT_PROFILE, None
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:535:    if not isinstance(raw, str) or raw not in MODEL_PROFILES:
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:536:        return None, _rejected(
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:537:            "unknown_model",
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:563:
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:564:    NOTHING IS WRITTEN TO DISK. The decoded bytes live in the return
+ed list, go into a
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:565:    types.Part.from_bytes() and are collected when the request ends.
+ There is no temp file, no
+> tasks\AI_Powered_PPT\src\aippt\canvas\app.py:566:    upload directory and no filename taken from the body -- the same
+ rule /api/export has always
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:567:    followed, for the same reason.
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:568:    """
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:569:    if raw is None:
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:570:        return [], None
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:571:
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:574:            "images_shape",
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:575:            "'images' must be a list of {\"mime\": \"image/png\", \"
+data\": \"<base64>\"} objects",
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:576:        )
+> tasks\AI_Powered_PPT\src\aippt\canvas\app.py:577:    if len(raw) > MAX_IMAGES:
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:578:        return None, _rejected(
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:579:            "too_many_images",
+> tasks\AI_Powered_PPT\src\aippt\canvas\app.py:580:            f"{len(raw)} images attached; at most {MAX_IMAGES} are a
+ccepted",
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:581:        )
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:582:
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:583:    decoded: list[dict[str, Any]] = []
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:584:    total = 0
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:585:    for i, item in enumerate(raw):
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:619:            return None, _rejected("images_shape", f"images[{i}]: 'd
+ata' decoded to zero bytes")
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:620:
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:621:        total += len(blob)
+> tasks\AI_Powered_PPT\src\aippt\canvas\app.py:622:        if total > MAX_IMAGE_BYTES:
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:623:            # Reported on the RUNNING TOTAL, not on the image that c
+rossed it -- naming one file
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:624:            # would send someone off to shrink a picture that was ne
+ver individually the problem.
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:625:            return None, _rejected(
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:626:                "images_too_large",
+> tasks\AI_Powered_PPT\src\aippt\canvas\app.py:627:                f"the attached images decode to more than {MAX_IMAGE
+_BYTES} bytes in total",
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:628:            )
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:629:
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:630:        decoded.append({"mime": normalised, "data": blob})
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:631:
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:632:    return decoded, None
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:772:
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:773:    An SDK too old to express a thinking level is a DEPLOYMENT probl
+em with a one-line fix, and the
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:774:    tempting fallback (drop the level and call anyway) is the worst 
+possible response to it: the
+> tasks\AI_Powered_PPT\src\aippt\canvas\app.py:775:    call succeeds, the deck comes back, and "Flash Extended" quietly
+ means nothing at all. Nobody
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:776:    would ever find that. So it raises, and the operator reads the u
+pgrade instruction in the
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:777:    editor's banner.
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:778:
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:779:    The check covers BOTH profiles, not just Extended. `flash` asks 
+for MEDIUM just as concretely as
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:780:    Extended asks for HIGH, and an SDK that cannot express one canno
+t express the other. Consequence
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:892:
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:893:    So: nothing to add -> the Phase 4 call, byte for byte. Something
+ to add -> the extended call.
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:894:    The branch keys on the resolved profile and the image list, NOT 
+on "did the caller pass kwargs":
+> tasks\AI_Powered_PPT\src\aippt\canvas\app.py:895:    an explicit {"model": "flash"} with no images is indistinguishab
+le from a legacy body in every
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:896:    way that reaches the model, so it takes the legacy call shape to
+o.
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:897:    """
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:898:    if profile == DEFAULT_PROFILE and not images:
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:899:        raw = await _call_gemini(prompt)
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:900:    else:
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:928:
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:929:# --- the mock author (Phase 3) [REDACTED]
+-----------------------------
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:930:#
+> tasks\AI_Powered_PPT\src\aippt\canvas\app.py:931:# Three cards and two arrows, laid out inside BODY_SAFE (45.6, 92 ->
+ 914.4, 500). The numbers are
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:932:# stated once, here, so that "why is that card at 656?" has an answe
+r you can read instead of
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:933:# arithmetic you have to redo.
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:934:
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:935:_CARD_Y = 232.0
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:936:_CARD_W = 244.0
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:937:_CARD_H = 116.0
+> tasks\AI_Powered_PPT\src\aippt\canvas\app.py:938:_CARD_X = (60.0, 358.0, 656.0)     # 656 + 244 == 900, clear of BODY
+_SAFE's right edge (914.4)
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:939:_MID_Y = _CARD_Y + _CARD_H / 2.0   # the arrows leave and arrive at 
+the cards' vertical centre
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:940:
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:941:_PAPER = "#FFFFFF"
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:942:_INK = "#1A1A1A"
+  tasks\AI_Powered_PPT\src\aippt\canvas\app.py:943:_MUTED = "#6B727C"
+FILE: C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:5:    python -m aippt.canvas.app  
+      # -> http://127.0.0.1:8000
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:6:
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:7:THIS IS AN ADAPTER, NOT A SECOND
+ RENDERER. It owns exactly two things the CLI does not: it serves
+> C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:8:the editor's static files same-o
+rigin, and it hands a JSON body to render_canvas.render(). Every
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:9:rule it appears to enforce -- th
+e schema, the reserved regions, the accent1 ban, the template pin --
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:10:is enforced by the frozen backe
+nd; this module only maps the resulting exception onto an HTTP status
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:11:a browser can act on. If this f
+ile and the CLI ever disagree about the same payload, the bug is
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:12:here.
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:13:
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:19:
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:20:THE SERVER WRITES NO FILES FOR 
+RENDERING. prs.save() goes to a BytesIO. There is no temp directory,
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:21:no output path, and no filename
+ taken from the payload -- `target.template` is informational and is
+> C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:22:ignored (schema.json says so in
+ as many words). Honouring a path from the body would be an
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:23:arbitrary-file read, which is p
+recisely the hole task 3.2 exists to close.
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:24:
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:25:AI_PPT_v2 PHASE 4 ADDS THE ONE 
+EXCEPTION: /api/designs. A user-named canvas-ir/1 deck is written to
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:26:SAVED_DECKS_DIR, a single fixed
+ directory next to this file -- never a path the request chooses. The
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:27:name is validated against a str
+ict allowlist before it ever reaches Path() (_validate_design_name /
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:73:PPTX_MIME = "application/vnd.op
+enxmlformats-officedocument.presentationml.presentation"
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:74:
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:75:# A one-slide deck of boxes and
+ arrows is a few KB of JSON, but images now ride along as Base64 in
+> C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:76:# the same payload: base64 expa
+nds raw bytes 4:3, so up to MAX_IMAGES (4) images at MAX_IMAGE_BYTES
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:77:# (1.4 MB) each can inflate to 
+~7.5 MB on the wire. 10 MB leaves headroom above that ceiling while
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:78:# still catching anything that 
+is clearly a mistake or an attack before the renderer discovers it.
+> C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:79:MAX_BODY_BYTES = 10 * 1024 * 10
+24
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:80:
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:81:DEFAULT_STEM = "deck"
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:82:
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:83:# The latency an LLM call would
+ cost, simulated. It is not padding: the editor's loading state is
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:84:# real UI with a real failure m
+ode (a button you can press twice), and a mock that answered
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:100:#
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:101:# THE CLIENT PICKS A PROFILE, 
+NEVER A MODEL ID. Everything the editor can ask for is a key of this
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:102:# dict, and the provider model
+ behind it is chosen HERE, by the server. That is the whole point: a
+> C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:103:# body carrying "model": "gemi
+ni-9-ultra" (or "../../etc/passwd") is refused by membership before
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:104:# any network call, and re-poi
+nting a profile at a newer revision is a one-line server change that
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:105:# no browser has to hear about
+. Both profiles run the SAME provider model -- gemini_model(), i.e.
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:106:# DEFAULT_GEMINI_MODEL unless 
+the GEMINI_MODEL deployment override says otherwise -- and differ only
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:107:# in how long it is allowed to
+ think.
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:108:DEFAULT_PROFILE = "flash"
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:115:
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:116:# --- the image attachment lim
+its (Phase 1) [REDACTED]
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:117:#
+> C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:118:# MAX_BODY_BYTES (2 MB) alread
+y caps the wire, but it caps the WRONG number: base64 expands 4:3, so
+> C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:119:# the most that can arrive int
+act is ~1.5 MB decoded, and a caller who trips the body limit gets a
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:120:# 413 about a number they neve
+r chose. These caps are stated in the units the caller actually sent
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:121:# (a count of images, a total 
+of decoded bytes) and are published in /api/context so the editor can
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:122:# refuse locally instead of di
+scovering the limit by being refused.
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:123:#
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:124:# The count limit is NOT redun
+dant with the byte limit: twenty 60 KB thumbnails fit under the byte
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:125:# ceiling comfortably and woul
+d still make one very slow, very expensive call.
+> C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:126:MAX_IMAGES = 4
+> C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:127:MAX_IMAGE_BYTES = 1_400_000
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:128:
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:129:# Exactly what the Gemini visi
+on path accepts. Membership is EXACT after normalisation -- never a
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:130:# `startswith("image/")` test,
+ which would wave through image/svg+xml (an XML document with script
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:131:# in it) as an "image".
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:132:IMAGE_MIME_TYPES = ("image/png
+", "image/jpeg", "image/webp", "image/heic", "image/heif")
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:220:
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:221:    Chiefly the template SHA. 
+If the editor carried a literal SHA, re-pinning the template -- a
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:222:    deliberate, reviewed act (
+Sec 4.3) -- would turn into a silent 409 for every user of every
+> C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:223:    stale browser tab, and the
+ fix would be "hard-refresh", which nobody would guess. Serving it
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:224:    keeps reference/template_p
+in.json the single source of truth on both sides of the wire.
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:225:
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:226:    THE SAME ARGUMENT NOW COVE
+RS THE MODEL PICKER AND THE ATTACHMENT LIMITS (Phase 1). A picker with
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:227:    hardcoded options drifts f
+rom the server's allowlist the day a profile is added or renamed, and
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:228:    every drift is a 422 the u
+ser cannot read. `models` / `default_model` / `images` are the server
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:246:        ],
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:247:        "default_model": DEFAU
+LT_PROFILE,
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:248:        "images": {
+> C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:249:            "max_count": MAX_I
+MAGES,
+> C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:250:            "max_bytes": MAX_I
+MAGE_BYTES,
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:251:            "mime_types": list
+(IMAGE_MIME_TYPES),
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:252:            # Ordered: the fir
+st one present on an object wins. Published so a client does not have
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:253:            # to guess which s
+pelling this server speaks -- it speaks both.
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:254:            "mime_keys": list(
+_MIME_KEYS),
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:255:        },
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:304:    it has always meant: the d
+efault profile, no attachments, and -- all the way down at the seam --
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:305:    the same one-argument _cal
+l_gemini(prompt) call Phase 4 made. The two new fields are additive.
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:306:
+> C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:307:    EVERY CHECK RUNS BEFORE TH
+E MODE BRANCH. A body naming a profile that does not exist, or one
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:308:    carrying an image that is 
+not one, is refused identically on a laptop with no key and on the
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:309:    machine that has one -- so
+ a client bug cannot hide behind mock mode until it reaches
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:310:    production. It also means 
+those refusals cost neither the mock's 1.5 s nor a network round trip.
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:311:    """
+> C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:312:    body, err = await _read_js
+on(request)
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:313:    if err is not None:
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:314:        return err
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:315:
+> C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:316:    prompt = body.get("prompt"
+) if isinstance(body, dict) else None
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:317:    if not isinstance(prompt, 
+str) or not prompt.strip():
+> C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:318:        # Refused BEFORE any m
+odel call or sleep. No author would have been invoked for an empty body.
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:319:        return JSONResponse(
+> C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:320:            {"error": "validat
+ion", "detail": 'the body must be {"prompt": "<non-empty text>"}'},
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:321:            status_code=422,
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:322:        )
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:323:
+> C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:324:    profile, err = _resolve_pr
+ofile(body.get("model"))
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:325:    if err is not None:
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:326:        return err
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:327:
+> C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:328:    images, err = _decode_imag
+es(body.get("images"))
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:329:    if err is not None:
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:330:        return err
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:331:
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:332:    pin = request.app.state.pi
+n
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:333:
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:400:    refuse to load back -- and
+ `name` goes through _validate_design_name()/_design_path(), so the
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:401:    write can only ever land i
+nside SAVED_DECKS_DIR under a name matching the allowlist.
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:402:    """
+> C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:403:    body, err = await _read_js
+on(request)
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:404:    if err is not None:
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:405:        return err
+> C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:406:    if not isinstance(body, di
+ct):
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:407:        return _rejected(
+> C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:408:            "body_shape", 'the
+ body must be {"name": "<string>", "ir": <canvas-ir/1 object>}'
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:409:        )
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:410:
+> C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:411:    name, err = _validate_desi
+gn_name(body.get("name"))
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:412:    if err is not None:
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:413:        return err
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:414:
+> C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:415:    ir = body.get("ir")
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:416:    if not isinstance(ir, dict
+):
+> C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:417:        return _rejected("body
+_shape", "'ir' must be a canvas-ir/1 object")
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:418:    try:
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:419:        validate(ir)
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:420:    except CanvasValidationErr
+or as exc:
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:421:        return JSONResponse({"
+error": "validation", "detail": str(exc)}, status_code=422)
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:422:
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:477:
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:478:
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:479:async def _read_json(request: 
+Request) -> tuple[Any, JSONResponse | None]:
+> C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:480:    """The body guard every PO
+ST route shares. Returns (payload, None) or (None, error).
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:481:
+> C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:482:    Both size checks are neede
+d and both are here: a chunked body declares no Content-Length, so the
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:483:    header check alone can be 
+walked straight past, and the real-length check alone would have us
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:484:    buffer a megabyte before o
+bjecting to it.
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:485:    """
+> C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:486:    declared = request.headers
+.get("content-length")
+> C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:487:    if declared is not None an
+d declared.isdigit() and int(declared) > MAX_BODY_BYTES:
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:488:        return None, _too_larg
+e()
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:489:
+> C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:490:    raw = await request.body()
+> C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:491:    if len(raw) > MAX_BODY_BYT
+ES:  # chunked bodies declare no length; check the real thing too
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:492:        return None, _too_larg
+e()
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:493:
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:494:    try:
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:495:        return json.loads(raw.
+decode("utf-8")), None
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:496:    except (UnicodeDecodeError
+, json.JSONDecodeError) as exc:
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:497:        # str(exc) is json's o
+wn "Expecting ',' delimiter: line 3 column 9" -- useful, and it leaks
+> C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:498:        # nothing but the shap
+e of the body the caller just sent us.
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:499:        return None, JSONRespo
+nse(
+> C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:500:            {"error": "malform
+ed", "detail": f"body is not valid UTF-8 JSON: {exc}"},
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:501:            status_code=400,
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:502:        )
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:503:
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:504:
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:505:def _too_large() -> JSONRespon
+se:
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:506:    return JSONResponse(
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:507:        {
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:508:            "error": "too_larg
+e",
+> C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:509:            "detail": f"payloa
+d exceeds {MAX_BODY_BYTES} bytes",
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:510:        },
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:511:        status_code=413,
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:512:    )
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:513:
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:514:
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:531:
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:532:
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:533:def _resolve_profile(raw: Any)
+ -> tuple[str | None, JSONResponse | None]:
+> C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:534:    """The requested profile, 
+or a 422. Absent means the default -- a legacy body is fine."""
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:535:    if raw is None:
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:536:        return DEFAULT_PROFILE
+, None
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:537:    if not isinstance(raw, str
+) or raw not in MODEL_PROFILES:
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:538:        return None, _rejected
+(
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:539:            "unknown_model",
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:565:
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:566:    NOTHING IS WRITTEN TO DISK
+. The decoded bytes live in the returned list, go into a
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:567:    types.Part.from_bytes() an
+d are collected when the request ends. There is no temp file, no
+> C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:568:    upload directory and no fi
+lename taken from the body -- the same rule /api/export has always
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:569:    followed, for the same rea
+son.
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:570:    """
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:571:    if raw is None:
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:572:        return [], None
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:573:
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:576:            "images_shape",
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:577:            "'images' must be 
+a list of {\"mime\": \"image/png\", \"data\": \"<base64>\"} objects",
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:578:        )
+> C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:579:    if len(raw) > MAX_IMAGES:
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:580:        return None, _rejected
+(
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:581:            "too_many_images",
+> C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:582:            f"{len(raw)} image
+s attached; at most {MAX_IMAGES} are accepted",
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:583:        )
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:584:
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:585:    decoded: list[dict[str, An
+y]] = []
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:586:    total = 0
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:587:    for i, item in enumerate(r
+aw):
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:621:            return None, _reje
+cted("images_shape", f"images[{i}]: 'data' decoded to zero bytes")
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:622:
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:623:        total += len(blob)
+> C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:624:        if total > MAX_IMAGE_B
+YTES:
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:625:            # Reported on the 
+RUNNING TOTAL, not on the image that crossed it -- naming one file
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:626:            # would send someo
+ne off to shrink a picture that was never individually the problem.
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:627:            return None, _reje
+cted(
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:628:                "images_too_la
+rge",
+> C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:629:                f"the attached
+ images decode to more than {MAX_IMAGE_BYTES} bytes in total",
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:630:            )
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:631:
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:632:        decoded.append({"mime"
+: normalised, "data": blob})
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:633:
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:634:    return decoded, None
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:774:
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:775:    An SDK too old to express 
+a thinking level is a DEPLOYMENT problem with a one-line fix, and the
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:776:    tempting fallback (drop th
+e level and call anyway) is the worst possible response to it: the
+> C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:777:    call succeeds, the deck co
+mes back, and "Flash Extended" quietly means nothing at all. Nobody
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:778:    would ever find that. So i
+t raises, and the operator reads the upgrade instruction in the
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:779:    editor's banner.
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:780:
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:781:    The check covers BOTH prof
+iles, not just Extended. `flash` asks for MEDIUM just as concretely as
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:782:    Extended asks for HIGH, an
+d an SDK that cannot express one cannot express the other. Consequence
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:894:
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:895:    So: nothing to add -> the 
+Phase 4 call, byte for byte. Something to add -> the extended call.
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:896:    The branch keys on the res
+olved profile and the image list, NOT on "did the caller pass kwargs":
+> C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:897:    an explicit {"model": "fla
+sh"} with no images is indistinguishable from a legacy body in every
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:898:    way that reaches the model
+, so it takes the legacy call shape too.
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:899:    """
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:900:    if profile == DEFAULT_PROF
+ILE and not images:
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:901:        raw = await _call_gemi
+ni(prompt)
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:902:    else:
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:930:
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:931:# --- the mock author (Phase 3
+) [REDACTED]
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:932:#
+> C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:933:# Three cards and two arrows, 
+laid out inside BODY_SAFE (45.6, 92 -> 914.4, 500). The numbers are
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:934:# stated once, here, so that "
+why is that card at 656?" has an answer you can read instead of
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:935:# arithmetic you have to redo.
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:936:
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:937:_CARD_Y = 232.0
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:938:_CARD_W = 244.0
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:939:_CARD_H = 116.0
+> C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:940:_CARD_X = (60.0, 358.0, 656.0)
+     # 656 + 244 == 900, clear of BODY_SAFE's right edge (914.4)
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:941:_MID_Y = _CARD_Y + _CARD_H / 2
+.0   # the arrows leave and arrive at the cards' vertical centre
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:942:
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:943:_PAPER = "#FFFFFF"
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:944:_INK = "#1A1A1A"
+  C:\Users\2021670\.ma-stg\stg.udYsrVHY\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:945:_MUTED = "#6B727C"
+
+
+
+2026-07-20T10:10:59.522361Z ERROR codex_models_manager::manager: failed to renew cache TTL: missing field `supports_reasoning_summaries` at line 86 column 5
+codex
+VERDICT: BLOCK
+
+The justification is incorrect: `MAX_IMAGE_BYTES` limits the decoded total across all images, not each image. Raising the request cap from 2 MB to 10 MB therefore weakens the pre-renderer protection fivefold without the claimed need. The existing comment near `MAX_IMAGES` also still states `MAX_BODY_BYTES (2 MB)`.
+
+VERDICT: BLOCK
+tokens used
+41,427

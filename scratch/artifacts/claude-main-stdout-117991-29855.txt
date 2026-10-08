@@ -1,0 +1,11 @@
+Both edits applied cleanly and the change-detail doc was written. Summary of what was done:
+
+**`index.html`** (`tasks/AI_Powered_PPT/src/aippt/canvas/static/index.html`):
+- Removed the `+` (`plus-btn`) attachment button from `.toolbar-left`.
+- Added the `View Log` button (`#b-view-log`) next to the `#p-model` selector.
+- Added the `#log-modal` viewer markup near the end of `<body>`.
+
+**`editor.js`** (`tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js`):
+- Appended the log-modal wiring (open/close/poll `/api/log` every 1s) at the end of the file, after the existing IIFE closes.
+
+Change detail written to `.ma-stg/stg.LzjBlZw9/scratch/change_detail_phase2.md` as the brief's `change_detail_path` specified, including two caveats: this brief's scope didn't cover verifying a backend `/api/log` route exists, and no test/interpreter execution was run (not attempted, per the "don't ask, state assumptions" instruction) — only hand-checked against the file's own Gate-1 banned-API list.

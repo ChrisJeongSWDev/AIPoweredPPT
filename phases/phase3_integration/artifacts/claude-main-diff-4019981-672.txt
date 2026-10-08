@@ -1,0 +1,459 @@
+diff --git a/tasks/AI_Powered_PPT/src/aippt/adapters/ai_adapter.py b/tasks/AI_Powered_PPT/src/aippt/adapters/ai_adapter.py
+index 0c80925..94b3d01 100644
+--- a/tasks/AI_Powered_PPT/src/aippt/adapters/ai_adapter.py
++++ b/tasks/AI_Powered_PPT/src/aippt/adapters/ai_adapter.py
+@@ -2,9 +2,12 @@
+ # -*- coding: utf-8 -*-
+ """LLM  ->  Slide IR.  Model-agnostic by construction.
+ 
+-STATUS: specification only, except ``CliWorkerClient`` (headless claude/codex CLI,
+-no API key -- see the headless-worker-integration Work Order). Every other function
+-and class below still raises NotImplementedError.
++STATUS: ``build_system_prompt``, ``generate_outline``, ``fill_slide`` and
++``generate_deck`` are implemented (Phase 3, this Work Order), on top of
++``CliWorkerClient`` (headless claude/codex CLI, no API key -- see the
++headless-worker-integration Work Order). The reference API-key clients
++(``ClaudeClient``, ``OpenAIClient``, ``GeminiClient``) below still raise
++NotImplementedError -- they are a documented future path, not this phase's job.
+ 
+ The single invariant this module exists to protect
+ --------------------------------------------------
+@@ -55,7 +58,24 @@ from typing import Any, Protocol
+ from jsonschema import validators
+ from jsonschema.exceptions import ValidationError
+ 
+-from ..ir.models import Deck
++from ..ir.models import (
++    Bullets,
++    Callout,
++    Cards,
++    Code,
++    Deck,
++    DeckMeta,
++    Diagram,
++    Heading,
++    IR_VERSION,
++    IRValidationError,
++    Image,
++    Paragraph,
++    Steps,
++    Table,
++    load_schema,
++)
++from ..render.fit import check_budget
+ 
+ 
+ class LLMClient(Protocol):
+@@ -92,6 +112,39 @@ class GenerationResult:
+     token_usage: dict[str, int]
+ 
+ 
++# --------------------------------------------------------------------------------------
++# Shared paths and small helpers
++# --------------------------------------------------------------------------------------
++
++#: Three parents up from ``src/aippt/adapters/ai_adapter.py`` -- the same convention
++#: already used by ``canvas/pin.py`` and ``tools/calibrate.py`` to resolve the project
++#: root from a ``src/aippt/<pkg>/<file>.py`` module. Only correct against a full
++#: checkout that carries ``prompts/``/``reference/`` as siblings of ``src/`` -- a
++#: ``src/``-only staging clone (see the headless-worker-integration task family) will
++#: fail these reads; that is a staging limitation, not a bug in this module.
++PROJECT_ROOT = Path(__file__).resolve().parents[3]
++PROMPTS_DIR = PROJECT_ROOT / "prompts"
++REFERENCE_DIR = PROJECT_ROOT / "reference"
++
++
++def _read_layout_catalog_md() -> str:
++    """The pre-rendered catalog both generation stages inject -- written by
++    ``analyze_pptx_master.render_catalog``, not regenerated here."""
++    return (REFERENCE_DIR / "layout_catalog.md").read_text(encoding="utf-8")
++
++
++def _join_sources(sources: list[str]) -> str:
++    return "\n".join(sources)
++
++
++def _find_layout(manifest: dict[str, Any], layout_id: str) -> dict[str, Any] | None:
++    for master in manifest.get("masters", []):
++        for lay in master.get("layouts", []):
++            if lay["layout_id"] == layout_id:
++                return lay
++    return None
++
++
+ def build_system_prompt(manifest: dict[str, Any], catalog_md: str) -> str:
+     """Assemble the system prompt from ``prompts/00_system_deck_author.md`` + the catalog.
+ 
+@@ -110,7 +163,46 @@ def build_system_prompt(manifest: dict[str, Any], catalog_md: str) -> str:
+     glyph is roughly twice the advance width of a Latin one. A model told "60 characters"
+     with no script qualifier will happily overflow a Korean slide by 2x.
+     """
+-    raise NotImplementedError
++    del manifest  # not needed here -- caller already rendered it into catalog_md
++    template = (PROMPTS_DIR / "00_system_deck_author.md").read_text(encoding="utf-8")
++    return template.replace("{{LAYOUT_CATALOG}}", catalog_md)
++
++
++def _outline_schema(manifest: dict[str, Any]) -> dict[str, Any]:
++    """JSON Schema for stage 1's output -- narrative fields only, no ``blocks``.
++
++    ``layout_id`` is a closed ``enum`` built from the manifest's own layout ids: an
++    invented layout is rejected by the provider's own structured-output mechanism,
++    the same hard-guarantee principle ``LLMClient``'s docstring opens with, extended
++    from JSON shape to layout selection.
++    """
++    layout_ids = sorted({
++        lay["layout_id"]
++        for master in manifest.get("masters", [])
++        for lay in master.get("layouts", [])
++    })
++    slide_entry = {
++        "type": "object",
++        "required": ["id", "layout_id", "title", "intent", "key_points"],
++        "additionalProperties": False,
++        "properties": {
++            "id": {"type": "string"},
++            "layout_id": {"type": "string", "enum": layout_ids},
++            "title": {"type": "string"},
++            "intent": {"type": "string"},
++            "key_points": {"type": "array", "items": {"type": "string"}},
++            "source_refs": {"type": "array", "items": {"type": "string"}},
++        },
++    }
++    return {
++        "type": "object",
++        "required": ["slides", "rationale"],
++        "additionalProperties": False,
++        "properties": {
++            "slides": {"type": "array", "minItems": 1, "items": slide_entry},
++            "rationale": {"type": "string"},
++        },
++    }
+ 
+ 
+ def generate_outline(client: LLMClient, topic: str, sources: list[str],
+@@ -130,18 +222,238 @@ def generate_outline(client: LLMClient, topic: str, sources: list[str],
+     ``layout_id`` is chosen here, at deck level, where the model can see the whole shape
+     and avoid emitting nine consecutive bullet slides.
+     """
+-    raise NotImplementedError
++    system_prompt = build_system_prompt(manifest, _read_layout_catalog_md())
++    template = (PROMPTS_DIR / "10_outline_storyboard.md").read_text(encoding="utf-8")
++    user_prompt = (
++        template
++        .replace("{{TOPIC}}", topic)
++        .replace("{{SOURCES}}", _join_sources(sources))
++        .replace("{{TARGET_SLIDES}}", str(target_slides))
++    )
++    result = client.complete_json(system=system_prompt, user=user_prompt,
++                                  schema=_outline_schema(manifest))
++    return result["slides"]
++
++
++def _format_layout_budget(layout: dict[str, Any]) -> str:
++    """Reproduce ``analyze_pptx_master.render_catalog``'s per-placeholder budget line
++    format, reading the manifest's already-computed ``content_budget`` fields directly
++    (not calling into ``analyze_pptx_master`` itself) -- so a single-layout excerpt
++    reads identically in style to the full catalog the system prompt already showed
++    the model, rather than introducing a second notation.
++    """
++    lines: list[str] = []
++    for ph in layout.get("placeholders", []):
++        budget = ph.get("content_budget", {})
++        head = (f"- `idx {ph['idx']}` {ph['type']} -- {ph['inches']['width']}x"
++                f"{ph['inches']['height']}in @ {ph['font_pt']}pt")
++        if not budget.get("computable"):
++            lines.append(head + f" -- budget unavailable ({budget.get('reason')})")
++        elif "max_title_chars_cjk" in budget:
++            lines.append(
++                head + f" -- max **{budget['max_title_chars_latin']} latin chars** "
++                       f"/ **{budget['max_title_chars_cjk']} korean chars**, "
++                       f"<= {budget['recommended_lines']} lines")
++        elif "max_bullets" in budget:
++            lines.append(
++                head + f" -- max **{budget['max_bullets']} bullets** x "
++                       f"**{budget['max_words_per_bullet']} words** "
++                       f"({budget['max_chars_per_bullet_latin']} latin / "
++                       f"{budget['max_chars_per_bullet_cjk']} korean chars per bullet)")
++        else:
++            lines.append(
++                head + f" -- {budget['chars_per_line_latin']} latin chars/line, "
++                       f"{budget['max_lines']} lines")
++    return "\n".join(lines)
++
++
++def _format_repair_note(repair_note: str) -> str:
++    if not repair_note:
++        return ""
++    return f"## Repair needed\n\nThe previous attempt failed validation:\n\n{repair_note}\n"
++
++
++def _slide_schema() -> dict[str, Any]:
++    """Lift ``$defs.slide`` (lowercase -- ``ir/schema.json``'s real key; not the
++    capitalized ``$defs["Slide"]`` some brief wording has used) to the schema root,
++    keeping the full ``$defs`` dict alongside it since ``slide`` itself ``$ref``s
++    ``#/$defs/block``, which refs ``#/$defs/rich_text``, etc. JSON Pointer refs
++    resolve against whatever document is actually handed to the validator, not the
++    original file's ``$id``, so this works without hand-maintaining a second,
++    standalone single-slide schema.
++    """
++    full_schema = load_schema()
++    slide_schema = dict(full_schema["$defs"]["slide"])
++    slide_schema["$schema"] = full_schema.get(
++        "$schema", "https://json-schema.org/draft/2020-12/schema")
++    slide_schema["$defs"] = full_schema["$defs"]
++    return slide_schema
+ 
+ 
+ def fill_slide(client: LLMClient, outline_entry: dict[str, Any],
+-               manifest: dict[str, Any], sources: list[str]) -> dict[str, Any]:
++               manifest: dict[str, Any], sources: list[str], *,
++               repair_note: str = "") -> dict[str, Any]:
+     """Stage 2: one outline entry -> one schema-valid slide object.
+ 
+     The prompt injects ONLY the budget for the layout this slide actually uses -- not the
+     whole catalog. Narrowing the context measurably improves adherence: the model is not
+     picking a layout any more, it is filling a box whose exact dimensions it has been told.
++
++    ``repair_note``: the specific validation error from a previous attempt at this same
++    slide, substituted into ``{{REPAIR_NOTE}}``. Defaults to ``""`` (renders as no-op),
++    so a first attempt and a call site written against the 4-positional-argument shape
++    are unaffected -- only ``generate_deck``'s bounded repair loop passes a non-empty
++    value.
+     """
+-    raise NotImplementedError
++    layout_id = outline_entry["layout_id"]
++    layout = _find_layout(manifest, layout_id)
++    if layout is None:
++        raise CliWorkerError(
++            f"layout_id {layout_id!r} (from the outline entry) is not a layout "
++            f"in this manifest"
++        )
++
++    system_prompt = build_system_prompt(manifest, _read_layout_catalog_md())
++    template = (PROMPTS_DIR / "20_slide_fill.md").read_text(encoding="utf-8")
++    user_prompt = (
++        template
++        .replace("{{OUTLINE_ENTRY}}", json.dumps(outline_entry, indent=2, ensure_ascii=False))
++        .replace("{{LAYOUT_ID}}", layout_id)
++        .replace("{{SEMANTIC_ROLE}}", layout.get("semantic_role", ""))
++        .replace("{{LAYOUT_BUDGET}}", _format_layout_budget(layout))
++        .replace("{{SOURCES}}", _join_sources(sources))
++        .replace("{{REPAIR_NOTE}}", _format_repair_note(repair_note))
++    )
++    return client.complete_json(system=system_prompt, user=user_prompt, schema=_slide_schema())
++
++
++def _parse_and_validate_slide(slide_dict: dict[str, Any], manifest: dict[str, Any]) -> Any:
++    """Wrap one slide dict in a throwaway single-slide ``Deck`` payload and run it
++    through ``Deck.from_dict`` (structural parse -- this is what catches the table
++    row/column-count invariant ``ir/models.py`` calls out as JSON-Schema-inexpressible)
++    plus ``validate_against_manifest`` (the filled slide re-emits its own ``layout_id``
++    field; this is defense in depth alongside ``generate_deck``'s own stricter
++    "matches the outline entry exactly" check). Returns the parsed ``Slide``.
++    """
++    payload = {
++        "ir_version": IR_VERSION,
++        "deck": {"title": "generate_deck placeholder"},
++        "slides": [slide_dict],
++    }
++    deck = Deck.from_dict(payload)
++    errors = deck.validate_against_manifest(manifest)
++    if errors:
++        raise CliWorkerSchemaError("; ".join(errors))
++    return deck.slides[0]
++
++
++#: A placeholder's ``content_budget`` carries this key only for title-shaped
++#: placeholders (see ``analyze_pptx_master.content_budget`` / ``_format_layout_budget``
++#: above, which already branches on the same key) -- used here instead of importing
++#: ``analyze_pptx_master.TITLE_TYPES`` to classify a placeholder by its already-computed
++#: budget shape rather than re-deriving placeholder-type membership.
++_TITLE_BUDGET_KEY = "max_title_chars_cjk"
++
++
++def _budget_placeholders(
++    layout: dict[str, Any],
++) -> tuple[dict[str, Any] | None, list[dict[str, Any]]]:
++    """Split a layout's placeholders into (title placeholder, body placeholders in
++    order). The manifest's placeholder list is already idx-sorted
++    (``analyze_pptx_master.extract_layout``), which is the same order ``ir/schema.json``
++    documents the renderer using to map a slide's ``blocks`` onto its layout's
++    non-title placeholders.
++    """
++    title_ph: dict[str, Any] | None = None
++    body_phs: list[dict[str, Any]] = []
++    for ph in layout.get("placeholders", []):
++        budget = ph.get("content_budget", {})
++        if title_ph is None and _TITLE_BUDGET_KEY in budget:
++            title_ph = ph
++        else:
++            body_phs.append(ph)
++    return title_ph, body_phs
++
++
++def _block_plain_text(block: Any) -> str:
++    """The rendered-character text a block owes ``check_budget`` -- the ``str``
++    counterpart of each block's own ``text_length()`` in ``ir/models.py`` (which
++    returns only a count; ``check_budget`` needs the actual characters to tell CJK
++    from Latin)."""
++    if isinstance(block, Heading):
++        return block.text
++    if isinstance(block, Paragraph):
++        return block.text.plain
++    if isinstance(block, Bullets):
++        return "\n".join(item.text.plain for item in block.items)
++    if isinstance(block, Callout):
++        return f"{block.title or ''} {block.text.plain}".strip()
++    if isinstance(block, Table):
++        cells = " ".join(cell.plain for row in block.rows for cell in row)
++        return f"{' '.join(block.columns)} {cells}".strip()
++    if isinstance(block, Code):
++        return max((variant.code for variant in block.variants), key=len, default="")
++    if isinstance(block, Image):
++        return block.caption or ""
++    if isinstance(block, Diagram):
++        return ""
++    if isinstance(block, Steps):
++        return "\n".join(
++            f"{item.title} {item.text.plain if item.text else ''}".strip()
++            for item in block.items)
++    if isinstance(block, Cards):
++        return "\n".join(
++            f"{item.title} {item.text.plain if item.text else ''}".strip()
++            for item in block.items)
++    return ""
++
++
++def _check_slide_budget(slide: Any, layout: dict[str, Any], language: str) -> list[str]:
++    """Layer 2 of ``render/fit.py``'s three-layer defence, invoked from the AI
++    adapter's own validation step exactly as ``check_budget``'s docstring asks: "Call
++    it in the AI adapter's validation step so a budget violation is caught while a
++    retry is still possible, not after the deck is built."
++
++    Maps ``slide.title`` onto the layout's title-shaped placeholder (if any) and
++    ``slide.blocks[i]`` onto ``body_placeholders[i]`` in order -- the same mapping
++    ``ir/schema.json``'s ``blocks`` field documents ("the renderer maps blocks onto
++    the layout's non-title placeholders in order"). A slide with more blocks than the
++    layout has body placeholders leaves the extras unchecked here (the schema says
++    those spill onto free-floating shapes, which have no computed budget).
++
++    NOTE: ``check_budget`` (and its dependencies ``is_cjk``/``visual_width``/
++    ``estimate_text_height`` in ``render/fit.py``) are, as of this phase, still
++    ``NotImplementedError`` stubs -- ``render/fit.py`` is outside this module's
++    ``write_scope``. Calling this function against a real layout will therefore raise
++    ``NotImplementedError``, not a budget verdict, until a later phase implements
++    ``fit.py``. That is deliberate: ``generate_deck``'s repair loop below only catches
++    ``CliWorkerSchemaError``/``IRValidationError`` (repairable content problems), so a
++    missing-implementation ``NotImplementedError`` propagates immediately instead of
++    being silently swallowed or burning a repair attempt it cannot fix -- see this
++    module's own "FAIL LOUD" precedent in ``generate_deck``'s docstring. Implementing
++    ``fit.py`` itself is real, separate work (CJK-aware text measurement) and belongs
++    to its own phase/write_scope, not a scope-creeping addition here.
++    """
++    errors: list[str] = []
++    title_ph, body_phs = _budget_placeholders(layout)
++
++    if title_ph is not None and title_ph.get("content_budget", {}).get("computable"):
++        result = check_budget(slide.title, title_ph["content_budget"], language)
++        if not result.fits:
++            errors.append(f"title (`idx {title_ph['idx']}`): {result.detail or result.action}")
++
++    for i, (block, ph) in enumerate(zip(slide.blocks, body_phs)):
++        budget = ph.get("content_budget", {})
++        if not budget.get("computable"):
++            continue
++        text = _block_plain_text(block)
++        if not text:
++            continue
++        result = check_budget(text, budget, language)
++        if not result.fits:
++            errors.append(f"blocks[{i}] (`idx {ph['idx']}`): {result.detail or result.action}")
++
++    return errors
+ 
+ 
+ def generate_deck(client: LLMClient, topic: str, sources: list[str],
+@@ -164,10 +476,81 @@ def generate_deck(client: LLMClient, topic: str, sources: list[str],
+     Budget violations are *repairable*, not fatal: the retry says "this is 40 chars over,
+     cut it". Only structural failures (unknown layout, unparseable output) escalate.
+ 
++    Two checks guard each filled slide before it is accepted:
++
++      * ``fill_slide`` must return the SAME ``layout_id`` the outline chose for this
++        slide -- a mismatch would validate content against one layout's budget while
++        rendering it with another's, and is treated as a repairable schema error.
++      * the slide's content must fit its layout's placeholder budgets
++        (:func:`_check_slide_budget`, via ``render/fit.py``'s ``check_budget`` --
++        see that function's docstring for why this currently raises
++        ``NotImplementedError`` rather than a verdict, pending a later phase).
++
+     Raises:
+         RuntimeError: repairs exhausted. The message names the slide and the reason.
+     """
+-    raise NotImplementedError
++    manifest = json.loads(Path(manifest_path).read_text(encoding="utf-8"))
++    outline = generate_outline(client, topic, sources, manifest)
++
++    slides: list[Any] = []
++    any_repaired = False
++    total_attempts = 0
++
++    for entry in outline:
++        layout = _find_layout(manifest, entry["layout_id"])
++        if layout is None:
++            raise CliWorkerError(
++                f"outline entry {entry.get('id', '?')!r}: layout_id "
++                f"{entry['layout_id']!r} is not a layout in this manifest"
++            )
++
++        repair_note = ""
++        last_error = ""
++        slide: Any = None
++
++        for _attempt in range(max_repairs + 1):
++            slide_dict = fill_slide(client, entry, manifest, sources, repair_note=repair_note)
++            total_attempts += 1
++            try:
++                returned_layout_id = slide_dict.get("layout_id")
++                if returned_layout_id != entry["layout_id"]:
++                    raise CliWorkerSchemaError(
++                        f"slide {entry.get('id', '?')!r}: fill_slide returned "
++                        f"layout_id {returned_layout_id!r}, which does not match the "
++                        f"outline's layout_id {entry['layout_id']!r} -- this slide "
++                        f"would be validated against one layout's budget and "
++                        f"rendered with another's"
++                    )
++                parsed_slide = _parse_and_validate_slide(slide_dict, manifest)
++                budget_errors = _check_slide_budget(parsed_slide, layout, "mixed")
++                if budget_errors:
++                    raise CliWorkerSchemaError(
++                        f"slide {entry.get('id', '?')!r} content budget: "
++                        + "; ".join(budget_errors)
++                    )
++            except (CliWorkerSchemaError, IRValidationError) as exc:
++                last_error = str(exc)
++                repair_note = f"{repair_note}\n- {last_error}".strip() if repair_note else f"- {last_error}"
++                any_repaired = True
++                continue
++            else:
++                slide = parsed_slide
++                break
++        else:
++            raise RuntimeError(
++                f"slide {entry.get('id', '?')!r} (layout {entry['layout_id']!r}): "
++                f"repairs exhausted after {max_repairs} attempts -- last error: {last_error}"
++            )
++
++        slides.append(slide)
++
++    deck = Deck(
++        deck=DeckMeta(title=topic[:120], language="mixed", source=topic),
++        slides=slides,
++        ir_version=IR_VERSION,
++    )
++    return GenerationResult(deck=deck, attempts=total_attempts, repaired=any_repaired,
++                            token_usage={})
+ 
+ 
+ # --------------------------------------------------------------------------------------

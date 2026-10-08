@@ -1,0 +1,14 @@
+{
+  "payload": {
+    "candidate_id": "cand-003",
+    "created_at": "2026-07-20T10:42:46+09:00",
+    "phase_id": "phase6_repair",
+    "proposed_by": "agy",
+    "requested_reviewer": "codex-critic",
+    "requested_worker": "claude-main",
+    "requested_worker_model": "sonnet",
+    "session_id": "AI_Powered_PPT"
+  },
+  "payload_sha256": "383328327ae25d34c54db92ea635e74e79a8074f453253bab8d04d272ca2bb83",
+  "schema_version": 1
+}

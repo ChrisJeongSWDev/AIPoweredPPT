@@ -1,0 +1,3 @@
+VERDICT: APPROVE
+
+`/api/generate` uses only the fixed mock IR and simulated latency, with no external API calls. The frontend passes the response directly to `loadIR(ir)`, preserving the shared validation gate. Generation snapshots once, replaces the full stage, and pushes exactly one undo entry only after successful loading, matching file import behavior.

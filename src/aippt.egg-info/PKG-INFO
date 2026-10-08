@@ -1,0 +1,193 @@
+Metadata-Version: 2.4
+Name: aippt
+Version: 0.1.0
+Summary: AI-authored PowerPoint built on the Vieworks R&D master template, via a schema-validated Slide IR.
+License: Proprietary — Vieworks internal
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: python-pptx==1.0.2
+Requires-Dist: lxml==5.3.0
+Requires-Dist: Pillow==11.0.0
+Requires-Dist: jsonschema==4.23.0
+Provides-Extra: html
+Requires-Dist: beautifulsoup4==4.12.3; extra == "html"
+Provides-Extra: editor
+Requires-Dist: fastapi>=0.115; extra == "editor"
+Requires-Dist: uvicorn[standard]>=0.30; extra == "editor"
+Provides-Extra: ai
+Requires-Dist: anthropic>=0.40.0; extra == "ai"
+Requires-Dist: openai>=1.50.0; extra == "ai"
+Requires-Dist: google-genai>=0.3.0; extra == "ai"
+Provides-Extra: dev
+Requires-Dist: pytest>=8.0; extra == "dev"
+Requires-Dist: ruff>=0.6; extra == "dev"
+Requires-Dist: httpx>=0.27; extra == "dev"
+
+# AI_Powered_PPT
+
+AI-authored PowerPoint decks built **on the real Vieworks R&D master template**, via a
+schema-validated intermediate representation.
+
+The whole design rests on one invariant:
+
+> **The AI never emits PowerPoint.** It emits a `layout_id` plus content, as schema-valid
+> JSON. Every coordinate, font and colour comes from `Vieworks_R&D_ppt_Template.pptx` and
+> a deterministic renderer. The model writes the words; the designer still owns the design.
+
+```
+  HTML deck ─┐
+             ├─> [ Slide IR : JSON ] ─> [ deterministic renderer ] ─> .pptx (on template)
+  AI author ─┘         ▲                          │
+                       │                          └─> LibreOffice ─> PNG ─> visual QA
+                layout_manifest.json
+                (extracted from the template master)
+```
+
+Read **[`foundation_research.md`](foundation_research.md)** for the reasoning: why this
+shape and not the three obvious alternatives, what python-pptx cannot do, and why text
+overflow is the number-one risk in the entire project.
+
+---
+
+## ⚠️ Current status — read this before you run anything
+
+**The scaffold is complete. The analyzer has never been executed.**
+
+`src/aippt/analyze_pptx_master.py` (Deliverable C) is written and complete, but the worker
+session that produced this repository had **no code-execution permission** — Python was
+denied through Bash, through PowerShell, and through a subagent. So:
+
+| | State |
+|---|---|
+| Repo scaffold, IR schema, prompts, stubs | ✅ complete |
+| `analyze_pptx_master.py` | ⚠️ **written, never run, never even syntax-checked** |
+| `reference/layout_manifest.json` | ❌ **placeholder — no real data** |
+| `reference/layout_catalog.md` | ❌ **placeholder — no real data** |
+| Anything about the template's internals | ❌ **unverified** |
+| The 30-slide HTML corpus | ✅ verified directly (see below) |
+
+Nothing about the `.pptx` — layout count, layout names, box geometry, font sizes, or where
+`#DB0032` lives — is confirmed. Where `foundation_research.md` needed those facts, it says
+so explicitly instead of guessing. **Fabricating a layout catalog would have been the worst
+possible outcome**: it gets injected into every AI prompt, so the lie would propagate into
+every generated deck and surface far downstream, looking like a renderer bug.
+
+### Your first move
+
+```bash
+pip install -e .
+python -m aippt.analyze_pptx_master        # ~2 seconds
+```
+
+Expect to fix a bug or two — this code has never had an interpreter look at it. Then paste
+the stdout summary into `foundation_research.md` §4, which is holding a marked placeholder
+for exactly that.
+
+---
+
+## Install
+
+```bash
+pip install -e .              # core: python-pptx, lxml, Pillow
+pip install -e ".[html]"      # + BeautifulSoup, jsonschema  (Phase 1)
+pip install -e ".[ai]"        # + anthropic / openai / google-genai  (Phase 2)
+```
+
+Python ≥ 3.10 (the code uses `X | None` unions).
+
+Pillow is **not** optional. Without it `picture.image.size` is unavailable and
+`add_picture()` silently stretches images instead of aspect-fitting them.
+
+Phase 3 additionally needs system binaries that pip cannot supply: LibreOffice (`soffice`),
+poppler (`pdftoppm`), and Node + `@mermaid-js/mermaid-cli` (`mmdc`).
+
+---
+
+## Layout
+
+```
+README.md                     you are here
+foundation_research.md        the design document — start here
+pyproject.toml
+requirements.txt
+
+src/aippt/
+  analyze_pptx_master.py      ✅ PoC: template -> layout_manifest.json + layout_catalog.md
+  ir/
+    schema.json               ✅ the IR contract (normative)
+    models.py                 ✅ typed mirror + the rules JSON Schema can't express
+  adapters/
+    html_adapter.py           📋 spec only — HTML card deck -> IR
+    ai_adapter.py             📋 spec only — LLM -> IR (Claude / Codex / Gemini)
+  render/
+    renderer.py               📋 spec only — IR -> .pptx on the template's layouts
+    fit.py                    📋 spec only — overflow control (the hard problem)
+    diagrams.py               📋 spec only — mermaid -> native shapes or a picture
+
+prompts/
+  00_system_deck_author.md    the invariant + the content budgets
+  10_outline_storyboard.md    stage 1 — deck narrative
+  20_slide_fill.md            stage 2 — per-slide content
+  30_visual_qa.md             stage 3 — vision critique of rendered PNGs
+
+reference/
+  layout_manifest.json        ❌ GENERATED by the analyzer — currently a placeholder
+  layout_catalog.md           ❌ GENERATED by the analyzer — currently a placeholder
+```
+
+`📋 spec only` means the body is `raise NotImplementedError` but the docstring is a complete
+contract — inputs, outputs, invariants, and the specific traps. You should be able to
+implement each one without reading anything else.
+
+There are no `__init__.py` files: `aippt` is a PEP-420 namespace package. This is
+deliberate — the approved write scope for this task did not include them, and setuptools'
+`packages.find` handles namespace packages by default.
+
+---
+
+## The corpus (this part *is* verified)
+
+Three existing HTML decks, 30 slides, sitting next to this repo. They are simultaneously
+the design corpus, the few-shot exemplars, and the Phase 1 test fixtures.
+
+| Deck | Slides |
+|---|---|
+| `Slide Template.html` | 4 |
+| `Vieworks_MatroxSDK_Example_UserManual.html` | 17 |
+| `3D Logic 개발 테스트벤치 설계안_Ver2.html` | 9 |
+
+All three share one convention: `<section class="card" data-slide="N">` is exactly one
+slide, and each card holds exactly one `<h2>` (30 cards, 30 `<h2>` — verified).
+
+Counted directly from the source, and it reshaped the IR:
+
+| | Count | Consequence |
+|---|---|---|
+| inline `<code>` | **111** | run-level styling is mandatory, not a nicety |
+| `<h3>` | 28 | `heading` is a first-class block |
+| `<ul>` | 22 | |
+| `<table>` | 11 | the densest, most overflow-prone block |
+| `<svg>` | 7 | hand-drawn diagrams the mermaid path won't catch |
+| callouts | 7 | **3 variants** — `.alert-box` ×4, `.warn-box` ×2, `.ok-box` ×1 |
+| base64 images | 3 | all `image/jpeg` — **not** png |
+| `<pre>` | 2 | one of them is a tabbed C++/C# pair |
+
+Three of these contradict the brief this repo was built from — it described a single
+`.alert-box` callout, PNG images, and did not mention `.tabs`, `.step-badge` (×10),
+`.mini-card` (×9) or the `sim-*` interactive panels at all. The IR follows the corpus, not
+the brief. See `foundation_research.md` §3.
+
+---
+
+## Roadmap
+
+| Phase | Scope | Gate to pass |
+|---|---|---|
+| **0** | Run the analyzer. Get real layout facts. | `layout_manifest.json` has real data |
+| **1** | `html_adapter` → IR → `renderer` → `.pptx`. **No AI.** | All 30 corpus slides round-trip with a clean `ConversionReport` |
+| **2** | `ai_adapter`: topic + sources → IR, structured output + bounded retry | A generated deck opens in PowerPoint, on-brand, nothing overflowing |
+| **3** | Render → PNG → deterministic geometry checks → vision critique → repair | The loop converges without a human |
+
+Phase 1 has no AI in it on purpose. If a deck we *already have* cannot survive the
+round trip, no amount of prompt engineering will save the AI path — and Phase 1 failures
+are debuggable in a way that "the model wrote something odd" never is.

@@ -1,0 +1,128 @@
+diff --git a/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js b/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js
+index bff56d6..bc5d321 100644
+--- a/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js
++++ b/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js
+@@ -2318,35 +2318,10 @@
+     }
+   });
+ 
+-  /* Loading goes through the SAME loadIR() gate a file import or an AI draft does -- a saved
+-   * design is no more trusted than either, and the stage stays untouched if it is refused. */
+-  $('p-designs').addEventListener('change', async function () {
+-    var name = this.value;
+-    if (!name) return;
+-    clearWarnings();
+-    try {
+-      var res = await fetch('/api/designs/' + encodeURIComponent(name));
+-      if (!res.ok) {
+-        var data = {};
+-        try { data = await res.json(); } catch (e) { /* a non-JSON error body */ }
+-        warn('Load failed (HTTP ' + res.status + ')', data.detail || res.statusText);
+-        setStatus('Load failed.');
+-        return;
+-      }
+-      var ir = await res.json();
+-      var before = snapshot();
+-      try {
+-        loadIR(ir);
+-        pushUndo(before); // it took: replacing the whole deck is ONE step, and it is reversible
+-      } catch (e) {
+-        warn('That design was refused — the stage is unchanged', String(e.message || e));
+-        setStatus('Load refused.');
+-      }
+-    } catch (e) {
+-      warn('Could not reach the server', String(e));
+-      setStatus('Load failed.');
+-    }
+-  });
++  /* Loading is a DELIBERATE act, fired only by the "Load Template" button below -- picking a name
++   * in #p-designs must not itself replace the stage, or browsing the list would silently discard
++   * unsaved work. (An earlier auto-load-on-change handler lived here; it raced the button, firing
++   * loadIR() a second time -- and a second pushUndo() -- for the same selection.) */
+ 
+   /* -------------------------------------------------------- the AI draft (Phase 3, MOCK) */
+ 
+@@ -2498,17 +2473,12 @@
+   /* The mock/live badge. The MODE comes from /api/context, never inferred from behaviour. */
+   function applyMode(mode, model) {
+     var tag = $('ai-mode');
+-    var hint = $('ai-hint');
+     if (mode === 'live') {
+       if (tag) {
+         tag.textContent = 'live';
+         tag.classList.add('live');
+         tag.title = model ? ('Model: ' + model) : 'A live model is called';
+       }
+-      if (hint) {
+-        hint.innerHTML = 'Calls the configured model and <strong>replaces the stage</strong> with ' +
+-          'its draft (Ctrl+Z brings yours back). The draft is judged like any import.';
+-      }
+     } else if (tag) {
+       tag.textContent = 'mock';
+       tag.classList.remove('live');
+@@ -2517,18 +2487,23 @@
+   }
+ 
+   /* Ctrl+Z inside the PROMPT is the browser's undo, not ours.
+-    /* Ctrl+Z inside the PROMPT is the browser's undo, not ours.
+    *
+    * The global handler runs undo/redo in FRONT of its editingText() guard on purpose — so that undo
+    * still works with the focus in the size box, which is exactly where the focus is right after the
+    * edit you want to undo. This textarea is the one control where that is wrong: the user is typing
+    * prose, they expect their keystrokes back, and what they would get instead is their whole deck
+    * rolled back. Stop the event here rather than widen the global exception: the exception belongs
+-   * to this box, not to <input> at large. */
++   * to this box, not to <input> at large.
++   *
++   * `isComposing` / keyCode 229 guard the Enter branch: on Korean (Hangul) input — what this box's
++   * own placeholder is written in — the Enter that commits an IME composition fires as a real
++   * `keydown Enter` too. Without the guard, finishing a syllable would submit the prompt mid-word
++   * instead of just committing the character. */
+   $('p-prompt').addEventListener('keydown', function (ev) {
+     var k = String(ev.key || '').toLowerCase();
+     if ((ev.ctrlKey || ev.metaKey) && (k === 'z' || k === 'y')) ev.stopPropagation();
+     if (ev.key === 'Enter' && !ev.shiftKey) {
++      if (ev.isComposing || ev.keyCode === 229) return;
+       ev.preventDefault();
+       $('b-generate').click();
+     }
+diff --git a/tasks/AI_Powered_PPT/src/aippt/canvas/static/index.html b/tasks/AI_Powered_PPT/src/aippt/canvas/static/index.html
+index 5fab876..01e2038 100644
+--- a/tasks/AI_Powered_PPT/src/aippt/canvas/static/index.html
++++ b/tasks/AI_Powered_PPT/src/aippt/canvas/static/index.html
+@@ -314,7 +314,7 @@
+     <div class="composer-box">
+       <div class="composer-field">
+         <label class="visually-hidden" for="p-prompt">AI draft prompt</label>
+-        <textarea id="p-prompt" rows="1" spellcheck="false" aria-describedby="ai-hint"
++        <textarea id="p-prompt" rows="1" spellcheck="false"
+                   placeholder="예: Q3 실적 보고서 3단계 파이프라인으로 요약해줘"></textarea>
+       </div>
+       <div class="composer-actions">
+diff --git a/tasks/AI_Powered_PPT/src/aippt/canvas/static/style.css b/tasks/AI_Powered_PPT/src/aippt/canvas/static/style.css
+index 5deffe7..5fa539e 100644
+--- a/tasks/AI_Powered_PPT/src/aippt/canvas/static/style.css
++++ b/tasks/AI_Powered_PPT/src/aippt/canvas/static/style.css
+@@ -221,10 +221,9 @@ button:disabled, button.primary:disabled { opacity: .45; cursor: not-allowed; }
+ /* A label with no visible text still needs to occupy no space and not clip in a screen reader --
+    the standard clip-rect pattern, not `display: none` (which VoiceOver/NVDA also ignore). The
+    composer is a compact bottom bar with no room for a visible "Prompt" caption above the field, so
+-   the accessible name travels through this label instead of a caption; `#p-prompt`'s
+-   `aria-describedby="ai-hint"` (index.html) carries the submission guidance the same way. Replaces
+-   the old `#toolbar label.stacked` rule, which only ever styled this one label and has no other
+-   caller left now that it is hidden rather than stacked. */
++   the accessible name travels through this label instead of a caption. Replaces the old
++   `#toolbar label.stacked` rule, which only ever styled this one label and has no other caller
++   left now that it is hidden rather than stacked. */
+ .visually-hidden {
+   position: absolute;
+   width: 1px;
+@@ -334,8 +333,6 @@ button:disabled, button.primary:disabled { opacity: .45; cursor: not-allowed; }
+ }
+ .composer-actions button { white-space: nowrap; }
+ 
+-#ai .hint { margin: 0; color: #6b727c; font-size: 11px; line-height: 1.45; }
+-
+ /* THE LOADING STATE. `aria-busy` is the state; this animation is only its costume, so a screen
+    reader is told what the eye is told. `disabled` is what actually stops a second POST — the pulse
+    just makes 1.5 s look like work rather than a hang. */

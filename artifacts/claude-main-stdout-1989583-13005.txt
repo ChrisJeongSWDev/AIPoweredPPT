@@ -1,0 +1,12 @@
+I've completed the repair. Summary:
+
+**What was wrong:** The blocked diff's `exportElementHTML()` serialized the live `contenteditable` `.txt .body` via `clone.outerHTML`, and `exportHTML()` used `titleField.innerHTML` directly — both would carry through unsafe markup (event-handler attributes, `javascript:` links, etc.) from a rich paste into the exported standalone `.html` file, executing on open.
+
+**Fix applied** (in the staged worktree `stg.ZQ9vgXVn`, since it started at the pre-Phase-6-HTML-export baseline — this was rebuilt whole, not patched):
+- `exportElementHTML()` now reconstructs each shape/textbox body via `normalizeText()` + `paragraphsToHTML()` — the same normalize/rebuild pair `toIR()` and `loadIR()` already use — which discards every tag/attribute and keeps only `{text, bold, italic, color}`, then re-emits a fixed safe `<div>/<span>/<b>/<i>` shape through `esc()`.
+- `exportHTML()` now builds the title from `esc(titleString()).replace(/\n/g, '<br>')` instead of `titleField.innerHTML`, since `titleString()` already reduces the title to a plain string.
+- The previously-accepted fixes (blob→`data:` URL media embedding, `sanitizeLink()` scheme allowlist) were carried forward unchanged.
+
+I also hit the same `write_scope`-prefix bug documented in memory (temp brief's `write_scope` was missing the `tasks/AI_Powered_PPT/` prefix for this repo-rooted stage) — edited the real files and documented the mismatch rather than the literal (nonexistent) path.
+
+Files edited: `schema.json`, `static/index.html`, `static/editor.js` in the staged worktree. Full write-up, including manual verification (no interpreter/git access was available in this session — all blocked with approval-timeout) and what still needs human/browser verification, is at `tasks/AI_Powered_PPT/workers/phase6_repair2/change_detail.md` in the outer tree.

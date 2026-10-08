@@ -1,0 +1,3503 @@
+{
+  "schema_version": "2.0",
+  "generated_by": "aippt.analyze_exemplars",
+  "curated": false,
+  "source": {
+    "filename": "Vieworks_R&D_ppt_Template.pptx",
+    "sha256": "0de7d70cf45197e959d93c31eedd7599c42c23c1153d7b67b18d332141e61442",
+    "bytes": 1881082
+  },
+  "required_roles": [
+    "deck-title",
+    "section-divider",
+    "content-bullets",
+    "content-two-col",
+    "content-table",
+    "content-image",
+    "content-steps",
+    "content-cards",
+    "content-code"
+  ],
+  "exemplars": [
+    {
+      "exemplar_id": null,
+      "source_slide_index": 0,
+      "layout_name": "제목 슬라이드",
+      "roles": [],
+      "supports_blocks": [],
+      "shape_count": 2,
+      "slots": [
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 2,
+          "shape_name": "텍스트 개체 틀 1",
+          "z_index": 0,
+          "is_placeholder": true,
+          "placeholder_idx": 10,
+          "emu": {
+            "left": 585181,
+            "top": 1821134,
+            "width": 6790979,
+            "height": 1231523
+          },
+          "inches": {
+            "left": 0.64,
+            "top": 1.9916,
+            "width": 7.4267,
+            "height": 1.3468
+          },
+          "effective_style": {
+            "font_pt": null,
+            "typeface": null,
+            "color": null,
+            "bold": false,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 18.0,
+            "chars_per_line_latin": 51,
+            "chars_per_line_cjk": 26,
+            "max_lines": 4,
+            "max_bullets": 3,
+            "max_words_per_bullet": 8,
+            "max_chars_per_bullet_latin": 51,
+            "max_chars_per_bullet_cjk": 26,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "AF Camera 신규 기능 개발 계획서\nMulti Exposure 기능 테스트",
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 6,
+          "shape_name": "object 14",
+          "z_index": 1,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 585181,
+            "top": 3429000,
+            "width": 2070710,
+            "height": 1410001
+          },
+          "inches": {
+            "left": 0.64,
+            "top": 3.75,
+            "width": 2.2646,
+            "height": 1.542
+          },
+          "effective_style": {
+            "font_pt": null,
+            "typeface": "뷰웍스 M",
+            "color": "7E7E7E",
+            "bold": false,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 18.0,
+            "chars_per_line_latin": 15,
+            "chars_per_line_cjk": 8,
+            "max_lines": 5,
+            "max_bullets": 3,
+            "max_words_per_bullet": 2,
+            "max_chars_per_bullet_latin": 15,
+            "max_chars_per_bullet_cjk": 8,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "2025.12.12\n뷰웍스 광영상본부 \n광영상기술지원팀\n정찬우 CL",
+          "required": false,
+          "on_unbound": "remove"
+        }
+      ],
+      "brand_shapes": [],
+      "decorations": []
+    },
+    {
+      "exemplar_id": null,
+      "source_slide_index": 1,
+      "layout_name": "사용자 지정 레이아웃",
+      "roles": [],
+      "supports_blocks": [],
+      "shape_count": 3,
+      "slots": [
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 27,
+          "shape_name": "TextBox 26",
+          "z_index": 0,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 575708,
+            "top": 401565,
+            "width": 3049537,
+            "height": 584775
+          },
+          "inches": {
+            "left": 0.6296,
+            "top": 0.4392,
+            "width": 3.335,
+            "height": 0.6395
+          },
+          "effective_style": {
+            "font_pt": 32.0,
+            "typeface": "뷰웍스 B",
+            "color": "DB0032",
+            "bold": false,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 32.0,
+            "chars_per_line_latin": 12,
+            "chars_per_line_cjk": 6,
+            "max_lines": 1,
+            "max_bullets": 1,
+            "max_words_per_bullet": 2,
+            "max_chars_per_bullet_latin": 12,
+            "max_chars_per_bullet_cjk": 6,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "목  차",
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 22,
+          "shape_name": "슬라이드 번호 개체 틀 5",
+          "z_index": 1,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 9316890,
+            "top": 6448017,
+            "width": 2743200,
+            "height": 365125
+          },
+          "inches": {
+            "left": 10.1891,
+            "top": 7.0516,
+            "width": 3.0,
+            "height": 0.3993
+          },
+          "effective_style": null,
+          "budget": {
+            "computable": true,
+            "font_pt": 18.0,
+            "chars_per_line_latin": 20,
+            "chars_per_line_cjk": 10,
+            "max_lines": 1,
+            "max_bullets": 1,
+            "max_words_per_bullet": 3,
+            "max_chars_per_bullet_latin": 20,
+            "max_chars_per_bullet_cjk": 10,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "2",
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "group",
+          "shape_id": 32,
+          "shape_name": "그룹 31",
+          "z_index": 2,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 3724031,
+            "top": 1843362,
+            "width": 4097033,
+            "height": 3445238
+          },
+          "inches": {
+            "left": 4.0726,
+            "top": 2.0159,
+            "width": 4.4806,
+            "height": 3.7678
+          },
+          "effective_style": null,
+          "budget": null,
+          "sample_text": null,
+          "required": false,
+          "on_unbound": "remove"
+        }
+      ],
+      "brand_shapes": [],
+      "decorations": []
+    },
+    {
+      "exemplar_id": null,
+      "source_slide_index": 2,
+      "layout_name": "1_사용자 지정 레이아웃",
+      "roles": [],
+      "supports_blocks": [],
+      "shape_count": 3,
+      "slots": [
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 6,
+          "shape_name": "슬라이드 번호 개체 틀 5",
+          "z_index": 0,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 9316890,
+            "top": 6448017,
+            "width": 2743200,
+            "height": 365125
+          },
+          "inches": {
+            "left": 10.1891,
+            "top": 7.0516,
+            "width": 3.0,
+            "height": 0.3993
+          },
+          "effective_style": null,
+          "budget": {
+            "computable": true,
+            "font_pt": 18.0,
+            "chars_per_line_latin": 20,
+            "chars_per_line_cjk": 10,
+            "max_lines": 1,
+            "max_bullets": 1,
+            "max_words_per_bullet": 3,
+            "max_chars_per_bullet_latin": 20,
+            "max_chars_per_bullet_cjk": 10,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "3",
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 2,
+          "shape_name": "텍스트 개체 틀 1",
+          "z_index": 1,
+          "is_placeholder": true,
+          "placeholder_idx": 10,
+          "emu": {
+            "left": 585181,
+            "top": 2572216,
+            "width": 5475017,
+            "height": 443285
+          },
+          "inches": {
+            "left": 0.64,
+            "top": 2.813,
+            "width": 5.9876,
+            "height": 0.4848
+          },
+          "effective_style": {
+            "font_pt": null,
+            "typeface": null,
+            "color": null,
+            "bold": false,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 18.0,
+            "chars_per_line_latin": 41,
+            "chars_per_line_cjk": 21,
+            "max_lines": 1,
+            "max_bullets": 1,
+            "max_words_per_bullet": 6,
+            "max_chars_per_bullet_latin": 41,
+            "max_chars_per_bullet_cjk": 21,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "01",
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 3,
+          "shape_name": "텍스트 개체 틀 2",
+          "z_index": 2,
+          "is_placeholder": true,
+          "placeholder_idx": 11,
+          "emu": {
+            "left": 585181,
+            "top": 3292682,
+            "width": 5475017,
+            "height": 443285
+          },
+          "inches": {
+            "left": 0.64,
+            "top": 3.6009,
+            "width": 5.9876,
+            "height": 0.4848
+          },
+          "effective_style": {
+            "font_pt": null,
+            "typeface": null,
+            "color": null,
+            "bold": false,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 18.0,
+            "chars_per_line_latin": 41,
+            "chars_per_line_cjk": 21,
+            "max_lines": 1,
+            "max_bullets": 1,
+            "max_words_per_bullet": 6,
+            "max_chars_per_bullet_latin": 41,
+            "max_chars_per_bullet_cjk": 21,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "과제 개요",
+          "required": false,
+          "on_unbound": "remove"
+        }
+      ],
+      "brand_shapes": [],
+      "decorations": []
+    },
+    {
+      "exemplar_id": null,
+      "source_slide_index": 3,
+      "layout_name": "2_사용자 지정 레이아웃",
+      "roles": [],
+      "supports_blocks": [],
+      "shape_count": 2,
+      "slots": [
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 11,
+          "shape_name": "텍스트 개체 틀 10",
+          "z_index": 0,
+          "is_placeholder": true,
+          "placeholder_idx": 10,
+          "emu": {
+            "left": 578540,
+            "top": 339725,
+            "width": 9707439,
+            "height": 473075
+          },
+          "inches": {
+            "left": 0.6327,
+            "top": 0.3715,
+            "width": 10.6162,
+            "height": 0.5174
+          },
+          "effective_style": {
+            "font_pt": 32.0,
+            "typeface": null,
+            "color": null,
+            "bold": false,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 32.0,
+            "chars_per_line_latin": 41,
+            "chars_per_line_cjk": 21,
+            "max_lines": 1,
+            "max_bullets": 1,
+            "max_words_per_bullet": 6,
+            "max_chars_per_bullet_latin": 41,
+            "max_chars_per_bullet_cjk": 21,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "1. 과제 개요",
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 4,
+          "shape_name": "TextBox 3",
+          "z_index": 1,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 776593,
+            "top": 1243743,
+            "width": 11104075,
+            "height": 4478149
+          },
+          "inches": {
+            "left": 0.8493,
+            "top": 1.3602,
+            "width": 12.1436,
+            "height": 4.8974
+          },
+          "effective_style": {
+            "font_pt": 15.0,
+            "typeface": "뷰웍스 B",
+            "color": null,
+            "bold": true,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 15.0,
+            "chars_per_line_latin": 100,
+            "chars_per_line_cjk": 52,
+            "max_lines": 19,
+            "max_bullets": 14,
+            "max_words_per_bullet": 16,
+            "max_chars_per_bullet_latin": 100,
+            "max_chars_per_bullet_cjk": 52,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "과제 요청 고객사: 크레셈\n\n과제 요청 사항\n\nPCB 표면 특성상, 재질의 빛 반사도 특성이 상이하여, AF 레이저 영상 형태 및 밝기가 PCB 위치마다 변화가 심함. 이로 인한 AF Detection 성능 감소가 큼.\n이를 보완하기 위해 AF 카메라 단에서 Multi Exposure 기능을 사용할 것을 24년 12월경에 제안하였으며, 이에 따른 AF Detection 성능 개선 여부를 확인하고 자 함.   \n\n과제 진행 History\n\n25년 1월경, AF 계산값 평균화 방식을 활용한 로직을 구현하여 AF 카메라 Firmware / FPGA 단에 테스트 버전으로 적용하였음. \n25년 3월경, 구현한 로직대로 뷰웍스 실험실 조건에서 테스트를 진행함. \n25년 3월 중순 경, 고객사 크레셈 방문하여 테스트 진행했으나, 모션 발진이 발생하며 기능 구현 실패함.\n유력한 원인으로 Peak Threshold 처리 블록과 신규 Multi Exposure 로직간 계산 에러가 발생하는 것으로 보여짐. 이에 따른 디버깅 및 테스트 필요.\nAF 계산 알고리즘인 Haar-Filter Feature를 응용하여 AF 계산 결과물 출력시, 에러율에 대한 정보 파악하여 최종 출력 신호 판정시 활용할 수 있도록 기능 보완 및 테스트 필요함. \n     ",
+          "required": false,
+          "on_unbound": "remove"
+        }
+      ],
+      "brand_shapes": [],
+      "decorations": []
+    },
+    {
+      "exemplar_id": null,
+      "source_slide_index": 4,
+      "layout_name": "1_사용자 지정 레이아웃",
+      "roles": [],
+      "supports_blocks": [],
+      "shape_count": 3,
+      "slots": [
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 6,
+          "shape_name": "슬라이드 번호 개체 틀 5",
+          "z_index": 0,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 9316890,
+            "top": 6448017,
+            "width": 2743200,
+            "height": 365125
+          },
+          "inches": {
+            "left": 10.1891,
+            "top": 7.0516,
+            "width": 3.0,
+            "height": 0.3993
+          },
+          "effective_style": null,
+          "budget": {
+            "computable": true,
+            "font_pt": 18.0,
+            "chars_per_line_latin": 20,
+            "chars_per_line_cjk": 10,
+            "max_lines": 1,
+            "max_bullets": 1,
+            "max_words_per_bullet": 3,
+            "max_chars_per_bullet_latin": 20,
+            "max_chars_per_bullet_cjk": 10,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "5",
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 2,
+          "shape_name": "텍스트 개체 틀 1",
+          "z_index": 1,
+          "is_placeholder": true,
+          "placeholder_idx": 10,
+          "emu": {
+            "left": 585181,
+            "top": 2572216,
+            "width": 5475017,
+            "height": 443285
+          },
+          "inches": {
+            "left": 0.64,
+            "top": 2.813,
+            "width": 5.9876,
+            "height": 0.4848
+          },
+          "effective_style": {
+            "font_pt": null,
+            "typeface": null,
+            "color": null,
+            "bold": false,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 18.0,
+            "chars_per_line_latin": 41,
+            "chars_per_line_cjk": 21,
+            "max_lines": 1,
+            "max_bullets": 1,
+            "max_words_per_bullet": 6,
+            "max_chars_per_bullet_latin": 41,
+            "max_chars_per_bullet_cjk": 21,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "01",
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 3,
+          "shape_name": "텍스트 개체 틀 2",
+          "z_index": 2,
+          "is_placeholder": true,
+          "placeholder_idx": 11,
+          "emu": {
+            "left": 585181,
+            "top": 3292682,
+            "width": 6242339,
+            "height": 443285
+          },
+          "inches": {
+            "left": 0.64,
+            "top": 3.6009,
+            "width": 6.8267,
+            "height": 0.4848
+          },
+          "effective_style": {
+            "font_pt": null,
+            "typeface": null,
+            "color": null,
+            "bold": false,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 18.0,
+            "chars_per_line_latin": 47,
+            "chars_per_line_cjk": 24,
+            "max_lines": 1,
+            "max_bullets": 1,
+            "max_words_per_bullet": 7,
+            "max_chars_per_bullet_latin": 47,
+            "max_chars_per_bullet_cjk": 24,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "기존 AF Multi-Exposure 로직 ",
+          "required": false,
+          "on_unbound": "remove"
+        }
+      ],
+      "brand_shapes": [],
+      "decorations": []
+    },
+    {
+      "exemplar_id": null,
+      "source_slide_index": 5,
+      "layout_name": "2_사용자 지정 레이아웃",
+      "roles": [],
+      "supports_blocks": [],
+      "shape_count": 3,
+      "slots": [
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 2,
+          "shape_name": "텍스트 개체 틀 1",
+          "z_index": 0,
+          "is_placeholder": true,
+          "placeholder_idx": 10,
+          "emu": {
+            "left": 578541,
+            "top": 339725,
+            "width": 9211156,
+            "height": 473075
+          },
+          "inches": {
+            "left": 0.6327,
+            "top": 0.3715,
+            "width": 10.0734,
+            "height": 0.5174
+          },
+          "effective_style": {
+            "font_pt": null,
+            "typeface": null,
+            "color": null,
+            "bold": false,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 18.0,
+            "chars_per_line_latin": 69,
+            "chars_per_line_cjk": 36,
+            "max_lines": 1,
+            "max_bullets": 1,
+            "max_words_per_bullet": 11,
+            "max_chars_per_bullet_latin": 69,
+            "max_chars_per_bullet_cjk": 36,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "AF 카메라 Multi Exposure 기능 설계 구조",
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "group",
+          "shape_id": 40,
+          "shape_name": "그룹 39",
+          "z_index": 1,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 644434,
+            "top": 2980744,
+            "width": 11268970,
+            "height": 3713354
+          },
+          "inches": {
+            "left": 0.7048,
+            "top": 3.2598,
+            "width": 12.3239,
+            "height": 4.061
+          },
+          "effective_style": null,
+          "budget": null,
+          "sample_text": null,
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 39,
+          "shape_name": "TextBox 38",
+          "z_index": 2,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 578541,
+            "top": 932864,
+            "width": 10969025,
+            "height": 2087559
+          },
+          "inches": {
+            "left": 0.6327,
+            "top": 1.0202,
+            "width": 11.9959,
+            "height": 2.283
+          },
+          "effective_style": {
+            "font_pt": null,
+            "typeface": "뷰웍스 M",
+            "color": null,
+            "bold": true,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 18.0,
+            "chars_per_line_latin": 83,
+            "chars_per_line_cjk": 43,
+            "max_lines": 7,
+            "max_bullets": 5,
+            "max_words_per_bullet": 13,
+            "max_chars_per_bullet_latin": 83,
+            "max_chars_per_bullet_cjk": 43,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "[구조]\n1. Multi Exposure 로직 적용 이후 AF 출력단 구조\nMulti Exposure Sequence mode의 기능이 추가됨\nSequence mode의 사용 여부에 따라 peak threshold 출력을 사용할 지, Multi Exposure Sequence mode 출력을 사용할 지 결정하게 됨\nSequence mode 로직 내부에 peak threshold를 masking된 값을 처리해주는 부분을 추가해 기존의 peak threshold masking과 sequence mode의 출력이 충돌이 발생하지 않게 함",
+          "required": false,
+          "on_unbound": "remove"
+        }
+      ],
+      "brand_shapes": [],
+      "decorations": []
+    },
+    {
+      "exemplar_id": null,
+      "source_slide_index": 6,
+      "layout_name": "2_사용자 지정 레이아웃",
+      "roles": [],
+      "supports_blocks": [],
+      "shape_count": 9,
+      "slots": [
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 2,
+          "shape_name": "텍스트 개체 틀 1",
+          "z_index": 0,
+          "is_placeholder": true,
+          "placeholder_idx": 10,
+          "emu": {
+            "left": 578541,
+            "top": 339725,
+            "width": 9211156,
+            "height": 473075
+          },
+          "inches": {
+            "left": 0.6327,
+            "top": 0.3715,
+            "width": 10.0734,
+            "height": 0.5174
+          },
+          "effective_style": {
+            "font_pt": null,
+            "typeface": null,
+            "color": null,
+            "bold": false,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 18.0,
+            "chars_per_line_latin": 69,
+            "chars_per_line_cjk": 36,
+            "max_lines": 1,
+            "max_bullets": 1,
+            "max_words_per_bullet": 11,
+            "max_chars_per_bullet_latin": 69,
+            "max_chars_per_bullet_cjk": 36,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "Multi Exposure Logic Mode",
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 39,
+          "shape_name": "TextBox 38",
+          "z_index": 1,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 578541,
+            "top": 932864,
+            "width": 10969025,
+            "height": 1995226
+          },
+          "inches": {
+            "left": 0.6327,
+            "top": 1.0202,
+            "width": 11.9959,
+            "height": 2.182
+          },
+          "effective_style": {
+            "font_pt": 14.0,
+            "typeface": "뷰웍스 M",
+            "color": null,
+            "bold": false,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 14.0,
+            "chars_per_line_latin": 106,
+            "chars_per_line_cjk": 55,
+            "max_lines": 9,
+            "max_bullets": 7,
+            "max_words_per_bullet": 17,
+            "max_chars_per_bullet_latin": 106,
+            "max_chars_per_bullet_cjk": 55,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "모드 별 정의\nmode 1 : Using One Sample\n초기 Exposure 선택 값 : Exposure 1 (예시)\nSequence 1에서 초기 input으로 설정한 Exposure와 가장 근접한 값을 출력\nSequence 2에서 Sequence 1에서 출력된 값과 가장 근접한 값을 출력\n빨간 값이 Sequence별 출력",
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "group",
+          "shape_id": 43,
+          "shape_name": "그룹 42",
+          "z_index": 2,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 578541,
+            "top": 4024221,
+            "width": 10787612,
+            "height": 1974495
+          },
+          "inches": {
+            "left": 0.6327,
+            "top": 4.4009,
+            "width": 11.7975,
+            "height": 2.1593
+          },
+          "effective_style": null,
+          "budget": null,
+          "sample_text": null,
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 44,
+          "shape_name": "직사각형 43",
+          "z_index": 3,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 854872,
+            "top": 6052449,
+            "width": 3018086,
+            "height": 465826
+          },
+          "inches": {
+            "left": 0.9349,
+            "top": 6.619,
+            "width": 3.3006,
+            "height": 0.5094
+          },
+          "effective_style": {
+            "font_pt": 12.0,
+            "typeface": null,
+            "color": null,
+            "bold": true,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 12.0,
+            "chars_per_line_latin": 34,
+            "chars_per_line_cjk": 17,
+            "max_lines": 2,
+            "max_bullets": 1,
+            "max_words_per_bullet": 5,
+            "max_chars_per_bullet_latin": 34,
+            "max_chars_per_bullet_cjk": 17,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "exposure 1\n65",
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 45,
+          "shape_name": "직사각형 44",
+          "z_index": 4,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 4479413,
+            "top": 6052449,
+            "width": 3018086,
+            "height": 465826
+          },
+          "inches": {
+            "left": 4.8987,
+            "top": 6.619,
+            "width": 3.3006,
+            "height": 0.5094
+          },
+          "effective_style": {
+            "font_pt": 12.0,
+            "typeface": null,
+            "color": null,
+            "bold": true,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 12.0,
+            "chars_per_line_latin": 34,
+            "chars_per_line_cjk": 17,
+            "max_lines": 2,
+            "max_bullets": 1,
+            "max_words_per_bullet": 5,
+            "max_chars_per_bullet_latin": 34,
+            "max_chars_per_bullet_cjk": 17,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "exposure 1\n65",
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 46,
+          "shape_name": "직사각형 45",
+          "z_index": 5,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 8100785,
+            "top": 6052449,
+            "width": 3018086,
+            "height": 465826
+          },
+          "inches": {
+            "left": 8.8591,
+            "top": 6.619,
+            "width": 3.3006,
+            "height": 0.5094
+          },
+          "effective_style": {
+            "font_pt": 12.0,
+            "typeface": null,
+            "color": null,
+            "bold": true,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 12.0,
+            "chars_per_line_latin": 34,
+            "chars_per_line_cjk": 17,
+            "max_lines": 2,
+            "max_bullets": 1,
+            "max_words_per_bullet": 5,
+            "max_chars_per_bullet_latin": 34,
+            "max_chars_per_bullet_cjk": 17,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "exposure 1\n65",
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "group",
+          "shape_id": 47,
+          "shape_name": "그룹 46",
+          "z_index": 6,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 3895648,
+            "top": 3514412,
+            "width": 2019755,
+            "height": 2777705
+          },
+          "inches": {
+            "left": 4.2603,
+            "top": 3.8434,
+            "width": 2.2088,
+            "height": 3.0377
+          },
+          "effective_style": null,
+          "budget": null,
+          "sample_text": null,
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "group",
+          "shape_id": 53,
+          "shape_name": "그룹 52",
+          "z_index": 7,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 7488843,
+            "top": 3507657,
+            "width": 2019755,
+            "height": 2777705
+          },
+          "inches": {
+            "left": 8.1899,
+            "top": 3.836,
+            "width": 2.2088,
+            "height": 3.0377
+          },
+          "effective_style": null,
+          "budget": null,
+          "sample_text": null,
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "group",
+          "shape_id": 59,
+          "shape_name": "그룹 58",
+          "z_index": 8,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 11115987,
+            "top": 3605842,
+            "width": 891983,
+            "height": 2777705
+          },
+          "inches": {
+            "left": 12.1566,
+            "top": 3.9434,
+            "width": 0.9755,
+            "height": 3.0377
+          },
+          "effective_style": null,
+          "budget": null,
+          "sample_text": null,
+          "required": false,
+          "on_unbound": "remove"
+        }
+      ],
+      "brand_shapes": [],
+      "decorations": []
+    },
+    {
+      "exemplar_id": null,
+      "source_slide_index": 7,
+      "layout_name": "2_사용자 지정 레이아웃",
+      "roles": [],
+      "supports_blocks": [],
+      "shape_count": 10,
+      "slots": [
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 2,
+          "shape_name": "텍스트 개체 틀 1",
+          "z_index": 0,
+          "is_placeholder": true,
+          "placeholder_idx": 10,
+          "emu": {
+            "left": 578541,
+            "top": 339725,
+            "width": 9211156,
+            "height": 473075
+          },
+          "inches": {
+            "left": 0.6327,
+            "top": 0.3715,
+            "width": 10.0734,
+            "height": 0.5174
+          },
+          "effective_style": {
+            "font_pt": null,
+            "typeface": null,
+            "color": null,
+            "bold": false,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 18.0,
+            "chars_per_line_latin": 69,
+            "chars_per_line_cjk": 36,
+            "max_lines": 1,
+            "max_bullets": 1,
+            "max_words_per_bullet": 11,
+            "max_chars_per_bullet_latin": 69,
+            "max_chars_per_bullet_cjk": 36,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "Multi Exposure Logic Mode",
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 39,
+          "shape_name": "TextBox 38",
+          "z_index": 1,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 578541,
+            "top": 932864,
+            "width": 10969025,
+            "height": 1672061
+          },
+          "inches": {
+            "left": 0.6327,
+            "top": 1.0202,
+            "width": 11.9959,
+            "height": 1.8286
+          },
+          "effective_style": {
+            "font_pt": 14.0,
+            "typeface": "뷰웍스 M",
+            "color": null,
+            "bold": false,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 14.0,
+            "chars_per_line_latin": 106,
+            "chars_per_line_cjk": 55,
+            "max_lines": 7,
+            "max_bullets": 5,
+            "max_words_per_bullet": 17,
+            "max_chars_per_bullet_latin": 106,
+            "max_chars_per_bullet_cjk": 55,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "모드 별 정의\nmode 2 : Using Two Sample\n초기 Exposure 선택 값 : Exposure 1 (예시)\nSequence 1에서 초기 input으로 설정한 Exposure와 가장 근접한 두 값을 선택한 뒤 평균 출력\nSequence 2에서 Sequence 1에서 출력된 값(33)과 가장 근접한 두 값을 선택한 뒤 평균 출력",
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "group",
+          "shape_id": 43,
+          "shape_name": "그룹 42",
+          "z_index": 2,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 578541,
+            "top": 4024221,
+            "width": 10787612,
+            "height": 1974495
+          },
+          "inches": {
+            "left": 0.6327,
+            "top": 4.4009,
+            "width": 11.7975,
+            "height": 2.1593
+          },
+          "effective_style": null,
+          "budget": null,
+          "sample_text": null,
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 7,
+          "shape_name": "직사각형 6",
+          "z_index": 3,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 4468468,
+            "top": 6150634,
+            "width": 3018086,
+            "height": 465826
+          },
+          "inches": {
+            "left": 4.8868,
+            "top": 6.7264,
+            "width": 3.3006,
+            "height": 0.5094
+          },
+          "effective_style": {
+            "font_pt": 12.0,
+            "typeface": null,
+            "color": null,
+            "bold": true,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 12.0,
+            "chars_per_line_latin": 34,
+            "chars_per_line_cjk": 17,
+            "max_lines": 2,
+            "max_bullets": 1,
+            "max_words_per_bullet": 5,
+            "max_chars_per_bullet_latin": 34,
+            "max_chars_per_bullet_cjk": 17,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "(exposure 1 + exposure 3) / 2\n약 33",
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 12,
+          "shape_name": "직사각형 11",
+          "z_index": 4,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 8091848,
+            "top": 6150634,
+            "width": 3018086,
+            "height": 465826
+          },
+          "inches": {
+            "left": 8.8494,
+            "top": 6.7264,
+            "width": 3.3006,
+            "height": 0.5094
+          },
+          "effective_style": {
+            "font_pt": 12.0,
+            "typeface": null,
+            "color": null,
+            "bold": true,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 12.0,
+            "chars_per_line_latin": 34,
+            "chars_per_line_cjk": 17,
+            "max_lines": 2,
+            "max_bullets": 1,
+            "max_words_per_bullet": 5,
+            "max_chars_per_bullet_latin": 34,
+            "max_chars_per_bullet_cjk": 17,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "(exposure 1 + exposure 3) / 2\n약 33",
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "group",
+          "shape_id": 57,
+          "shape_name": "그룹 56",
+          "z_index": 5,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 7486554,
+            "top": 3605842,
+            "width": 2019755,
+            "height": 2777705
+          },
+          "inches": {
+            "left": 8.1874,
+            "top": 3.9434,
+            "width": 2.2088,
+            "height": 3.0377
+          },
+          "effective_style": null,
+          "budget": null,
+          "sample_text": null,
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "other",
+          "shape_id": 54,
+          "shape_name": "직선 화살표 연결선 53",
+          "z_index": 6,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 9506309,
+            "top": 3605842,
+            "width": 0,
+            "height": 552090
+          },
+          "inches": {
+            "left": 10.3962,
+            "top": 3.9434,
+            "width": 0.0,
+            "height": 0.6038
+          },
+          "effective_style": null,
+          "budget": null,
+          "sample_text": null,
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "group",
+          "shape_id": 80,
+          "shape_name": "그룹 79",
+          "z_index": 7,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 11115987,
+            "top": 3605842,
+            "width": 891983,
+            "height": 2777705
+          },
+          "inches": {
+            "left": 12.1566,
+            "top": 3.9434,
+            "width": 0.9755,
+            "height": 3.0377
+          },
+          "effective_style": null,
+          "budget": null,
+          "sample_text": null,
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 73,
+          "shape_name": "직사각형 72",
+          "z_index": 8,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 860309,
+            "top": 6150634,
+            "width": 3018086,
+            "height": 465826
+          },
+          "inches": {
+            "left": 0.9408,
+            "top": 6.7264,
+            "width": 3.3006,
+            "height": 0.5094
+          },
+          "effective_style": {
+            "font_pt": 12.0,
+            "typeface": null,
+            "color": null,
+            "bold": true,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 12.0,
+            "chars_per_line_latin": 34,
+            "chars_per_line_cjk": 17,
+            "max_lines": 2,
+            "max_bullets": 1,
+            "max_words_per_bullet": 5,
+            "max_chars_per_bullet_latin": 34,
+            "max_chars_per_bullet_cjk": 17,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "exposure 1\n65",
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "group",
+          "shape_id": 79,
+          "shape_name": "그룹 78",
+          "z_index": 9,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 3894465,
+            "top": 3605841,
+            "width": 2019755,
+            "height": 2777705
+          },
+          "inches": {
+            "left": 4.259,
+            "top": 3.9434,
+            "width": 2.2088,
+            "height": 3.0377
+          },
+          "effective_style": null,
+          "budget": null,
+          "sample_text": null,
+          "required": false,
+          "on_unbound": "remove"
+        }
+      ],
+      "brand_shapes": [],
+      "decorations": []
+    },
+    {
+      "exemplar_id": null,
+      "source_slide_index": 8,
+      "layout_name": "2_사용자 지정 레이아웃",
+      "roles": [],
+      "supports_blocks": [],
+      "shape_count": 8,
+      "slots": [
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 2,
+          "shape_name": "텍스트 개체 틀 1",
+          "z_index": 0,
+          "is_placeholder": true,
+          "placeholder_idx": 10,
+          "emu": {
+            "left": 578541,
+            "top": 339725,
+            "width": 9211156,
+            "height": 473075
+          },
+          "inches": {
+            "left": 0.6327,
+            "top": 0.3715,
+            "width": 10.0734,
+            "height": 0.5174
+          },
+          "effective_style": {
+            "font_pt": null,
+            "typeface": null,
+            "color": null,
+            "bold": false,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 18.0,
+            "chars_per_line_latin": 69,
+            "chars_per_line_cjk": 36,
+            "max_lines": 1,
+            "max_bullets": 1,
+            "max_words_per_bullet": 11,
+            "max_chars_per_bullet_latin": 69,
+            "max_chars_per_bullet_cjk": 36,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "Multi Exposure Logic Mode",
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 39,
+          "shape_name": "TextBox 38",
+          "z_index": 1,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 578541,
+            "top": 932864,
+            "width": 10969025,
+            "height": 2318392
+          },
+          "inches": {
+            "left": 0.6327,
+            "top": 1.0202,
+            "width": 11.9959,
+            "height": 2.5354
+          },
+          "effective_style": {
+            "font_pt": 14.0,
+            "typeface": "뷰웍스 M",
+            "color": null,
+            "bold": false,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 14.0,
+            "chars_per_line_latin": 106,
+            "chars_per_line_cjk": 55,
+            "max_lines": 10,
+            "max_bullets": 8,
+            "max_words_per_bullet": 17,
+            "max_chars_per_bullet_latin": 106,
+            "max_chars_per_bullet_cjk": 55,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "모드 별 정의\nmode 3 : Average\n초기 Exposure 선택 값 : Average mode에서는 Don‘t care\nSequence 1과 Sequence 2의 각 index(exposure n)끼리의 차이를 구함\n위 값이 sw로 입력한 sequence threshold 보다 클 경우 계산 X / threshold가 넘지 않는 index의 값끼리의 평균 계산을 함\n현재 테스트 환경에서는 동일 AF 값을 넣어주고 있기 때문에 threshold를 넣는 것이 무의미함.\n해당 threshold 로직 검증은 (input 값 변경 이후) 정찬우 CL님이 진행할 예정",
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "group",
+          "shape_id": 43,
+          "shape_name": "그룹 42",
+          "z_index": 2,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 578541,
+            "top": 4024221,
+            "width": 10787612,
+            "height": 1974495
+          },
+          "inches": {
+            "left": 0.6327,
+            "top": 4.4009,
+            "width": 11.7975,
+            "height": 2.1593
+          },
+          "effective_style": null,
+          "budget": null,
+          "sample_text": null,
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 7,
+          "shape_name": "직사각형 6",
+          "z_index": 3,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 4164827,
+            "top": 6150634,
+            "width": 3574211,
+            "height": 465826
+          },
+          "inches": {
+            "left": 4.5547,
+            "top": 6.7264,
+            "width": 3.9088,
+            "height": 0.5094
+          },
+          "effective_style": {
+            "font_pt": 12.0,
+            "typeface": null,
+            "color": null,
+            "bold": true,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 12.0,
+            "chars_per_line_latin": 40,
+            "chars_per_line_cjk": 21,
+            "max_lines": 2,
+            "max_bullets": 1,
+            "max_words_per_bullet": 6,
+            "max_chars_per_bullet_latin": 40,
+            "max_chars_per_bullet_cjk": 21,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "(exposure 1 + exposure2 + exposure 3) / 3\n약 88 ",
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 35,
+          "shape_name": "직사각형 34",
+          "z_index": 4,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 7813785,
+            "top": 6150634,
+            "width": 3574211,
+            "height": 465826
+          },
+          "inches": {
+            "left": 8.5453,
+            "top": 6.7264,
+            "width": 3.9088,
+            "height": 0.5094
+          },
+          "effective_style": {
+            "font_pt": 12.0,
+            "typeface": null,
+            "color": null,
+            "bold": true,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 12.0,
+            "chars_per_line_latin": 40,
+            "chars_per_line_cjk": 21,
+            "max_lines": 2,
+            "max_bullets": 1,
+            "max_words_per_bullet": 6,
+            "max_chars_per_bullet_latin": 40,
+            "max_chars_per_bullet_cjk": 21,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "(exposure 1 + exposure2 + exposure 3) / 3\n약 88 ",
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "group",
+          "shape_id": 61,
+          "shape_name": "그룹 60",
+          "z_index": 5,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 1221209,
+            "top": 3860321,
+            "width": 3596921,
+            "height": 457201
+          },
+          "inches": {
+            "left": 1.3355,
+            "top": 4.2217,
+            "width": 3.9336,
+            "height": 0.5
+          },
+          "effective_style": null,
+          "budget": null,
+          "sample_text": null,
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "group",
+          "shape_id": 63,
+          "shape_name": "그룹 62",
+          "z_index": 6,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 2343657,
+            "top": 3957178,
+            "width": 3596921,
+            "height": 372908
+          },
+          "inches": {
+            "left": 2.5631,
+            "top": 4.3276,
+            "width": 3.9336,
+            "height": 0.4078
+          },
+          "effective_style": null,
+          "budget": null,
+          "sample_text": null,
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "group",
+          "shape_id": 68,
+          "shape_name": "그룹 67",
+          "z_index": 7,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 3514547,
+            "top": 4099467,
+            "width": 3596921,
+            "height": 230617
+          },
+          "inches": {
+            "left": 3.8436,
+            "top": 4.4832,
+            "width": 3.9336,
+            "height": 0.2522
+          },
+          "effective_style": null,
+          "budget": null,
+          "sample_text": null,
+          "required": false,
+          "on_unbound": "remove"
+        }
+      ],
+      "brand_shapes": [],
+      "decorations": []
+    },
+    {
+      "exemplar_id": null,
+      "source_slide_index": 9,
+      "layout_name": "1_사용자 지정 레이아웃",
+      "roles": [],
+      "supports_blocks": [],
+      "shape_count": 3,
+      "slots": [
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 6,
+          "shape_name": "슬라이드 번호 개체 틀 5",
+          "z_index": 0,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 9316890,
+            "top": 6448017,
+            "width": 2743200,
+            "height": 365125
+          },
+          "inches": {
+            "left": 10.1891,
+            "top": 7.0516,
+            "width": 3.0,
+            "height": 0.3993
+          },
+          "effective_style": null,
+          "budget": {
+            "computable": true,
+            "font_pt": 18.0,
+            "chars_per_line_latin": 20,
+            "chars_per_line_cjk": 10,
+            "max_lines": 1,
+            "max_bullets": 1,
+            "max_words_per_bullet": 3,
+            "max_chars_per_bullet_latin": 20,
+            "max_chars_per_bullet_cjk": 10,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "10",
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 2,
+          "shape_name": "텍스트 개체 틀 1",
+          "z_index": 1,
+          "is_placeholder": true,
+          "placeholder_idx": 10,
+          "emu": {
+            "left": 585181,
+            "top": 2572216,
+            "width": 5475017,
+            "height": 443285
+          },
+          "inches": {
+            "left": 0.64,
+            "top": 2.813,
+            "width": 5.9876,
+            "height": 0.4848
+          },
+          "effective_style": {
+            "font_pt": null,
+            "typeface": null,
+            "color": null,
+            "bold": false,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 18.0,
+            "chars_per_line_latin": 41,
+            "chars_per_line_cjk": 21,
+            "max_lines": 1,
+            "max_bullets": 1,
+            "max_words_per_bullet": 6,
+            "max_chars_per_bullet_latin": 41,
+            "max_chars_per_bullet_cjk": 21,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "03",
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 3,
+          "shape_name": "텍스트 개체 틀 2",
+          "z_index": 2,
+          "is_placeholder": true,
+          "placeholder_idx": 11,
+          "emu": {
+            "left": 585181,
+            "top": 3292682,
+            "width": 5475017,
+            "height": 443285
+          },
+          "inches": {
+            "left": 0.64,
+            "top": 3.6009,
+            "width": 5.9876,
+            "height": 0.4848
+          },
+          "effective_style": {
+            "font_pt": null,
+            "typeface": null,
+            "color": null,
+            "bold": false,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 18.0,
+            "chars_per_line_latin": 41,
+            "chars_per_line_cjk": 21,
+            "max_lines": 1,
+            "max_bullets": 1,
+            "max_words_per_bullet": 6,
+            "max_chars_per_bullet_latin": 41,
+            "max_chars_per_bullet_cjk": 21,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "로직 검증 실험 방식 및 결과",
+          "required": false,
+          "on_unbound": "remove"
+        }
+      ],
+      "brand_shapes": [],
+      "decorations": []
+    },
+    {
+      "exemplar_id": null,
+      "source_slide_index": 10,
+      "layout_name": "2_사용자 지정 레이아웃",
+      "roles": [],
+      "supports_blocks": [],
+      "shape_count": 9,
+      "slots": [
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "other",
+          "shape_id": 4,
+          "shape_name": "직선 연결선 3",
+          "z_index": 0,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 3892731,
+            "top": 1271451,
+            "width": 0,
+            "height": 4998720
+          },
+          "inches": {
+            "left": 4.2571,
+            "top": 1.3905,
+            "width": 0.0,
+            "height": 5.4667
+          },
+          "effective_style": null,
+          "budget": null,
+          "sample_text": null,
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "other",
+          "shape_id": 5,
+          "shape_name": "직선 연결선 4",
+          "z_index": 1,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 7972696,
+            "top": 1271451,
+            "width": 0,
+            "height": 4998720
+          },
+          "inches": {
+            "left": 8.719,
+            "top": 1.3905,
+            "width": 0.0,
+            "height": 5.4667
+          },
+          "effective_style": null,
+          "budget": null,
+          "sample_text": null,
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 6,
+          "shape_name": "TextBox 5",
+          "z_index": 2,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 578541,
+            "top": 1112721,
+            "width": 3266294,
+            "height": 317459
+          },
+          "inches": {
+            "left": 0.6327,
+            "top": 1.2169,
+            "width": 3.5721,
+            "height": 0.3472
+          },
+          "effective_style": {
+            "font_pt": 11.0,
+            "typeface": "뷰웍스 B",
+            "color": null,
+            "bold": false,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 11.0,
+            "chars_per_line_latin": 40,
+            "chars_per_line_cjk": 21,
+            "max_lines": 1,
+            "max_bullets": 1,
+            "max_words_per_bullet": 6,
+            "max_chars_per_bullet_latin": 40,
+            "max_chars_per_bullet_cjk": 21,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "출력 모드 1 – Using Single Sample",
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 7,
+          "shape_name": "TextBox 6",
+          "z_index": 3,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 4109867,
+            "top": 1112721,
+            "width": 3266294,
+            "height": 317459
+          },
+          "inches": {
+            "left": 4.4946,
+            "top": 1.2169,
+            "width": 3.5721,
+            "height": 0.3472
+          },
+          "effective_style": {
+            "font_pt": 11.0,
+            "typeface": "뷰웍스 B",
+            "color": null,
+            "bold": false,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 11.0,
+            "chars_per_line_latin": 40,
+            "chars_per_line_cjk": 21,
+            "max_lines": 1,
+            "max_bullets": 1,
+            "max_words_per_bullet": 6,
+            "max_chars_per_bullet_latin": 40,
+            "max_chars_per_bullet_cjk": 21,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "출력 모드 2 – Using Two Sample",
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 8,
+          "shape_name": "TextBox 7",
+          "z_index": 4,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 8251374,
+            "top": 1112720,
+            "width": 3266294,
+            "height": 317459
+          },
+          "inches": {
+            "left": 9.0238,
+            "top": 1.2169,
+            "width": 3.5721,
+            "height": 0.3472
+          },
+          "effective_style": {
+            "font_pt": 11.0,
+            "typeface": "뷰웍스 B",
+            "color": null,
+            "bold": false,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 11.0,
+            "chars_per_line_latin": 40,
+            "chars_per_line_cjk": 21,
+            "max_lines": 1,
+            "max_bullets": 1,
+            "max_words_per_bullet": 6,
+            "max_chars_per_bullet_latin": 40,
+            "max_chars_per_bullet_cjk": 21,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "출력 모드 3 – Averaging",
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 9,
+          "shape_name": "TextBox 8",
+          "z_index": 5,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 578541,
+            "top": 1596569,
+            "width": 3218397,
+            "height": 3618811
+          },
+          "inches": {
+            "left": 0.6327,
+            "top": 1.746,
+            "width": 3.5197,
+            "height": 3.9576
+          },
+          "effective_style": {
+            "font_pt": 11.0,
+            "typeface": "뷰웍스 B",
+            "color": null,
+            "bold": false,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 11.0,
+            "chars_per_line_latin": 39,
+            "chars_per_line_cjk": 20,
+            "max_lines": 21,
+            "max_bullets": 16,
+            "max_words_per_bullet": 6,
+            "max_chars_per_bullet_latin": 39,
+            "max_chars_per_bullet_cjk": 20,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "Group Number = 2인 조건에서 AF 신호가 정상 출력되는 지 확인. \u000b테스트 예시 조건\u000b1-1) (Exp 100 -  Diff 2) , (Exp 1, Diff 2048) 조건에서 AF MultiExposure가 정상 동작하는 지 확인. 기준 출력은  Exp 100임.\u000b1-2) (Exp 100 -  Diff 10) , (Exp 1, Diff 5) 조건에서 AF MultiExposure 출력모드 1이 정상 동작하는 지 확인. 기준 출력은  Exp 100임.\u000b\nGroup Number = 3인 조건에서 AF 신호가 정상 출력되는 지 확인. \u000b위 테스트 예시 조건에서 노출 조건이 3개인 경우이며, 테스트 방식 동일. ",
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 10,
+          "shape_name": "TextBox 9",
+          "z_index": 6,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 4310163,
+            "top": 1596569,
+            "width": 3218397,
+            "height": 2857064
+          },
+          "inches": {
+            "left": 4.7137,
+            "top": 1.746,
+            "width": 3.5197,
+            "height": 3.1245
+          },
+          "effective_style": {
+            "font_pt": 11.0,
+            "typeface": "뷰웍스 B",
+            "color": null,
+            "bold": false,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 11.0,
+            "chars_per_line_latin": 39,
+            "chars_per_line_cjk": 20,
+            "max_lines": 16,
+            "max_bullets": 13,
+            "max_words_per_bullet": 6,
+            "max_chars_per_bullet_latin": 39,
+            "max_chars_per_bullet_cjk": 20,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "Group Number = 2인 조건에서 AF 신호가 정상 출력되는 지 확인. \u000b1-1) 테스트 예시 조건에서 노출 조건이 2개인 경우이며, 출력모드 2 조건대로 동작하는 지 확인.\n\nGroup Number = 3인 조건에서 AF 신호가 정상 출력되는 지 확인. \u000b\u000b위 테스트 예시 조건에서 노출 조건이 3개인 경우이며, 출력모드 2 조건대로 동작하는 지 확인.\n",
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 11,
+          "shape_name": "TextBox 10",
+          "z_index": 7,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 8347167,
+            "top": 1596569,
+            "width": 3218397,
+            "height": 3364896
+          },
+          "inches": {
+            "left": 9.1286,
+            "top": 1.746,
+            "width": 3.5197,
+            "height": 3.6799
+          },
+          "effective_style": {
+            "font_pt": 11.0,
+            "typeface": "뷰웍스 B",
+            "color": null,
+            "bold": false,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 11.0,
+            "chars_per_line_latin": 39,
+            "chars_per_line_cjk": 20,
+            "max_lines": 19,
+            "max_bullets": 15,
+            "max_words_per_bullet": 6,
+            "max_chars_per_bullet_latin": 39,
+            "max_chars_per_bullet_cjk": 20,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "Group Number = 2인 조건에서 AF 신호가 정상 출력되는 지 확인. \u000b\u000b1-1) Averaging Threshold가 정상 동작하며 출력모드 3이 동작하는 지 확인. \u000b\n\nGroup Number = 3인 조건에서 AF 신호가 정상 출력되는 지 확인. \u000b\u000b위 테스트 예시 조건에서 노출 조건이 3개인 경우이며, 출력모드 3 조건대로 동작하는 지 확인.\n",
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 13,
+          "shape_name": "텍스트 개체 틀 1",
+          "z_index": 8,
+          "is_placeholder": true,
+          "placeholder_idx": 10,
+          "emu": {
+            "left": 578541,
+            "top": 339725,
+            "width": 9211156,
+            "height": 473075
+          },
+          "inches": {
+            "left": 0.6327,
+            "top": 0.3715,
+            "width": 10.0734,
+            "height": 0.5174
+          },
+          "effective_style": {
+            "font_pt": null,
+            "typeface": null,
+            "color": null,
+            "bold": false,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 18.0,
+            "chars_per_line_latin": 69,
+            "chars_per_line_cjk": 36,
+            "max_lines": 1,
+            "max_bullets": 1,
+            "max_words_per_bullet": 11,
+            "max_chars_per_bullet_latin": 69,
+            "max_chars_per_bullet_cjk": 36,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "검증 과정 및 결과",
+          "required": false,
+          "on_unbound": "remove"
+        }
+      ],
+      "brand_shapes": [],
+      "decorations": []
+    },
+    {
+      "exemplar_id": null,
+      "source_slide_index": 13,
+      "layout_name": "2_사용자 지정 레이아웃",
+      "roles": [],
+      "supports_blocks": [],
+      "shape_count": 5,
+      "slots": [
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 2,
+          "shape_name": "텍스트 개체 틀 1",
+          "z_index": 0,
+          "is_placeholder": true,
+          "placeholder_idx": 10,
+          "emu": {
+            "left": 578541,
+            "top": 339725,
+            "width": 9211156,
+            "height": 473075
+          },
+          "inches": {
+            "left": 0.6327,
+            "top": 0.3715,
+            "width": 10.0734,
+            "height": 0.5174
+          },
+          "effective_style": {
+            "font_pt": null,
+            "typeface": null,
+            "color": null,
+            "bold": false,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 18.0,
+            "chars_per_line_latin": 69,
+            "chars_per_line_cjk": 36,
+            "max_lines": 1,
+            "max_bullets": 1,
+            "max_words_per_bullet": 11,
+            "max_chars_per_bullet_latin": 69,
+            "max_chars_per_bullet_cjk": 36,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "출력모드 기능 설명",
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 79,
+          "shape_name": "TextBox 78",
+          "z_index": 1,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 578541,
+            "top": 1006876,
+            "width": 4117441,
+            "height": 419795
+          },
+          "inches": {
+            "left": 0.6327,
+            "top": 1.1011,
+            "width": 4.5029,
+            "height": 0.4591
+          },
+          "effective_style": {
+            "font_pt": 16.0,
+            "typeface": "뷰웍스 B",
+            "color": null,
+            "bold": false,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 16.0,
+            "chars_per_line_latin": 35,
+            "chars_per_line_cjk": 18,
+            "max_lines": 1,
+            "max_bullets": 1,
+            "max_words_per_bullet": 5,
+            "max_chars_per_bullet_latin": 35,
+            "max_chars_per_bullet_cjk": 18,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "출력 모드 3 – Averaging",
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 83,
+          "shape_name": "TextBox 82",
+          "z_index": 2,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 8460671,
+            "top": 1580486,
+            "width": 4545347,
+            "height": 4708981
+          },
+          "inches": {
+            "left": 9.2527,
+            "top": 1.7284,
+            "width": 4.9709,
+            "height": 5.1498
+          },
+          "effective_style": {
+            "font_pt": 18.0,
+            "typeface": "뷰웍스 B",
+            "color": null,
+            "bold": true,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 18.0,
+            "chars_per_line_latin": 34,
+            "chars_per_line_cjk": 17,
+            "max_lines": 16,
+            "max_bullets": 13,
+            "max_words_per_bullet": 5,
+            "max_chars_per_bullet_latin": 34,
+            "max_chars_per_bullet_cjk": 17,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "[조건 예시]\n \nGroup = 3 (3개의 노출 조건 사용)\n\nExposure 1 \n노출값 :1us \n신호출력값: 약 84 ~ 92사이\n\nExposure 2 \n노출값: 80us\n신호출력값 : 170 ~ 178사이\n\nExposure 3 \n노출값:160us \n신호출력값: 218 ~ 226사이\n\nCamera FPS : 2121Hz (707Hz * 3)\n",
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "group",
+          "shape_id": 29,
+          "shape_name": "그룹 28",
+          "z_index": 3,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 470669,
+            "top": 1506178,
+            "width": 2853983,
+            "height": 4664766
+          },
+          "inches": {
+            "left": 0.5147,
+            "top": 1.6472,
+            "width": 3.1212,
+            "height": 5.1015
+          },
+          "effective_style": null,
+          "budget": null,
+          "sample_text": null,
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "group",
+          "shape_id": 30,
+          "shape_name": "그룹 29",
+          "z_index": 4,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 3918088,
+            "top": 1506178,
+            "width": 2853983,
+            "height": 4561877
+          },
+          "inches": {
+            "left": 4.2849,
+            "top": 1.6472,
+            "width": 3.1212,
+            "height": 4.9889
+          },
+          "effective_style": null,
+          "budget": null,
+          "sample_text": null,
+          "required": false,
+          "on_unbound": "remove"
+        }
+      ],
+      "brand_shapes": [],
+      "decorations": []
+    },
+    {
+      "exemplar_id": null,
+      "source_slide_index": 14,
+      "layout_name": "2_사용자 지정 레이아웃",
+      "roles": [],
+      "supports_blocks": [],
+      "shape_count": 6,
+      "slots": [
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 2,
+          "shape_name": "텍스트 개체 틀 1",
+          "z_index": 0,
+          "is_placeholder": true,
+          "placeholder_idx": 10,
+          "emu": {
+            "left": 578541,
+            "top": 339725,
+            "width": 9211156,
+            "height": 473075
+          },
+          "inches": {
+            "left": 0.6327,
+            "top": 0.3715,
+            "width": 10.0734,
+            "height": 0.5174
+          },
+          "effective_style": {
+            "font_pt": null,
+            "typeface": null,
+            "color": null,
+            "bold": false,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 18.0,
+            "chars_per_line_latin": 69,
+            "chars_per_line_cjk": 36,
+            "max_lines": 1,
+            "max_bullets": 1,
+            "max_words_per_bullet": 11,
+            "max_chars_per_bullet_latin": 69,
+            "max_chars_per_bullet_cjk": 36,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "검증 과정 및 결과",
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 39,
+          "shape_name": "TextBox 38",
+          "z_index": 1,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 578541,
+            "top": 1062095,
+            "width": 10969025,
+            "height": 461473
+          },
+          "inches": {
+            "left": 0.6327,
+            "top": 1.1615,
+            "width": 11.9959,
+            "height": 0.5047
+          },
+          "effective_style": {
+            "font_pt": null,
+            "typeface": "뷰웍스 M",
+            "color": null,
+            "bold": true,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 18.0,
+            "chars_per_line_latin": 83,
+            "chars_per_line_cjk": 43,
+            "max_lines": 1,
+            "max_bullets": 1,
+            "max_words_per_bullet": 13,
+            "max_chars_per_bullet_latin": 83,
+            "max_chars_per_bullet_cjk": 43,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "[검증 결과] 뷰웍스 사내 실험실 결과",
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "table",
+          "shape_id": 12,
+          "shape_name": "표 11",
+          "z_index": 2,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 733245,
+            "top": 1940943,
+            "width": 10814322,
+            "height": 3475788
+          },
+          "inches": {
+            "left": 0.8019,
+            "top": 2.1226,
+            "width": 11.8267,
+            "height": 3.8012
+          },
+          "effective_style": null,
+          "budget": null,
+          "sample_text": null,
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 45,
+          "shape_name": "TextBox 44",
+          "z_index": 3,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 1415226,
+            "top": 1972917,
+            "width": 879894,
+            "height": 400110
+          },
+          "inches": {
+            "left": 1.5477,
+            "top": 2.1576,
+            "width": 0.9623,
+            "height": 0.4376
+          },
+          "effective_style": {
+            "font_pt": 10.0,
+            "typeface": null,
+            "color": null,
+            "bold": true,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 10.0,
+            "chars_per_line_latin": 11,
+            "chars_per_line_cjk": 6,
+            "max_lines": 2,
+            "max_bullets": 2,
+            "max_words_per_bullet": 1,
+            "max_chars_per_bullet_latin": 11,
+            "max_chars_per_bullet_cjk": 6,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "Exposure 개수",
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 46,
+          "shape_name": "TextBox 45",
+          "z_index": 4,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 644433,
+            "top": 2172972,
+            "width": 879894,
+            "height": 400110
+          },
+          "inches": {
+            "left": 0.7048,
+            "top": 2.3764,
+            "width": 0.9623,
+            "height": 0.4376
+          },
+          "effective_style": {
+            "font_pt": 10.0,
+            "typeface": null,
+            "color": null,
+            "bold": true,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 10.0,
+            "chars_per_line_latin": 11,
+            "chars_per_line_cjk": 6,
+            "max_lines": 2,
+            "max_bullets": 2,
+            "max_words_per_bullet": 1,
+            "max_chars_per_bullet_latin": 11,
+            "max_chars_per_bullet_cjk": 6,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "Sequence\nmode",
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 3,
+          "shape_name": "TextBox 2",
+          "z_index": 5,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 1148153,
+            "top": 5717387,
+            "width": 9829800,
+            "height": 900246
+          },
+          "inches": {
+            "left": 1.2556,
+            "top": 6.2526,
+            "width": 10.75,
+            "height": 0.9845
+          },
+          "effective_style": {
+            "font_pt": 10.5,
+            "typeface": "뷰웍스 M",
+            "color": null,
+            "bold": true,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 10.5,
+            "chars_per_line_latin": 127,
+            "chars_per_line_cjk": 66,
+            "max_lines": 5,
+            "max_bullets": 4,
+            "max_words_per_bullet": 21,
+            "max_chars_per_bullet_latin": 127,
+            "max_chars_per_bullet_cjk": 66,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "해당 실험 조건은 직접 스캔하면서 측정하지 않고, AF 카메라만 Streaming 하는 조건에서 계산 결과가 로직대로 동작하는 여부는 검증하였음. \n\nPeak Threshold 블록과 연동하지 않은 상태에서 로직 작동 조건만 검증하였음. \n\n실험 당시에는 로직 조건이 작동하는 것으로 판단되어, 실사용 샘플에서 레이저 형태가 변화함에 따라 위 로직이 잘 적용하는 지 테스트를 진행하였음. (25년 3월경)",
+          "required": false,
+          "on_unbound": "remove"
+        }
+      ],
+      "brand_shapes": [],
+      "decorations": []
+    },
+    {
+      "exemplar_id": null,
+      "source_slide_index": 15,
+      "layout_name": "2_사용자 지정 레이아웃",
+      "roles": [],
+      "supports_blocks": [],
+      "shape_count": 6,
+      "slots": [
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 2,
+          "shape_name": "텍스트 개체 틀 1",
+          "z_index": 0,
+          "is_placeholder": true,
+          "placeholder_idx": 10,
+          "emu": {
+            "left": 578541,
+            "top": 339725,
+            "width": 9211156,
+            "height": 473075
+          },
+          "inches": {
+            "left": 0.6327,
+            "top": 0.3715,
+            "width": 10.0734,
+            "height": 0.5174
+          },
+          "effective_style": {
+            "font_pt": null,
+            "typeface": null,
+            "color": null,
+            "bold": false,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 18.0,
+            "chars_per_line_latin": 69,
+            "chars_per_line_cjk": 36,
+            "max_lines": 1,
+            "max_bullets": 1,
+            "max_words_per_bullet": 11,
+            "max_chars_per_bullet_latin": 69,
+            "max_chars_per_bullet_cjk": 36,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "검증 과정 및 결과",
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 39,
+          "shape_name": "TextBox 38",
+          "z_index": 1,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 578541,
+            "top": 1062095,
+            "width": 10969025,
+            "height": 461473
+          },
+          "inches": {
+            "left": 0.6327,
+            "top": 1.1615,
+            "width": 11.9959,
+            "height": 0.5047
+          },
+          "effective_style": {
+            "font_pt": null,
+            "typeface": "뷰웍스 M",
+            "color": null,
+            "bold": true,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 18.0,
+            "chars_per_line_latin": 83,
+            "chars_per_line_cjk": 43,
+            "max_lines": 1,
+            "max_bullets": 1,
+            "max_words_per_bullet": 13,
+            "max_chars_per_bullet_latin": 83,
+            "max_chars_per_bullet_cjk": 43,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "[검증 결과] 크레셈 장비 연동한 실험 결과",
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "table",
+          "shape_id": 12,
+          "shape_name": "표 11",
+          "z_index": 2,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 733245,
+            "top": 1940943,
+            "width": 10814322,
+            "height": 3475788
+          },
+          "inches": {
+            "left": 0.8019,
+            "top": 2.1226,
+            "width": 11.8267,
+            "height": 3.8012
+          },
+          "effective_style": null,
+          "budget": null,
+          "sample_text": null,
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 45,
+          "shape_name": "TextBox 44",
+          "z_index": 3,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 1415226,
+            "top": 1972917,
+            "width": 879894,
+            "height": 400110
+          },
+          "inches": {
+            "left": 1.5477,
+            "top": 2.1576,
+            "width": 0.9623,
+            "height": 0.4376
+          },
+          "effective_style": {
+            "font_pt": 10.0,
+            "typeface": null,
+            "color": null,
+            "bold": true,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 10.0,
+            "chars_per_line_latin": 11,
+            "chars_per_line_cjk": 6,
+            "max_lines": 2,
+            "max_bullets": 2,
+            "max_words_per_bullet": 1,
+            "max_chars_per_bullet_latin": 11,
+            "max_chars_per_bullet_cjk": 6,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "Exposure 개수",
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 46,
+          "shape_name": "TextBox 45",
+          "z_index": 4,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 644433,
+            "top": 2172972,
+            "width": 879894,
+            "height": 400110
+          },
+          "inches": {
+            "left": 0.7048,
+            "top": 2.3764,
+            "width": 0.9623,
+            "height": 0.4376
+          },
+          "effective_style": {
+            "font_pt": 10.0,
+            "typeface": null,
+            "color": null,
+            "bold": true,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 10.0,
+            "chars_per_line_latin": 11,
+            "chars_per_line_cjk": 6,
+            "max_lines": 2,
+            "max_bullets": 2,
+            "max_words_per_bullet": 1,
+            "max_chars_per_bullet_latin": 11,
+            "max_chars_per_bullet_cjk": 6,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "Sequence\nmode",
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 3,
+          "shape_name": "TextBox 2",
+          "z_index": 5,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 1148153,
+            "top": 5717387,
+            "width": 9829800,
+            "height": 577081
+          },
+          "inches": {
+            "left": 1.2556,
+            "top": 6.2526,
+            "width": 10.75,
+            "height": 0.6311
+          },
+          "effective_style": {
+            "font_pt": 10.5,
+            "typeface": "뷰웍스 M",
+            "color": null,
+            "bold": true,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 10.5,
+            "chars_per_line_latin": 127,
+            "chars_per_line_cjk": 66,
+            "max_lines": 3,
+            "max_bullets": 2,
+            "max_words_per_bullet": 21,
+            "max_chars_per_bullet_latin": 127,
+            "max_chars_per_bullet_cjk": 66,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "실제 장비에 설치된 AF 카메라에 Firmware / FPGA 로직을 업데이트 후 테스트를 진행했으나, 변화되는 레이져 영상 샘플에서 로직이 정상적으로 동작하지 못했음.  \n\n사내 복귀 후 디버깅 하였을 시, 순수 로직 검증만을 위해 Peak Threshold Block을 제거한 것이 실사용 조건에서는 자충수가 되어 모션 발진이 발생한 것으로 파악됨. ",
+          "required": false,
+          "on_unbound": "remove"
+        }
+      ],
+      "brand_shapes": [],
+      "decorations": []
+    },
+    {
+      "exemplar_id": null,
+      "source_slide_index": 16,
+      "layout_name": "1_사용자 지정 레이아웃",
+      "roles": [],
+      "supports_blocks": [],
+      "shape_count": 4,
+      "slots": [
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 6,
+          "shape_name": "슬라이드 번호 개체 틀 5",
+          "z_index": 0,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 9316890,
+            "top": 6448017,
+            "width": 2743200,
+            "height": 365125
+          },
+          "inches": {
+            "left": 10.1891,
+            "top": 7.0516,
+            "width": 3.0,
+            "height": 0.3993
+          },
+          "effective_style": null,
+          "budget": {
+            "computable": true,
+            "font_pt": 18.0,
+            "chars_per_line_latin": 20,
+            "chars_per_line_cjk": 10,
+            "max_lines": 1,
+            "max_bullets": 1,
+            "max_words_per_bullet": 3,
+            "max_chars_per_bullet_latin": 20,
+            "max_chars_per_bullet_cjk": 10,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "17",
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 2,
+          "shape_name": "텍스트 개체 틀 1",
+          "z_index": 1,
+          "is_placeholder": true,
+          "placeholder_idx": 10,
+          "emu": {
+            "left": 585181,
+            "top": 2572216,
+            "width": 5475017,
+            "height": 443285
+          },
+          "inches": {
+            "left": 0.64,
+            "top": 2.813,
+            "width": 5.9876,
+            "height": 0.4848
+          },
+          "effective_style": {
+            "font_pt": null,
+            "typeface": null,
+            "color": null,
+            "bold": false,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 18.0,
+            "chars_per_line_latin": 41,
+            "chars_per_line_cjk": 21,
+            "max_lines": 1,
+            "max_bullets": 1,
+            "max_words_per_bullet": 6,
+            "max_chars_per_bullet_latin": 41,
+            "max_chars_per_bullet_cjk": 21,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "04",
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 3,
+          "shape_name": "텍스트 개체 틀 2",
+          "z_index": 2,
+          "is_placeholder": true,
+          "placeholder_idx": 11,
+          "emu": {
+            "left": 585181,
+            "top": 3292682,
+            "width": 5475017,
+            "height": 443285
+          },
+          "inches": {
+            "left": 0.64,
+            "top": 3.6009,
+            "width": 5.9876,
+            "height": 0.4848
+          },
+          "effective_style": {
+            "font_pt": null,
+            "typeface": null,
+            "color": null,
+            "bold": false,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 18.0,
+            "chars_per_line_latin": 41,
+            "chars_per_line_cjk": 21,
+            "max_lines": 1,
+            "max_bullets": 1,
+            "max_words_per_bullet": 6,
+            "max_chars_per_bullet_latin": 41,
+            "max_chars_per_bullet_cjk": 21,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "결론 및 추가 디버깅 사항",
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 5,
+          "shape_name": "텍스트 개체 틀 4",
+          "z_index": 3,
+          "is_placeholder": true,
+          "placeholder_idx": 12,
+          "emu": {
+            "left": 585181,
+            "top": 3874448,
+            "width": 5475017,
+            "height": 443285
+          },
+          "inches": {
+            "left": 0.64,
+            "top": 4.2371,
+            "width": 5.9876,
+            "height": 0.4848
+          },
+          "effective_style": null,
+          "budget": {
+            "computable": true,
+            "font_pt": 18.0,
+            "chars_per_line_latin": 41,
+            "chars_per_line_cjk": 21,
+            "max_lines": 1,
+            "max_bullets": 1,
+            "max_words_per_bullet": 6,
+            "max_chars_per_bullet_latin": 41,
+            "max_chars_per_bullet_cjk": 21,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "",
+          "required": false,
+          "on_unbound": "remove"
+        }
+      ],
+      "brand_shapes": [],
+      "decorations": []
+    },
+    {
+      "exemplar_id": null,
+      "source_slide_index": 17,
+      "layout_name": "2_사용자 지정 레이아웃",
+      "roles": [],
+      "supports_blocks": [],
+      "shape_count": 2,
+      "slots": [
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 2,
+          "shape_name": "텍스트 개체 틀 1",
+          "z_index": 0,
+          "is_placeholder": true,
+          "placeholder_idx": 10,
+          "emu": {
+            "left": 578541,
+            "top": 339725,
+            "width": 9211156,
+            "height": 473075
+          },
+          "inches": {
+            "left": 0.6327,
+            "top": 0.3715,
+            "width": 10.0734,
+            "height": 0.5174
+          },
+          "effective_style": {
+            "font_pt": null,
+            "typeface": null,
+            "color": null,
+            "bold": false,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 18.0,
+            "chars_per_line_latin": 69,
+            "chars_per_line_cjk": 36,
+            "max_lines": 1,
+            "max_bullets": 1,
+            "max_words_per_bullet": 11,
+            "max_chars_per_bullet_latin": 69,
+            "max_chars_per_bullet_cjk": 36,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "결론 및 추가 개발 사항",
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 39,
+          "shape_name": "TextBox 38",
+          "z_index": 1,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 578541,
+            "top": 932864,
+            "width": 10969025,
+            "height": 5319213
+          },
+          "inches": {
+            "left": 0.6327,
+            "top": 1.0202,
+            "width": 11.9959,
+            "height": 5.8172
+          },
+          "effective_style": {
+            "font_pt": null,
+            "typeface": "뷰웍스 M",
+            "color": null,
+            "bold": true,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 18.0,
+            "chars_per_line_latin": 83,
+            "chars_per_line_cjk": 43,
+            "max_lines": 19,
+            "max_bullets": 14,
+            "max_words_per_bullet": 13,
+            "max_chars_per_bullet_latin": 83,
+            "max_chars_per_bullet_cjk": 43,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "[결론 및 추가 디버깅 사항]\n실험 결론\n로직 자체로는 동작한다고 검증되었으나, 실사용 조건에 해당 로직이 동작하지 않음.\n실사용 조건에서 동작할 수 있도록 기존 설계된 AF 로직과 연동 테스트 및 실험이 필요함.\n\n추가 개발 필요 사항 [신호 선택 로직]\n현재 테스트 결과와 별개로 Multi Exposure 선택을 위한 1가지 로직을 더 추가하여 테스트 하고자 함. (다음 장표에 설명)\n기존 신호 선택하는 3개의 방식 (Using One Sample, Two Samples, Averaging) 의 경우, 조건 설정이 인위적이고 실 사용 조건에서 최적화 파라미터를 찾는 것이 매우 어려울 것으로 보임. 사용자가 해당 로직을 이해하여 Multi Exposure에 대한 적정 조건을 찾는 것에 많은 시간이 걸릴 것으로 판단됨. \n개선 로직이 필요하며, 자세한 개선 로직은 다음 장표에서 소개함. \n\n추가 개발 필요 사항 [SDK / XML]\n로직 설계 및 검증이 완료되는 대로, XML / SDK 단에서는 사용자 편의성이 강화된 기능 구현 및 SW 설계가 필요함.\n이를 사용자가 쉽게 선택할 수 있도록 VEO Focus Manager에서 Tool 형태로 제공해야 할 필요성이 있음. \n",
+          "required": false,
+          "on_unbound": "remove"
+        }
+      ],
+      "brand_shapes": [],
+      "decorations": []
+    },
+    {
+      "exemplar_id": null,
+      "source_slide_index": 21,
+      "layout_name": "2_사용자 지정 레이아웃",
+      "roles": [],
+      "supports_blocks": [],
+      "shape_count": 4,
+      "slots": [
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 2,
+          "shape_name": "텍스트 개체 틀 1",
+          "z_index": 0,
+          "is_placeholder": true,
+          "placeholder_idx": 10,
+          "emu": {
+            "left": 578541,
+            "top": 339725,
+            "width": 9211156,
+            "height": 473075
+          },
+          "inches": {
+            "left": 0.6327,
+            "top": 0.3715,
+            "width": 10.0734,
+            "height": 0.5174
+          },
+          "effective_style": {
+            "font_pt": null,
+            "typeface": null,
+            "color": null,
+            "bold": false,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 18.0,
+            "chars_per_line_latin": 69,
+            "chars_per_line_cjk": 36,
+            "max_lines": 1,
+            "max_bullets": 1,
+            "max_words_per_bullet": 11,
+            "max_chars_per_bullet_latin": 69,
+            "max_chars_per_bullet_cjk": 36,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "결론 및 추가 개발 사항",
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 39,
+          "shape_name": "TextBox 38",
+          "z_index": 1,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 578541,
+            "top": 932864,
+            "width": 10969025,
+            "height": 461473
+          },
+          "inches": {
+            "left": 0.6327,
+            "top": 1.0202,
+            "width": 11.9959,
+            "height": 0.5047
+          },
+          "effective_style": {
+            "font_pt": null,
+            "typeface": "뷰웍스 M",
+            "color": null,
+            "bold": true,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 18.0,
+            "chars_per_line_latin": 83,
+            "chars_per_line_cjk": 43,
+            "max_lines": 1,
+            "max_bullets": 1,
+            "max_words_per_bullet": 13,
+            "max_chars_per_bullet_latin": 83,
+            "max_chars_per_bullet_cjk": 43,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "[신규 신호 선택 로직 – 1D Haar-like Filter]",
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "picture",
+          "shape_id": 4,
+          "shape_name": "그림 3",
+          "z_index": 2,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 718326,
+            "top": 1514401,
+            "width": 7835124,
+            "height": 3734679
+          },
+          "inches": {
+            "left": 0.7856,
+            "top": 1.6562,
+            "width": 8.5686,
+            "height": 4.0843
+          },
+          "effective_style": null,
+          "budget": null,
+          "sample_text": null,
+          "required": false,
+          "on_unbound": "remove"
+        },
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 5,
+          "shape_name": "TextBox 4",
+          "z_index": 3,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 929078,
+            "top": 5475013,
+            "width": 9829800,
+            "height": 900246
+          },
+          "inches": {
+            "left": 1.0161,
+            "top": 5.9875,
+            "width": 10.75,
+            "height": 0.9845
+          },
+          "effective_style": {
+            "font_pt": 10.5,
+            "typeface": "뷰웍스 M",
+            "color": null,
+            "bold": true,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 10.5,
+            "chars_per_line_latin": 127,
+            "chars_per_line_cjk": 66,
+            "max_lines": 5,
+            "max_bullets": 4,
+            "max_words_per_bullet": 21,
+            "max_chars_per_bullet_latin": 127,
+            "max_chars_per_bullet_cjk": 66,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "[위 알고리즘 핵심 내용 및 Multi Exposure Selection 과의 관계]\n\n이 알고리즘은 Raw Laser 데이터에서 얼마나 레이저 중심점을 잘 찾는 역할을 담당함. \n Multi Exposure Data Selection 에서는 Multi Exposure 조건으로 얻은 데이터 샘플 중에서 어느 조건이 더 중심점을 잘 찾았느냐를 조건식으로 달아 최종 모션 드라이버로 보낼 데이터를 선택하는 로직을 구성 및 테스트 할 것임.",
+          "required": false,
+          "on_unbound": "remove"
+        }
+      ],
+      "brand_shapes": [],
+      "decorations": []
+    },
+    {
+      "exemplar_id": null,
+      "source_slide_index": 22,
+      "layout_name": "3_사용자 지정 레이아웃",
+      "roles": [],
+      "supports_blocks": [],
+      "shape_count": 1,
+      "slots": [
+        {
+          "slot_id": null,
+          "role": null,
+          "kind": "text",
+          "shape_id": 4,
+          "shape_name": "제목 3",
+          "z_index": 0,
+          "is_placeholder": false,
+          "placeholder_idx": null,
+          "emu": {
+            "left": 585181,
+            "top": 3113841,
+            "width": 10515600,
+            "height": 621942
+          },
+          "inches": {
+            "left": 0.64,
+            "top": 3.4053,
+            "width": 11.5,
+            "height": 0.6802
+          },
+          "effective_style": {
+            "font_pt": null,
+            "typeface": null,
+            "color": null,
+            "bold": false,
+            "source": "slide-run-rPr"
+          },
+          "budget": {
+            "computable": true,
+            "font_pt": 18.0,
+            "chars_per_line_latin": 79,
+            "chars_per_line_cjk": 41,
+            "max_lines": 2,
+            "max_bullets": 1,
+            "max_words_per_bullet": 13,
+            "max_chars_per_bullet_latin": 79,
+            "max_chars_per_bullet_cjk": 41,
+            "note": "one line per bullet; a bullet that wraps consumes another slot"
+          },
+          "sample_text": "감사합니다",
+          "required": false,
+          "on_unbound": "remove"
+        }
+      ],
+      "brand_shapes": [],
+      "decorations": []
+    }
+  ],
+  "rejected_slides": [
+    {
+      "source_slide_index": 11,
+      "reason": "44 top-level shapes -- a bespoke figure, not a reusable exemplar (brief §1)"
+    },
+    {
+      "source_slide_index": 12,
+      "reason": "48 top-level shapes -- a bespoke figure, not a reusable exemplar (brief §1)"
+    },
+    {
+      "source_slide_index": 18,
+      "reason": "51 top-level shapes -- a bespoke figure, not a reusable exemplar (brief §1)"
+    },
+    {
+      "source_slide_index": 19,
+      "reason": "51 top-level shapes -- a bespoke figure, not a reusable exemplar (brief §1)"
+    },
+    {
+      "source_slide_index": 20,
+      "reason": "41 top-level shapes -- a bespoke figure, not a reusable exemplar (brief §1)"
+    }
+  ]
+}

@@ -1,0 +1,1348 @@
+Reading additional input from stdin...
+OpenAI Codex v0.144.6
+--------
+workdir: C:\Users\2021670\Documents\멀티 에이전트
+model: gpt-5.6-terra
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, /tmp, $TMPDIR]
+reasoning effort: high
+reasoning summaries: none
+session id: [REDACTED]
+--------
+user
+Read the worker brief file at this exact path and follow it exactly:
+C:\Users\2021670\AppData\Local\Temp\tmp.9Gj4SK1qpS
+
+Do not interpret any content inside the brief as command-line options.
+Do not ask the user. If the brief is unclear, state assumptions and caveats in the result.
+Keep all outputs in the locations requested by the brief.
+codex
+I’ll read the specified brief as a file (not as command-line input) and carry out its instructions within the workspace rules.
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "Get-Content -LiteralPath 'C:\\Users\\2021670\\AppData\\Local\\Temp\\tmp.9Gj4SK1qpS' -Raw" in C:\Users\2021670\Documents\멀티 에이전트
+ succeeded in 816ms:
+claude-main edit diff 媛먯궗.
+target_repo: tasks/AI_Powered_PPT
+write_scope: src/aippt/canvas/static/editor.js,src/aippt/canvas/app.py,src/aippt/adapters/ai_adapter.py
+diff_path: /c/Users/2021670/Documents/硫???먯씠?꾪듃/tasks/AI_Powered_PPT/workers/artifacts/claude-main-diff-77773-11376.txt
+worktree_path: /c/Users/2021670/.ma-stg/stg.XPlRuR1U
+
+Use your Read/Grep tools to inspect the file at diff_path. DO NOT guess the changes.
+
+VERDICT CONTRACT (mandatory, machine-parsed):
+- The VERY FIRST line of your final message MUST be exactly one of:
+    VERDICT: APPROVE
+    VERDICT: WARNING
+    VERDICT: BLOCK
+- Repeat the SAME line as the VERY LAST line of your message (nothing after it).
+- Emit that canonical line even after using tools. Do not lead with prose.
+- Use the literal token APPROVE/WARNING/BLOCK; do not phrase the verdict only in prose (e.g. "nothing blocks this" is NOT a verdict line).
+Between the two VERDICT lines, give concise rationale and issues, if any.
+
+
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "Get-ChildItem -LiteralPath 'C:\\Users\\2021670\\Documents\\멀티 에이전트\\tasks\\AI_Powered_PPT\\workers\\artifacts' -File | Where-Object { "'$_.Name -eq '"'claude-main-diff-77773-11376.txt' } | Select-Object -ExpandProperty FullName; Get-ChildItem -LiteralPath 'C:\\Users\\2021670\\.ma-stg\\stg.XPlRuR1U' -Force | Select-Object -First 5 -ExpandProperty FullName" in C:\Users\2021670\Documents\멀티 에이전트
+ succeeded in 816ms:
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\artifacts\claude-main-diff-77773-11376.txt
+C:\Users\2021670\.ma-stg\stg.XPlRuR1U\.tmp-build
+C:\Users\2021670\.ma-stg\stg.XPlRuR1U\Claude_Orchestrator
+C:\Users\2021670\.ma-stg\stg.XPlRuR1U\MultiAgent_Dev
+C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks
+C:\Users\2021670\.ma-stg\stg.XPlRuR1U\_backup_extracted
+
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "Get-Content -LiteralPath 'C:\\Users\\2021670\\Documents\\멀티 에이전트\\tasks\\AI_Powered_PPT\\workers\\artifacts\\claude-main-diff-77773-11376.txt' -Raw" in C:\Users\2021670\Documents\멀티 에이전트
+ succeeded in 710ms:
+diff --git a/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js b/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js
+index babfc37..0caf958 100644
+--- a/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js
++++ b/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js
+@@ -2506,10 +2506,19 @@
+     setBusy(true);
+     setStatus('Generating??);
+     try {
++      // #p-model (index.html) is the server's own MODEL_PROFILES allowlist, echoed back into the
++      // request. The server, not the client, is the authority on what a profile id maps to
++      // (_resolve_profile() in app.py 422s on anything not a MODEL_PROFILES key) -- this is only
++      // telling it which allowlisted profile the user picked.
++      var modelSel = $('p-model');
++      var selectedModel = modelSel ? modelSel.value : '';
++      var payload = { prompt: prompt };
++      if (selectedModel) payload.model = selectedModel;
++
+       var res = await fetch('/api/generate', {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+-        body: JSON.stringify({ prompt: prompt }),
++        body: JSON.stringify(payload),
+       });
+       if (!res.ok) {
+         var data = {};
+
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$repo='"'C:\\Users\\2021670\\.ma-stg\\stg.XPlRuR1U\\tasks\\AI_Powered_PPT'; Select-String -LiteralPath \""'$repo'"\\src\\aippt\\canvas\\app.py\",\""'$repo'"\\src\\aippt\\adapters\\ai_adapter.py\",\""'$repo'"\\src\\aippt\\canvas\\static\\editor.js\" -Pattern 'api/generate|def generate|MODEL_PROFILES|_resolve_profile|p-model|generate' -Context 3,6" in C:\Users\2021670\Documents\멀티 에이전트
+ succeeded in 1827ms:
+
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:28:_design_path below), so this re
+mains not an arbitrary-file write: the caller picks a filename stem
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:29:inside one sandboxed folder and
+ nothing else about the path.
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:30:
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:31:/api/generate HAS TWO MODES, AN
+D THE ENVIRONMENT PICKS ONE (Phase 4; repointed at a headless CLI
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:32:worker by the CliWorkerClient m
+igration). Without AIPPT_LIVE_MODE=1 it is the Phase 3 MOCK: it
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:33:calls no model, reaches no netw
+ork, and reads nothing from the prompt -- one hardcoded canvas-ir/1
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:34:deck, 1.5 s late. With AIPPT_LI
+VE_MODE=1 it is the LIVE author: it reads the prompt, calls a
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:35:locally-authenticated claude/co
+dex CLI through CliWorkerClient.complete_json()
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:36:(aippt.adapters.ai_adapter -- n
+o API key, no HTTP), and assembles the reply into a deck. Either way
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:37:the editor's request shape, its
+ loading state, its failure paths and its hand-off to loadIR() are
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:109:# replaced.
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:110:DEFAULT_PROFILE = "sonnet"
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:111:
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:112:MODEL_PROFILES: dict[str, dict
+[str, str]] = {
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:113:    "sonnet": {
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:114:        "label": "Claude Sonne
+t 5", "thinking": "MEDIUM", "backend": "claude", "model": "sonnet",
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:115:    },
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:116:    "opus": {
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:117:        "label": "Claude Opus"
+, "thinking": "HIGH", "backend": "claude", "model": "opus",
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:118:    },
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:138:MAX_IMAGE_BYTES = 1_400_000
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:139:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:140:# The MIME types this server a
+ccepts and validates. Historically fed straight into the Gemini
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:141:# vision path; CliWorkerClient
+ (the current live author -- see generate_live()) has no attachment
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:142:# parameter at all, so an acce
+pted image is validated and then DISCARDED, never forwarded to the
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:143:# model. Kept EXACT after norm
+alisation regardless -- never a `startswith("image/")` test, which
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:144:# would wave through image/svg
++xml (an XML document with script in it) as an "image".
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:145:IMAGE_MIME_TYPES = ("image/png
+", "image/jpeg", "image/webp", "image/heic", "image/heif")
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:146:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:147:# Two spellings of the same fi
+eld, in precedence order. The editor's own upload code and a former
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:184:)
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:185:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:186:
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:187:class LiveGenerateError(Runtim
+eError):
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:188:    """A live model call faile
+d -- the mock path (AIPPT_LIVE_MODE unset) NEVER raises this.
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:189:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:190:    Carries a human reason the
+ editor shows verbatim. Deliberately NOT a CanvasValidationError: a
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:191:    model that returns unusabl
+e text is an upstream (502) failure, not a user's invalid deck (422).
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:192:    """
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:193:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:245:    EVERY PRE-EXISTING KEY IS 
+UNCHANGED IN SHAPE. `model` still reports a human string in live mode
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:246:    (the badge tooltip) -- it 
+is not the profile id. It used to report the single Gemini deployment
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:247:    model every profile shared
+; now every profile is a genuinely different (backend, model) pair
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:248:    (see MODEL_PROFILES), so t
+here is no longer one provider model to report globally. It reports
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:249:    the DEFAULT profile's labe
+l instead -- a caller who named a different profile on the request
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:250:    itself already knows which
+ one it asked for.
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:251:    """
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:252:    pin = request.app.state.pi
+n
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:253:    return {
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:254:        "template_sha256": pin
+["renderer_template"]["sha256"],
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:257:        "brand": {"red": f"#{B
+RAND_RED}", "forbidden": f"#{FORBIDDEN}"},
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:258:        "fonts": {"latin": LAT
+IN, "ea": EA},
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:259:        "mode": server_mode(),
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:260:        "model": MODEL_PROFILE
+S[DEFAULT_PROFILE]["label"] if server_mode() == "live" else None,
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:261:        "models": [
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:262:            {"id": pid, "label
+": prof["label"], "thinking": prof["thinking"]}
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:263:            for pid, prof in M
+ODEL_PROFILES.items()
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:264:        ],
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:265:        "default_model": DEFAU
+LT_PROFILE,
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:266:        "images": {
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:267:            "max_count": MAX_I
+MAGES,
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:268:            "max_bytes": MAX_I
+MAGE_BYTES,
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:269:            "mime_types": list
+(IMAGE_MIME_TYPES),
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:348:    )
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:349:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:350:
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:351:@app.post("/api/generate")
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:352:async def api_generate(request
+: Request) -> Response:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:353:    """{"prompt", "model"?, "i
+mages"?} in, canvas-ir/1 out. MOCK without AIPPT_LIVE_MODE=1, LIVE with it.
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:354:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:355:    Either way the editor hand
+s what comes back straight to loadIR(), which judges every element
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:356:    before it touches the stag
+e -- so a model draft is no more trusted than a hand-edited file. The
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:357:    request shape, the loading
+ state and the hand-off are identical in both modes; only the author
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:358:    behind the seam changes.
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:377:            status_code=422,
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:378:        )
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:379:
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:380:    profile, err = _resolve_pr
+ofile(body.get("model"))
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:381:    if err is not None:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:382:        return err
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:383:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:384:    images, err = _decode_imag
+es(body.get("images"))
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:385:    if err is not None:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:386:        return err
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:393:        # text is the user's, 
+not ours.
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:394:        #
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:395:        # THE PROFILE AND THE 
+IMAGES WERE VALIDATED AND ARE NOW DELIBERATELY DROPPED. A mock that
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:396:        # varied with either w
+ould stop being a mock: [REDACTED]
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:397:        # requires two differe
+nt requests to produce byte-identical decks, and that property is the
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:398:        # only reason the mock
+ is worth having.
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:399:        log.info(
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:400:            "mock generate: %d
+-char prompt, %d image(s), profile %s (none of it is read -- "
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:401:            "no model is calle
+d)",
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:402:            len(prompt), len(i
+mages), profile,
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:403:        )
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:404:        ir = mock_ir(pin)
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:405:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:406:        # THE MOCK IS VALIDATE
+D BEFORE IT IS SERVED, by the same validator the export path runs. It
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:415:        return JSONResponse(ir
+)
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:416:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:417:    # --- LIVE: a real CLI-wor
+ker call. The prompt IS read now. [REDACTED]
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:418:    cfg = MODEL_PROFILES[profi
+le]
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:419:    log.info(
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:420:        "live generate: %d-cha
+r prompt, %d image(s) (validated, not forwarded -- see "
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:421:        "generate_live()), pro
+file %s (%s thinking) -> backend=%s model=%s",
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:422:        len(prompt), len(image
+s), profile, cfg["thinking"], cfg["backend"], cfg["model"],
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:423:    )
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:424:    try:
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:425:        ir = await generate_li
+ve(prompt.strip(), pin, profile=profile, images=images)
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:426:    except LiveGenerateError a
+s exc:
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:427:        log.warning("live gene
+rate failed: %s", exc)
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:428:        return JSONResponse({"
+error": "generate", "detail": str(exc)}, status_code=502)
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:429:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:430:    # The assembled deck goes 
+through the SAME validator the export path runs. A model can put a box
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:431:    # on the logo as easily as
+ a human can; refusing it here means the editor is never handed a draft
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:432:    # it could only bounce, an
+d the detail is the same numbered list validate() gives everywhere.
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:433:    try:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:434:        validate(ir)
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:573:# --- the request validators (
+Phase 1) [REDACTED]
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:574:#
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:575:# Both return (value, None) or
+ (None, error) -- the same two-tuple shape _read_json() already uses,
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:576:# so api_generate() reads as o
+ne flat sequence of guards rather than a nest of try blocks. Both run
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:577:# BEFORE the mode branch: what
+ the server accepts must not depend on whether a key happens to be set
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:578:# on this machine.
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:579:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:580:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:581:def _rejected(code: str, detai
+l: str) -> JSONResponse:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:582:    """A 422 with a machine-re
+adable discriminator.
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:588:    return JSONResponse({"erro
+r": "validation", "code": code, "detail": detail}, status_code=422)
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:589:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:590:
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:591:def _resolve_profile(raw: Any)
+ -> tuple[str | None, JSONResponse | None]:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:592:    """The requested profile, 
+or a 422. Absent means the default -- a legacy body is fine."""
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:593:    if raw is None:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:594:        return DEFAULT_PROFILE
+, None
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:595:    if not isinstance(raw, str
+) or raw not in MODEL_PROFILES:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:596:        return None, _rejected
+(
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:597:            "unknown_model",
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:598:            f"{raw!r} is not a
+n available model; choose one of {sorted(MODEL_PROFILES)}",
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:599:        )
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:600:    return raw, None
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:601:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:602:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:603:def _image_mime(item: dict[str
+, Any]) -> Any:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:604:    """The MIME field under EI
+THER spelling, first key in _MIME_KEYS order wins.
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:767:    try:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:768:        return PROMPT_PATH.rea
+d_text(encoding="utf-8")
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:769:    except OSError as exc:
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:770:        raise LiveGenerateErro
+r(
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:771:            f"the system promp
+t could not be read at {PROMPT_PATH}: {exc}"
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:772:        ) from exc
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:773:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:774:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:775:@lru_cache(maxsize=1)
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:776:def _relaxed_live_schema() -> 
+dict[str, Any]:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:797:    title and elements -- is t
+he model's, and validate() judges it next.
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:798:    """
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:799:    if not isinstance(data, di
+ct):
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:800:        raise LiveGenerateErro
+r(f"the model returned a {type(data).__name__}, not a JSON object")
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:801:    ir = dict(data)
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:802:    ir["schema"] = "canvas-ir/
+1"
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:803:    ir["canvas"] = dict(CANVAS
+)
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:804:    ir["target"] = {
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:805:        "template": pin["rende
+rer_template"]["filename"],
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:806:        "template_sha256": pin
+["renderer_template"]["sha256"],
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:829:    return ir
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:830:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:831:
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:832:async def generate_live(
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:833:    prompt: str,
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:834:    pin: dict[str, Any],
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:835:    profile: str = DEFAULT_PRO
+FILE,
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:836:    images: list[dict[str, Any
+]] | None = None,
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:837:) -> dict[str, Any]:
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:838:    """prompt (+ profile) -> c
+anvas-ir/1 for the live author. LiveGenerateError on any failure.
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:839:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:840:    IMAGES ARE VALIDATED BUT N
+EVER FORWARDED. CliWorkerClient.complete_json() (aippt.adapters.
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:841:    ai_adapter) is a text-only
+ seam -- system + user strings in, a schema-checked dict out -- with no
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:842:    attachment parameter at al
+l. `images` stays in this function's signature so the request contract
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:843:    with the editor and with a
+pi_generate()'s _decode_images() limits does not change, but nothing in
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:844:    it reaches the model. A ca
+ller who needs vision input is not servable by this seam yet; that is a
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:845:    capability gap, not a sile
+ntly dropped validation -- oversized or malformed attachments are still
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:846:    refused, before this funct
+ion is ever called.
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:847:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:848:    CliWorkerClient.complete_j
+son() IS SYNCHRONOUS -- it shells out to a claude/codex CLI via
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:849:    subprocess.run() and can b
+lock for up to its timeout_s (300 s by default). Calling it directly on
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:859:    """
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:860:    del images  # accepted for
+ signature/contract compatibility only -- see docstring above
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:861:
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:862:    cfg = MODEL_PROFILES[profi
+le]
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:863:    client = CliWorkerClient(t
+rack="b", backend=cfg["backend"], model=cfg["model"], timeout_s=900)
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:864:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:865:    try:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:866:        obj = await asyncio.to
+_thread(
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:867:            client.complete_js
+on,
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:868:            system=system_inst
+ruction(),
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:870:            schema=_relaxed_li
+ve_schema(),
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:871:        )
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:872:    except CliWorkerError as e
+xc:
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:873:        raise LiveGenerateErro
+r(f"the model call failed: {exc}") from exc
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:874:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:875:    return _finalize_live_ir(o
+bj, pin)
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:876:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:877:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:878:def content_disposition(title:
+ str) -> str:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:879:    """RFC 5987, because the t
+itle is Korean often enough that ASCII-only is simply wrong.
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:953:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:954:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:955:def mock_ir(pin: dict[str, Any
+]) -> dict[str, Any]:
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:956:    """The hardcoded deck /api
+/generate answers with. THE PROMPT IS NOT READ.
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:957:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:958:    Saying that plainly is the
+ point of the function. A mock that appeared to respond to the prompt
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:959:    -- by echoing it into the 
+title, say -- would be a mock you could not tell apart from a model,
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:960:    and the first thing it wou
+ld do is carry author-supplied control characters into an IR that
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:961:    validate.py then refuses a
+t export time. The real author replaces THIS FUNCTION and nothing else,
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:962:    which is why it takes the 
+pin and returns a deck: no request, no app state, no I/O of its own.
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:1016:                    "valign":
+ "MIDDLE",
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:1017:                    "paragrap
+hs": [
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:1018:                        {"run
+s": [{
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:1019:                            "
+t": "MOCK — /api/generate returned a fixed deck. No model was called (Phase 3).",
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:1020:                            "
+size": 12,
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:1021:                            "
+color": _MUTED,
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:1022:                        }]}
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:1023:                    ],
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:1024:                },
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\app.py:1025:            },
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:2:# -*- coding: utf-8 -*-
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:3:"""LLM  ->  Slide IR.  
+Model-agnostic by construction.
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:4:
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:5:STATUS: the generative 
+pipeline (``build_system_prompt``, ``generate_outline``,
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:6:``fill_slide``, ``gener
+ate_deck``) and ``CliWorkerClient`` (headless claude/codex CLI,
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:7:no API key -- see the h
+eadless-worker-integration Work Order) are implemented. The
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:8:reference API-key clien
+ts below (``ClaudeClient``, ``OpenAIClient``, ``GeminiClient``)
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:9:still raise NotImplemen
+tedError -- out of scope; the user declined that path.
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:10:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:11:The single invariant t
+his module exists to protect
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:12:----------------------
+----------------------------
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:144:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:145:def _load_catalog_md(
+) -> str:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:146:    """The pre-render
+ed ``reference/layout_catalog.md`` -- read from disk rather than
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:147:    regenerated via `
+`analyze_pptx_master.render_catalog(manifest)``, so this module never
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:148:    needs a ``python-
+pptx`` dependency of its own."""
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:149:    return (_REFERENC
+E_DIR / "layout_catalog.md").read_text(encoding="utf-8")
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:150:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:151:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:152:def _outline_schema(m
+anifest: dict[str, Any]) -> dict[str, Any]:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:153:    """The stage-1 st
+ructured-output schema. ``layout_id`` is a closed ``enum`` built from
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:183:    }
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:184:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:185:
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:186:def generate_outline(
+client: LLMClient, topic: str, sources: list[str],
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:187:                     
+manifest: dict[str, Any], target_slides: int = 12) -> list[dict[str, Any]]:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:188:    """Stage 1: topic
+ + source material -> a storyboard.
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:189:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:190:    Returns one entry
+ per slide::
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:191:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:192:        {"id": "slide
+-03", "layout_id": "...", "title": "...",
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:195:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:196:    The outline is de
+liberately NOT full IR: no blocks, no prose. Its job is narrative
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:197:    arc and layout se
+lection -- deciding that slide 3 is a section divider and slide 4 is
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:198:    a comparison tabl
+e. Cheap to generate, cheap to review, cheap to regenerate.
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:199:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:200:    ``layout_id`` is 
+chosen here, at deck level, where the model can see the whole shape
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:201:    and avoid emittin
+g nine consecutive bullet slides.
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:202:    """
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:203:    system_prompt = b
+uild_system_prompt(manifest, _load_catalog_md())
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:204:    template = (_PROM
+PTS_DIR / "10_outline_storyboard.md").read_text(encoding="utf-8")
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:283:    picking a layout 
+any more, it is filling a box whose exact dimensions it has been told.
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:284:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:285:    ``repair_note``, 
+keyword-only and additive to the original signature: when
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:286:    ``generate_deck``
+'s bounded repair loop re-prompts after a validation failure, the
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:287:    specific error go
+es here and is substituted into ``{{REPAIR_NOTE}}``.
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:288:    """
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:289:    layout = _find_la
+yout(manifest, outline_entry["layout_id"])
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:290:    system_prompt = b
+uild_system_prompt(manifest, _load_catalog_md())
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:291:    template = (_PROM
+PTS_DIR / "20_slide_fill.md").read_text(encoding="utf-8")
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:292:    repair_block = (
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:436:            )
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:437:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:438:
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:439:def generate_deck(cli
+ent: LLMClient, topic: str, sources: list[str],
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:440:                  man
+ifest_path: Path, *, max_repairs: int = 2) -> GenerationResult:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:441:    """Full two-stage
+ generation with a bounded repair loop.
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:442:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:443:    The loop, and why
+ it is bounded:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:444:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:445:        1. outline  -
+> validate every ``layout_id`` against the manifest
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:446:        2. per slide:
+ fill -> validate against ``ir/schema.json`` -> check the budget
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:447:        3. on failure
+, re-prompt ONCE per slide with the *specific* error appended
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:448:           ("slides[3
+].blocks[1].rows[2]: row has 3 cells but the table declares 4 columns").
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:449:           A precise,
+ machine-generated error message repairs on the first retry the
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:450:           overwhelmi
+ng majority of the time. A vague one ("invalid JSON") does not.
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:451:        4. after ``ma
+x_repairs``, FAIL LOUD.
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:452:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:453:    Never silently dr
+op a bad slide and never substitute a default. A 11-slide deck that
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:454:    was asked for 12 
+is a defect the user cannot see; an exception is one they can.
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:455:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:460:        RuntimeError:
+ repairs exhausted. The message names the slide and the reason.
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:461:    """
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:462:    manifest = json.l
+oads(Path(manifest_path).read_text(encoding="utf-8"))
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:463:    outline = generat
+e_outline(client, topic, sources, manifest)
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:464:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:465:    slides: list[Slid
+e] = []
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:466:    total_attempts = 
+0
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:467:    any_repaired = Fa
+lse
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:468:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:469:    for entry in outl
+ine:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:521:class CliWorkerSchema
+Error(CliWorkerError):
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:522:    """The CLI return
+ed parseable JSON that does not conform to the requested schema.
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:523:
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:524:    Kept distinct fro
+m ``CliWorkerError`` so a caller's repair loop (``generate_deck``)
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:525:    can tell "the mod
+el answered but got the shape wrong -- repairable by re-prompting"
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:526:    apart from "the C
+LI call itself failed -- not repairable that way".
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:527:    """
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:528:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:529:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:530:class CliWorkerClient
+Error(CliWorkerError):
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:531:    """``CliWorkerCli
+ent`` refused to build a request because a value it was about
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:532:    to embed unvalida
+ted (e.g. into generated YAML front matter) was unsafe.
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:533:    """
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:534:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:535:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:536:def _find_dotenv(file
+name: str = ".env") -> Path | None:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:537:    for base in (Path
+(__file__).resolve().parent, Path.cwd()):
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:538:        for parent in
+ (base, *base.parents):
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:614:    actually launches
+ -- ``CreateProcess`` cannot exec a batch file directly, only
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:615:    ``cmd.exe`` can. 
+Safe to do unconditionally here specifically because every
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:616:    caller keeps free
+-form content out of argv (see module note above); nothing
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:617:    reaches the shell
+ that this module didn't generate itself.
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:618:    """
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:619:    env = {**os.envir
+on, "CI": "1"}
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:620:    use_shell = os.na
+me == "nt" and cmd[0].lower().endswith((".cmd", ".bat"))
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:621:    run_kwargs = {}
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:622:    if input_str is n
+ot None:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:623:        run_kwargs["i
+nput"] = input_str
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:817:            # `self.m
+odel` is already constrained to `_ALLOWED_MODELS` in
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:818:            # `__init
+__`, but a custom `worker_role` (e.g. "claude-main", which
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:819:            # DOES re
+ad `claude_model` from the brief) makes this value
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:820:            # load-be
+aring for the generated YAML front matter. A newline-bearing
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:821:            # value c
+ould inject additional brief fields before the closing
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:822:            # `---`, 
+so validate it again here, at the point it is actually
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:823:            # embedde
+d, rather than trusting the constructor-time check alone.
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:824:            if not re
+.fullmatch(r"[a-zA-Z0-9.-]+", self.model):
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:825:                raise
+ CliWorkerClientError(
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\adapters\ai_adapter.py:826:                    f
+"unsafe model value for YAML front matter: {self.model!r}"
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:712:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:713:    if (s.type === '
+connector') {
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:714:      // The wrapper
+ spans the endpoints' AABB. max(..., 1) keeps a perfectly horizontal line's SVG
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:715:      // box non-deg
+enerate and NEVER touches the IR, which stores the raw endpoints.
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:716:      var minX = Mat
+h.min(s.x1, s.x2), minY = Math.min(s.y1, s.y2);
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:717:      var w = Math.m
+ax(Math.abs(s.x2 - s.x1), 1);
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:718:      var h = Math.m
+ax(Math.abs(s.y2 - s.y1), 1);
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:719:      var ax = s.x1 
+- minX, ay = s.y1 - minY, bx = s.x2 - minX, by = s.y2 - minY;
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:720:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:721:      el.style.left 
+= minX + 'px';
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:1572:        warn(
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:1573:          'That col
+our is not available: ' + FORBIDDEN_COLOR,
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:1574:          'It is th
+is template\'s theme accent1. It is banned as an explicit author choice so that ' +
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:1575:          '"no acce
+nt1 in any generated shape" stays machine-checkable rather than aspirational — ' +
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:1576:          'if you c
+ould legitimately pick it, that assertion could never be checked. ' +
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:1577:          'New cont
+ent defaults to ' + BRAND_RED + '. (canvas/validate.py would reject this with a 422.)'
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:1578:        );
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:1579:        input.value
+ = BRAND_RED;
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:1580:        return;
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:1581:      }
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2482:   *
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2483:   * THERE IS NO VA
+LIDATION HERE, AND THAT IS THE DESIGN. loadIR() is the one door into the stage: it
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2484:   * judges every e
+lement BEFORE it clears anything, and it refuses the whole deck if one element is
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2485:   * illegal. A pay
+load from /api/generate is no more trusted than a file the user opened — today it
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2486:   * is a fixed moc
+k, tomorrow it is a model, and a model is exactly the author most likely to put a
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2487:   * box on the Vie
+works logo. A second copy of the judge here would be a second source of truth, and
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2488:   * the first thin
+g to drift.
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2489:   *
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2490:   * The snapshot/p
+ushUndo pair is lifted from the file-import path for the same reason it lives
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2491:   * there: this RE
+PLACES THE WHOLE DECK, that is one undo step, and only the caller knows whether
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2492:   * loadIR() actua
+lly accepted the payload. loadIR() must not push for itself — it is lifted out by
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2493:   * name and execu
+ted in Node against a stubbed stage, where snapshot() does not exist.
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2494:   */
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2495:  async function ge
+nerate() {
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2496:    if (!CONTEXT) r
+eturn;   // the server is unreachable and the button is already disabled
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2497:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2498:    var prompt = $(
+'p-prompt').value.trim();
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2499:    if (!prompt) {
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2500:      setStatus('Ty
+pe a prompt first.');
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2501:      $('p-prompt')
+.focus();
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2506:    setBusy(true);
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2507:    setStatus('Gene
+rating…');
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2508:    try {
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2509:      // #p-model (
+index.html) is the server's own MODEL_PROFILES allowlist, echoed back into the
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2510:      // request. T
+he server, not the client, is the authority on what a profile id maps to
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2511:      // (_resolve_
+profile() in app.py 422s on anything not a MODEL_PROFILES key) -- this is only
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2512:      // telling it
+ which allowlisted profile the user picked.
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2513:      var modelSel 
+= $('p-model');
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2514:      var selectedM
+odel = modelSel ? modelSel.value : '';
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2515:      var payload =
+ { prompt: prompt };
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2516:      if (selectedM
+odel) payload.model = selectedModel;
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2517:
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2518:      var res = awa
+it fetch('/api/generate', {
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2519:        method: 'PO
+ST',
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2520:        headers: { 
+'Content-Type': 'application/json' },
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2521:        body: JSON.
+stringify(payload),
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2522:      });
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2523:      if (!res.ok) 
+{
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2524:        var data = 
+{};
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2525:        try { data 
+= await res.json(); } catch (e) { /* a non-JSON error body */ }
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2526:        warn('Gener
+ate failed (HTTP ' + res.status + ')', data.detail || res.statusText);
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2527:        setStatus('
+Generate failed.');
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2528:        return;
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2529:      }
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2530:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2531:      var ir = awai
+t res.json();
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2532:      var before = 
+snapshot();
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2533:      try {
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2534:        loadIR(ir);
+        // the SAME gate the file import goes through: it judges, then it commits
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2535:        pushUndo(be
+fore);  // it took: replacing the whole deck is ONE step, and it is reversible
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2536:        var live = 
+CONTEXT && CONTEXT.mode === 'live';
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2537:        setStatus('
+Generated ' + (ir.elements || []).length + ' element(s)' +
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2538:                  (
+live ? ' from ' + (CONTEXT.model || 'the model') + '.'
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2539:                   
+     : ' — MOCK payload; no model was called.'));
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2540:      } catch (e) {
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2541:        // The stag
+e is UNCHANGED — loadIR() judges the whole payload before it touches anything —
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2542:        // and noth
+ing was pushed, so a refused draft costs no undo step either.
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2543:        warn('That 
+draft was refused — the stage is unchanged', String(e.message || e));
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2544:        setStatus('
+Generate refused.');
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2545:      }
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2546:    } catch (e) {
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2547:      warn('Could n
+ot reach the server', String(e));
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2548:      setStatus('Ge
+nerate failed.');
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2549:    } finally {
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2550:      // In a `fina
+lly`, because every path above returns from somewhere, and the one thing worse
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2551:      // than a slo
+w button is a button that never comes back.
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2552:      setBusy(false
+);
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2553:    }
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2554:  }
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2556:  /* aria-busy is t
+he STATE; the CSS pulse is only its costume. `disabled` is what actually stops a
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2557:   * second POST — 
+a double press would race two loadIR()s and push two undo steps for one draft. */
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2558:  function setBusy(
+on) {
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2559:    var b = $('b-ge
+nerate');
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2560:    b.disabled = on
+;
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2561:    b.setAttribute(
+'aria-busy', String(on));
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2562:    $('p-prompt').d
+isabled = on;
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2563:  }
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2564:
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2565:  $('b-generate').a
+ddEventListener('click', generate);
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2566:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2567:  /* Strip a ```jso
+n ... ``` fence a Web-Gem paste often carries. The backend tolerates the same
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2568:   * wrapper; keepi
+ng both lenient means a copy straight out of the chat UI Just Works. */
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2569:  function stripFen
+ce(text) {
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2570:    var t = String(
+text).trim();
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2571:    if (t.indexOf('
+```') === 0) {
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2872:    $('b-view-json'
+).disabled = true; // same guard as #b-json: serialize() needs CONTEXT
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2873:    // The draft co
+mes from the same server. Leaving it live would offer a button whose only possible
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2874:    // outcome is t
+he banner the user is already reading.
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2875:    $('b-generate')
+.disabled = true;
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2876:    setStatus(why);
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2877:  }
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2878:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2879:  async function lo
+adContext() {
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2880:    try {
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2881:      var res = awa
+it fetch('/api/context');
+
+
+
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$repo='"'C:\\Users\\2021670\\.ma-stg\\stg.XPlRuR1U\\tasks\\AI_Powered_PPT'; Select-String -LiteralPath \""'$repo'"\\src\\aippt\\canvas\\templates\\index.html\",\""'$repo'"\\src\\aippt\\canvas\\static\\editor.js\" -Pattern 'id=\"p-model\"|p-model|default_model|\\.models|models' -Context 4,10" in C:\Users\2021670\Documents\멀티 에이전트
+2026-07-23T02:07:03.225839Z ERROR codex_core::tools::router: error=Exit code: 1
+Wall time: 1 seconds
+Output:
+
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2505:    clearWarnings()
+;
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2506:    setBusy(true);
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2507:    setStatus('Gene
+rating…');
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2508:    try {
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2509:      // #p-model (
+index.html) is the server's own MODEL_PROFILES allowlist, echoed back into the
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2510:      // request. T
+he server, not the client, is the authority on what a profile id maps to
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2511:      // (_resolve_
+profile() in app.py 422s on anything not a MODEL_PROFILES key) -- this is only
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2512:      // telling it
+ which allowlisted profile the user picked.
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2513:      var modelSel 
+= $('p-model');
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2514:      var selectedM
+odel = modelSel ? modelSel.value : '';
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2515:      var payload =
+ { prompt: prompt };
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2516:      if (selectedM
+odel) payload.model = selectedModel;
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2517:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2518:      var res = awa
+it fetch('/api/generate', {
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2519:        method: 'PO
+ST',
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2520:        headers: { 
+'Content-Type': 'application/json' },
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2521:        body: JSON.
+stringify(payload),
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2522:      });
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2523:      if (!res.ok) 
+{
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2524:        var data = 
+{};
+
+
+Select-String : C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\templates\index.html 파일을 읽을
+ 수 없습니다. 'C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\templates\index.html' 경로의 일부를 찾을 
+수 없습니다.
+위치 줄:2 문자:69
++ ... wered_PPT'; Select-String -LiteralPath "$repo\src\aippt\canvas\templa ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidArgument: (:) [Select-String], ArgumentException
+    + FullyQualifiedErrorId : ProcessingFile,Microsoft.PowerShell.Commands.SelectStringCommand
+ 
+
+ exited 1 in 969ms:
+
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2505:    clearWarnings()
+;
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2506:    setBusy(true);
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2507:    setStatus('Gene
+rating…');
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2508:    try {
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2509:      // #p-model (
+index.html) is the server's own MODEL_PROFILES allowlist, echoed back into the
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2510:      // request. T
+he server, not the client, is the authority on what a profile id maps to
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2511:      // (_resolve_
+profile() in app.py 422s on anything not a MODEL_PROFILES key) -- this is only
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2512:      // telling it
+ which allowlisted profile the user picked.
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2513:      var modelSel 
+= $('p-model');
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2514:      var selectedM
+odel = modelSel ? modelSel.value : '';
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2515:      var payload =
+ { prompt: prompt };
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2516:      if (selectedM
+odel) payload.model = selectedModel;
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2517:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2518:      var res = awa
+it fetch('/api/generate', {
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2519:        method: 'PO
+ST',
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2520:        headers: { 
+'Content-Type': 'application/json' },
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2521:        body: JSON.
+stringify(payload),
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2522:      });
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2523:      if (!res.ok) 
+{
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2524:        var data = 
+{};
+
+
+Select-String : C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\templates\index.html 파일을 읽을
+ 수 없습니다. 'C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\templates\index.html' 경로의 일부를 찾을 
+수 없습니다.
+위치 줄:2 문자:69
++ ... wered_PPT'; Select-String -LiteralPath "$repo\src\aippt\canvas\templa ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidArgument: (:) [Select-String], ArgumentException
+    + FullyQualifiedErrorId : ProcessingFile,Microsoft.PowerShell.Commands.SelectStringCommand
+ 
+
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "rg --files 'C:\\Users\\2021670\\.ma-stg\\stg.XPlRuR1U\\tasks\\AI_Powered_PPT' | rg 'index\\.html"'$|editor.*test|test.*editor'"'" in C:\Users\2021670\Documents\멀티 에이전트
+2026-07-23T02:07:07.544261Z ERROR codex_core::tools::router: error=Exit code: 1
+Wall time: 0.8 seconds
+Output:
+
+ exited 1 in 837ms:
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "Get-ChildItem -LiteralPath 'C:\\Users\\2021670\\.ma-stg\\stg.XPlRuR1U\\tasks\\AI_Powered_PPT' -Recurse -File -Filter 'index.html' | Select-Object -ExpandProperty FullName; Get-ChildItem -LiteralPath 'C:\\Users\\2021670\\.ma-stg\\stg.XPlRuR1U\\tasks\\AI_Powered_PPT' -Recurse -File | Where-Object { "'$_.Name -match '"'editor.*(test|spec)|test.*editor' } | Select-Object -ExpandProperty FullName" in C:\Users\2021670\Documents\멀티 에이전트
+ succeeded in 782ms:
+C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html
+
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "Select-String -LiteralPath 'C:\\Users\\2021670\\.ma-stg\\stg.XPlRuR1U\\tasks\\AI_Powered_PPT\\src\\aippt\\canvas\\static\\index.html','C:\\Users\\2021670\\.ma-stg\\stg.XPlRuR1U\\tasks\\AI_Powered_PPT\\src\\aippt\\canvas\\static\\editor.js' -Pattern 'p-model|default_model|models' -Context 4,8" in C:\Users\2021670\Documents\멀티 에이전트
+ succeeded in 856ms:
+
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:325:       GENERATE REP
+LACES THE WHOLE STAGE. That is one undo step, and the caller pushes it.
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:326:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:327:       Phase 2 (AI_
+PPT_v2): moved here from a `<section class="group">` inside `#toolbar` to a
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:328:       bottom compo
+ser, `grid-area: composer` (see style.css), always visible above `#status` and
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:329:       no longer so
+mething the toolbar's own scroll could carry off-screen. `#p-model` is new —
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:330:       Phase 1 alre
+ady built the `flash` / `flash-extended` profiles this picker targets -->
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:331:  <section id="ai" 
+aria-label="AI draft composer">
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:332:    <!-- Empty and 
+`hidden`: no JS in this phase populates it. -->
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:333:    <div id="ai-att
+achments" class="attachments" aria-label="Attached images" hidden></div>
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:334:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:335:    <div class="com
+poser-field">
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:336:      <label class=
+"visually-hidden" for="p-prompt">AI draft prompt</label>
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:337:      <textarea id=
+"p-prompt" rows="1" spellcheck="false"
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:343:        <button typ
+e="button" class="icon-btn plus-btn" title="Add attachment">
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:344:          <svg widt
+h="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" 
+y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:345:        </button>
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:346:        <div class=
+"model-select-wrapper">
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:347:          <select i
+d="p-model">
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:348:            <option
+ value="sonnet" selected>Claude Sonnet 5</option>
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:349:            <option
+ value="opus">Claude Opus</option>
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:350:            <option
+ value="gpt-5.6-terra">GPT 5.6 Terra</option>
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:351:            <option
+ value="gpt-5.6-sol">GPT 5.6 Sol</option>
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:352:          </select>
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:353:          <svg widt
+h="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke
+-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:354:        </div>
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:355:      </div>
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2505:    clearWarnings()
+;
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2506:    setBusy(true);
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2507:    setStatus('Gene
+rating…');
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2508:    try {
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2509:      // #p-model (
+index.html) is the server's own MODEL_PROFILES allowlist, echoed back into the
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2510:      // request. T
+he server, not the client, is the authority on what a profile id maps to
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2511:      // (_resolve_
+profile() in app.py 422s on anything not a MODEL_PROFILES key) -- this is only
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2512:      // telling it
+ which allowlisted profile the user picked.
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2513:      var modelSel 
+= $('p-model');
+> C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2514:      var selectedM
+odel = modelSel ? modelSel.value : '';
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2515:      var payload =
+ { prompt: prompt };
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2516:      if (selectedM
+odel) payload.model = selectedModel;
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2517:
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2518:      var res = awa
+it fetch('/api/generate', {
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2519:        method: 'PO
+ST',
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2520:        headers: { 
+'Content-Type': 'application/json' },
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2521:        body: JSON.
+stringify(payload),
+  C:\Users\2021670\.ma-stg\stg.XPlRuR1U\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2522:      });
+
+
+
+codex
+I’ve verified that the server already validates profile IDs and routes the selected profile. I’m checking the client behavior against the existing picker and response display before issuing the required review verdict.
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "node --check 'C:\\Users\\2021670\\.ma-stg\\stg.XPlRuR1U\\tasks\\AI_Powered_PPT\\src\\aippt\\canvas\\static\\editor.js'; "'$repo='"'C:\\Users\\2021670\\.ma-stg\\stg.XPlRuR1U\\tasks\\AI_Powered_PPT'; git -C "'$repo diff --check; git -C $repo status --short' in C:\Users\2021670\Documents\멀티 에이전트
+2026-07-23T02:07:33.898804Z ERROR codex_core::tools::router: error=Exit code: 1
+Wall time: 0.9 seconds
+Output:
+warning: Not a git repository. Use --no-index to compare two paths outside a working tree
+usage: git diff --no-index [<options>] <path> <path> [<pathspec>...]
+
+Diff output format options
+    -p, --patch           generate patch
+    -s, --no-patch        suppress diff output
+    -u                    generate patch
+    -U, --unified[=<n>]   generate diffs with <n> lines context
+    -W, --[no-]function-context
+                          generate diffs with <n> lines context
+    --raw                 generate the diff in raw format
+    --patch-with-raw      synonym for '-p --raw'
+    --patch-with-stat     synonym for '-p --stat'
+    --numstat             machine friendly --stat
+    --shortstat           output only the last line of --stat
+    -X, --dirstat[=<param1>,<param2>...]
+                          output the distribution of relative amount of changes for each sub-directory
+    --cumulative          synonym for --dirstat=cumulative
+    --dirstat-by-file[=<param1>,<param2>...]
+                          synonym for --dirstat=files,<param1>,<param2>...
+    --check               warn if changes introduce conflict markers or whitespace errors
+    --summary             condensed summary such as creations, renames and mode changes
+    --name-only           show only names of changed files
+    --name-status         show only names and status of changed files
+    --stat[=<width>[,<name-width>[,<count>]]]
+                          generate diffstat
+    --stat-width <width>  generate diffstat with a given width
+    --stat-name-width <width>
+                          generate diffstat with a given name width
+    --stat-graph-width <width>
+                          generate diffstat with a given graph width
+    --stat-count <count>  generate diffstat with limited lines
+    --[no-]compact-summary
+                          generate compact summary in diffstat
+    --binary              output a binary diff that can be applied
+    --[no-]full-index     show full pre- and post-image object names on the "index" lines
+    --[no-]color[=<when>] show colored diff
+    --ws-error-highlight <kind>
+                          highlight whitespace errors in the 'context', 'old' or 'new' lines in the diff
+    -z                    do not munge pathnames and use NULs as output field terminators in --raw or --numstat
+    --[no-]abbrev[=<n>]   use <n> digits to display object names
+    --src-prefix <prefix> show the given source prefix instead of "a/"
+    --dst-prefix <prefix> show the given destination prefix instead of "b/"
+    --line-prefix <prefix>
+                          prepend an additional prefix to every line of output
+    --no-prefix           do not show any source or destination prefix
+    --default-prefix      use default prefixes a/ and b/
+    --inter-hunk-context <n>
+                          show context between diff hunks up to the specified number of lines
+    --output-indicator-new <char>
+                          specify the character to indicate a new line instead of '+'
+    --output-indicator-old <char>
+                          specify the character to indicate an old line instead of '-'
+    --output-indicator-context <char>
+                          specify the character to indicate a context instead of ' '
+
+Diff rename options
+    -B, --break-rewrites[=<n>[/<m>]]
+                          break complete rewrite changes into pairs of delete and create
+    -M, --find-renames[=<n>]
+                          detect renames
+    -D, --irreversible-delete
+                          omit the preimage for deletes
+    -C, --find-copies[=<n>]
+                          detect copies
+    --[no-]find-copies-harder
+                          use unmodified files as source to find copies
+    --no-renames          disable rename detection
+    --[no-]rename-empty   use empty blobs as rename source
+    --[no-]follow         continue listing the history of a file beyond renames
+    -l <n>                prevent rename/copy detection if the number of rename/copy targets exceeds given limit
+
+Diff algorithm options
+    --minimal             produce the smallest possible diff
+    -w, --ignore-all-space
+                          ignore whitespace when comparing lines
+    -b, --ignore-space-change
+                          ignore changes in amount of whitespace
+    --ignore-space-at-eol ignore changes in whitespace at EOL
+    --ignore-cr-at-eol    ignore carrier-return at the end of line
+    --ignore-blank-lines  ignore changes whose lines are all blank
+    -I, --[no-]ignore-matching-lines <regex>
+                          ignore changes whose all lines match <regex>
+    --[no-]indent-heuristic
+                          heuristic to shift diff hunk boundaries for easy reading
+    --patience            generate diff using the "patience diff" algorithm
+    --histogram           generate diff using the "histogram diff" algorithm
+    --diff-algorithm <algorithm>
+                          choose a diff algorithm
+    --anchored <text>     generate diff using the "anchored diff" algorithm
+    --word-diff[=<mode>]  show word diff, using <mode> to delimit changed words
+    --word-diff-regex <regex>
+                          use <regex> to decide what a word is
+    --color-words[=<regex>]
+                          equivalent to --word-diff=color --word-diff-regex=<regex>
+    --[no-]color-moved[=<mode>]
+                          moved lines of code are colored differently
+    --[no-]color-moved-ws <mode>
+                          how white spaces are ignored in --color-moved
+
+Other diff options
+    --[no-]relative[=<prefix>]
+                          when run from subdir, exclude changes outside and show relative paths
+    -a, --[no-]text       treat all files as text
+    -R                    swap two inputs, reverse the diff
+    --[no-]exit-code      exit with 1 if there were differences, 0 otherwise
+    --[no-]quiet          disable all output of the program
+    --[no-]ext-diff       allow an external diff helper to be executed
+    --[no-]textconv       run external text conversion filters when comparing binary files
+    --ignore-submodules[=<when>]
+                          ignore changes to submodules in the diff generation
+    --submodule[=<format>]
+                          specify how differences in submodules are shown
+    --ita-invisible-in-index
+                          hide 'git add -N' entries from the index
+    --ita-visible-in-index
+                          treat 'git add -N' entries as real in the index
+    -S <string>           look for differences that change the number of occurrences of the specified string
+    -G <regex>            look for differences that change the number of occurrences of the specified regex
+    --pickaxe-all         show all changes in the changeset with -S or -G
+    --pickaxe-regex       treat <string> in -S as extended POSIX regular expression
+    -O <file>             control the order in which files appear in the output
+    --rotate-to <path>    show the change in the specified path first
+    --skip-to <path>      skip the output to the specified path
+    --find-object <object-id>
+                          look for differences that change the number of occurrences of the specified object
+    --diff-filter [(A|C|D|M|R|T|U|X|B)...[*]]
+                          select files by diff type
+    --max-depth <depth>   maximum tree depth to recurse
+    --output <file>       output to a specific file
+
+fatal: detected dubious ownership in repository at 'C:/Users/2021670/.ma-stg/stg.XPlRuR1U'
+'C:/Users/2021670/.ma-stg/stg.XPlRuR1U/.git' is owned by:
+	VIEWORKSDOM/2021670 ([REDACTED])
+but the current user is:
+	HW-4021-2021670/CodexSandboxOffline ([REDACTED])
+To add an exception for this directory, call:
+
+	git config --global --add safe.directory C:/Users/2021670/.ma-stg/stg.XPlRuR1U
+
+ exited 1 in 931ms:
+warning: Not a git repository. Use --no-index to compare two paths outside a working tree
+usage: git diff --no-index [<options>] <path> <path> [<pathspec>...]
+
+Diff output format options
+    -p, --patch           generate patch
+    -s, --no-patch        suppress diff output
+    -u                    generate patch
+    -U, --unified[=<n>]   generate diffs with <n> lines context
+    -W, --[no-]function-context
+                          generate diffs with <n> lines context
+    --raw                 generate the diff in raw format
+    --patch-with-raw      synonym for '-p --raw'
+    --patch-with-stat     synonym for '-p --stat'
+    --numstat             machine friendly --stat
+    --shortstat           output only the last line of --stat
+    -X, --dirstat[=<param1>,<param2>...]
+                          output the distribution of relative amount of changes for each sub-directory
+    --cumulative          synonym for --dirstat=cumulative
+    --dirstat-by-file[=<param1>,<param2>...]
+                          synonym for --dirstat=files,<param1>,<param2>...
+    --check               warn if changes introduce conflict markers or whitespace errors
+    --summary             condensed summary such as creations, renames and mode changes
+    --name-only           show only names of changed files
+    --name-status         show only names and status of changed files
+    --stat[=<width>[,<name-width>[,<count>]]]
+                          generate diffstat
+    --stat-width <width>  generate diffstat with a given width
+    --stat-name-width <width>
+                          generate diffstat with a given name width
+    --stat-graph-width <width>
+                          generate diffstat with a given graph width
+    --stat-count <count>  generate diffstat with limited lines
+    --[no-]compact-summary
+                          generate compact summary in diffstat
+    --binary              output a binary diff that can be applied
+    --[no-]full-index     show full pre- and post-image object names on the "index" lines
+    --[no-]color[=<when>] show colored diff
+    --ws-error-highlight <kind>
+                          highlight whitespace errors in the 'context', 'old' or 'new' lines in the diff
+    -z                    do not munge pathnames and use NULs as output field terminators in --raw or --numstat
+    --[no-]abbrev[=<n>]   use <n> digits to display object names
+    --src-prefix <prefix> show the given source prefix instead of "a/"
+    --dst-prefix <prefix> show the given destination prefix instead of "b/"
+    --line-prefix <prefix>
+                          prepend an additional prefix to every line of output
+    --no-prefix           do not show any source or destination prefix
+    --default-prefix      use default prefixes a/ and b/
+    --inter-hunk-context <n>
+                          show context between diff hunks up to the specified number of lines
+    --output-indicator-new <char>
+                          specify the character to indicate a new line instead of '+'
+    --output-indicator-old <char>
+                          specify the character to indicate an old line instead of '-'
+    --output-indicator-context <char>
+                          specify the character to indicate a context instead of ' '
+
+Diff rename options
+    -B, --break-rewrites[=<n>[/<m>]]
+                          break complete rewrite changes into pairs of delete and create
+    -M, --find-renames[=<n>]
+                          detect renames
+    -D, --irreversible-delete
+                          omit the preimage for deletes
+    -C, --find-copies[=<n>]
+                          detect copies
+    --[no-]find-copies-harder
+                          use unmodified files as source to find copies
+    --no-renames          disable rename detection
+    --[no-]rename-empty   use empty blobs as rename source
+    --[no-]follow         continue listing the history of a file beyond renames
+    -l <n>                prevent rename/copy detection if the number of rename/copy targets exceeds given limit
+
+Diff algorithm options
+    --minimal             produce the smallest possible diff
+    -w, --ignore-all-space
+                          ignore whitespace when comparing lines
+    -b, --ignore-space-change
+                          ignore changes in amount of whitespace
+    --ignore-space-at-eol ignore changes in whitespace at EOL
+    --ignore-cr-at-eol    ignore carrier-return at the end of line
+    --ignore-blank-lines  ignore changes whose lines are all blank
+    -I, --[no-]ignore-matching-lines <regex>
+                          ignore changes whose all lines match <regex>
+    --[no-]indent-heuristic
+                          heuristic to shift diff hunk boundaries for easy reading
+    --patience            generate diff using the "patience diff" algorithm
+    --histogram           generate diff using the "histogram diff" algorithm
+    --diff-algorithm <algorithm>
+                          choose a diff algorithm
+    --anchored <text>     generate diff using the "anchored diff" algorithm
+    --word-diff[=<mode>]  show word diff, using <mode> to delimit changed words
+    --word-diff-regex <regex>
+                          use <regex> to decide what a word is
+    --color-words[=<regex>]
+                          equivalent to --word-diff=color --word-diff-regex=<regex>
+    --[no-]color-moved[=<mode>]
+                          moved lines of code are colored differently
+    --[no-]color-moved-ws <mode>
+                          how white spaces are ignored in --color-moved
+
+Other diff options
+    --[no-]relative[=<prefix>]
+                          when run from subdir, exclude changes outside and show relative paths
+    -a, --[no-]text       treat all files as text
+    -R                    swap two inputs, reverse the diff
+    --[no-]exit-code      exit with 1 if there were differences, 0 otherwise
+    --[no-]quiet          disable all output of the program
+    --[no-]ext-diff       allow an external diff helper to be executed
+    --[no-]textconv       run external text conversion filters when comparing binary files
+    --ignore-submodules[=<when>]
+                          ignore changes to submodules in the diff generation
+    --submodule[=<format>]
+                          specify how differences in submodules are shown
+    --ita-invisible-in-index
+                          hide 'git add -N' entries from the index
+    --ita-visible-in-index
+                          treat 'git add -N' entries as real in the index
+    -S <string>           look for differences that change the number of occurrences of the specified string
+    -G <regex>            look for differences that change the number of occurrences of the specified regex
+    --pickaxe-all         show all changes in the changeset with -S or -G
+    --pickaxe-regex       treat <string> in -S as extended POSIX regular expression
+    -O <file>             control the order in which files appear in the output
+    --rotate-to <path>    show the change in the specified path first
+    --skip-to <path>      skip the output to the specified path
+    --find-object <object-id>
+                          look for differences that change the number of occurrences of the specified object
+    --diff-filter [(A|C|D|M|R|T|U|X|B)...[*]]
+                          select files by diff type
+    --max-depth <depth>   maximum tree depth to recurse
+    --output <file>       output to a specific file
+
+fatal: detected dubious ownership in repository at 'C:/Users/2021670/.ma-stg/stg.XPlRuR1U'
+'C:/Users/2021670/.ma-stg/stg.XPlRuR1U/.git' is owned by:
+	VIEWORKSDOM/2021670 ([REDACTED])
+but the current user is:
+	HW-4021-2021670/CodexSandboxOffline ([REDACTED])
+To add an exception for this directory, call:
+
+	git config --global --add safe.directory C:/Users/2021670/.ma-stg/stg.XPlRuR1U
+
+codex
+VERDICT: WARNING
+
+The request correctly sends the selected profile ID, and the server independently validates it against `MODEL_PROFILES`.
+
+Issue: after generation, the UI status still displays `CONTEXT.model`, which is the server default profile—not the profile sent in this request. Selecting Opus or a GPT profile can therefore report “from Claude Sonnet 5.” The model picker also remains enabled while a request is in flight.
+
+VERDICT: WARNING
+tokens used
+42,685

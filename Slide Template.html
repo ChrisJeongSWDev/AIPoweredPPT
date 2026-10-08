@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VEO Focus SDK New Features & Revision Guide</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-color: #1e293b;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+            --accent: #DB0032; /* 뷰웍스 레드 아이덴티티 */
+            --accent-light: #fdf2f4;
+            --code-bg: #1e293b;
+            --code-text: #e2e8f0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', -apple-system, sans-serif; background: var(--bg-color); color: var(--text-color); line-height: 1.8; }
+
+        /* ===== HERO HEADER (스크롤 모드 상단) ===== */
+        .hero { background: linear-gradient(135deg, #DB0032 0%, #bb0026 100%); color: white; padding: 60px 24px; text-align: center; }
+        .hero h1 { font-size: 2.6rem; font-weight: 800; margin-bottom: 8px; }
+        .hero p { font-size: 1.1rem; opacity: 0.9; }
+
+        .container { max-width: 1100px; margin: 0 auto; padding: 30px 24px 100px; }
+        
+        /* ===== [중요] 개별 슬라이드를 담당하는 카드 템플릿 규격 ===== */
+        .card { background: var(--card-bg); border-radius: 16px; padding: 40px; margin-bottom: 30px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border: 1px solid var(--border-color); position: relative; }
+        
+        h2 { color: var(--text-color); font-size: 1.6rem; font-weight: 800; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 3px solid var(--accent); }
+        h3 { color: var(--text-color); font-size: 1.15rem; font-weight: 700; margin: 24px 0 10px; }
+        p { margin-bottom: 14px; color: #334155; }
+        ul { margin-left: 24px; margin-bottom: 16px; }
+        li { margin-bottom: 6px; }
+
+        /* ===== CODE & TABLES ===== */
+        pre { background: var(--code-bg); color: var(--code-text); padding: 18px 22px; border-radius: 10px; overflow-x: auto; margin: 16px 0; font-family: 'Consolas', monospace; font-size: 0.9rem; }
+        code { background: var(--accent-light); color: var(--accent); padding: 3px 6px; border-radius: 4px; font-family: 'Consolas', monospace; font-size: 0.9em; font-weight: 600; }
+        pre code { background: transparent; color: inherit; padding: 0; font-size: inherit; }
+
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 0.95rem; }
+        th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--border-color); }
+        th { background: #f1f5f9; color: var(--text-color); font-weight: 700; }
+
+        /* ===== CALLOUT / ALERT ===== */
+        .alert-box { padding: 16px 20px; border-radius: 10px; margin: 20px 0; border-left: 5px solid var(--accent); background: var(--accent-light); }
+
+        /* ===== 멀티 탭 언어 설정 가이드 ===== */
+        .tabs { margin: 20px 0; }
+        .tab-buttons { display: flex; gap: 4px; border-bottom: 2px solid var(--border-color); margin-bottom: 16px; }
+        .tab-btn { padding: 8px 16px; background: none; border: none; font-size: 0.95rem; font-weight: 600; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; }
+        .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* ===== PPT 발표 모드 제어 엔진 (CSS) ===== */
+        .mode-toggle { position: fixed; top: 20px; right: 24px; z-index: 1001; background: #1e293b; color: white; border: none; border-radius: 8px; padding: 10px 16px; font-size: 0.85rem; font-weight: 700; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        
+        body.slide-mode { overflow: hidden; background: #0f172a; color: #f8fafc; }
+        body.slide-mode .hero { display: none !important; }
+        body.slide-mode .container { max-width: 100%; height: 100vh; padding: 0; display: flex; align-items: center; justify-content: center; }
+        body.slide-mode .card { display: none; width: 90vw; max-width: 1200px; height: 82vh; margin: 0; padding: 50px; border: none; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); background: #1e293b; overflow-y: auto; }
+        body.slide-mode .card.active { display: flex; flex-direction: column; justify-content: center; animation: fadeIn 0.25s ease-in-out; }
+        body.slide-mode h2 { color: #f1f5f9; font-size: 2.2rem; }
+        body.slide-mode th { background: #334155; color: white; }
+        body.slide-mode code { background: #334155; color: #fca5a5; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* PPT 내비게이션 컨트롤 바 */
+        .slide-nav { display: none; position: fixed; bottom: 0; left: 0; right: 0; height: 56px; background: rgba(255,255,255,0.95); border-top: 1px solid var(--border-color); align-items: center; justify-content: center; gap: 20px; z-index: 1000; }
+        body.slide-mode .slide-nav { display: flex; background: rgba(30,41,59,0.95); border-top: 1px solid #334155; }
+        .slide-nav button { background: var(--accent); color: white; border: none; border-radius: 6px; padding: 6px 14px; font-weight: 600; cursor: pointer; }
+        .slide-nav .page-info { font-size: 1rem; font-weight: 700; color: var(--text-color); }
+        body.slide-mode .slide-nav .page-info { color: #f8fafc; }
+
+        /* 프린트/PDF 변환 최적화 (Ctrl + P) */
+        @media print {
+            body { background: white; color: black; }
+            .mode-toggle, .slide-nav { display: none !important; }
+            .card { page-break-inside: avoid; box-shadow: none; border: 1px solid #cbd5e1; margin-bottom: 25px; }
+        }
+    </style>
+</head>
+<body>
+
+<button class="mode-toggle" onclick="togglePresentationMode()">PPT 발표 모드</button>
+
+<div class="hero">
+    <h1>VEO Focus SDK New Features & Revision Guide</h1>
+    <p>Technical Training for China Branch Engineers (Wuhan/Suzhou)</p>
+</div>
+
+<div class="container">
+
+    <section class="card" data-slide="0">
+        <h2>1. Executive Summary & Training Agenda</h2>
+        <p>This technical training document covers the key updates of the new <strong>VEO Focus SDK</strong> revision for China branch applications engineers.</p>
+        
+        <div class="alert-box">
+            <strong>Key Target Audience:</strong> China Branch Field Application Engineers (FAE) & Customer Core Developers (e.g., Wuhan Jingce).
+        </div>
+
+        <h3>Training Agenda</h3>
+        <ul>
+            <li>VEO Focus SDK Package & File Structure Changes</li>
+            <li>New Core APIs for High-Speed CMOS Sensor & Focus Controls</li>
+            <li>Migration Guide & Error Handling Flow</li>
+        </ul>
+    </section>
+
+
+    <section class="card" data-slide="1">
+        <h2>2. Architecture & API Call Sequence Flow</h2>
+        <p>The control flow between the Application, VEO Focus SDK Kernel, and the Hardware Camera module has been optimized to reduce trigger latency.</p>
+
+        <div class="mermaid">
+            sequenceDiagram
+                autonumber
+                Participant App as China Client App
+                Participant SDK as VEO Focus SDK
+                Participant HW as VEO Camera HW
+                
+                App->>SDK: VEO_Focus_Initialize()
+                SDK->>HW: Establish Packet Link (Handshake)
+                App->>SDK: VEO_Focus_SetPosition(nValue)
+                SDK->>HW: Motor Controller Focus Move Pulse
+                HW-->>App: Direct Event Callback (Move End)
+        </div>
+    </section>
+
+
+    <section class="card" data-slide="2">
+        <h2>3. Key Revision API Specification</h2>
+        <p>Detailed specification tables for new and modified functions in the latest SDK framework.</p>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Function Prototype</th>
+                    <th>Parameters</th>
+                    <th>Return Type</th>
+                    <th>Description / Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>VEO_Focus_Initialize()</code></td>
+                    <td>None</td>
+                    <td><code>VEO_STATUS</code></td>
+                    <td>Initializes SDK core resources. Must be called first.</td>
+                </tr>
+                <tr>
+                    <td><code>VEO_Focus_SetPosition()</code></td>
+                    <td><code>int nPosValue</code></td>
+                    <td><code>VEO_STATUS</code></td>
+                    <td>Controls focus motor position asynchronously.</td>
+                </tr>
+                <tr>
+                    <td><code>VEO_Focus_GetLastError()</code></td>
+                    <td><code>char* pBuffer, int nSize</code></td>
+                    <td><code>void</code></td>
+                    <td>Retrieves the last error message for FAE debugging.</td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+
+
+    <section class="card" data-slide="3">
+        <h2>4. Code Implementation Example</h2>
+        <p>Multi-language reference code templates for initializing and controlling the hardware device connection loop.</p>
+
+        <div class="tabs">
+            <div class="tab-buttons">
+                <button class="tab-btn active" onclick="switchLanguageTab(event, 'code-cpp')">C++ (Native)</button>
+                <button class="tab-btn" onclick="switchLanguageTab(event, 'code-cs')">C# (.NET Wrapper)</button>
+            </div>
+            
+            <div id="code-cpp" class="tab-content active">
+                <pre><code>#include "VEOFocusSDK.h"
+
+int main() {
+    VEO_STATUS status = VEO_Focus_Initialize();
+    if (status == VEO_SUCCESS) {
+        // Move focus position to target grid
+        VEO_Focus_SetPosition(5000);
+    }
+    return 0;
+}</code></pre>
+            </div>
+            
+            <div id="code-cs" class="tab-content">
+                <pre><code>using Vieworks.VEOFocus;
+
+class Program {
+    static void Main() {
+        VEO_STATUS res = VEOFocusEngine.Initialize();
+        if (res == VEO_STATUS.SUCCESS) {
+            VEOFocusEngine.SetPosition(5000);
+        }
+    }
+}</code></pre>
+            </div>
+        </div>
+    </section>
+
+</div>
+
+<div class="slide-nav">
+    <button onclick="navigateSlide(-1)">&larr; Previous</button>
+    <span class="page-info" id="page-indicator">1 / 4</span>
+    <button onclick="navigateSlide(1)">Next &rarr;</button>
+</div>
+
+<script>
+    // Mermaid 다이어그램 렌더링 엔진 초기화
+    mermaid.initialize({ startOnLoad: true, theme: 'default' });
+
+    // 탭 전환 핸들러 함수
+    function switchLanguageTab(evt, tabId) {
+        const card = evt.currentTarget.closest('.card');
+        card.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        card.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        card.querySelector('#' + tabId).classList.add('active');
+        evt.currentTarget.classList.add('active');
+    }
+
+    // PPT 발표 모드 제어 코어 스크립트
+    let isSlideMode = false;
+    let currentSlideIdx = 0;
+    const slideCards = document.querySelectorAll('.card');
+    const totalSlideCount = slideCards.length;
+
+    function togglePresentationMode() {
+        isSlideMode = !isSlideMode;
+        document.body.classList.toggle('slide-mode', isSlideMode);
+        const toggleBtn = document.querySelector('.mode-toggle');
+        
+        if (isSlideMode) {
+            toggleBtn.textContent = 'Scroll 모드 전환';
+            currentSlideIdx = 0;
+            refreshSlideUI();
+        } else {
+            toggleBtn.textContent = 'PPT 발표 모드';
+            slideCards.forEach(c => c.classList.remove('active'));
+        }
+    }
+
+    function refreshSlideUI() {
+        slideCards.forEach((card, idx) => {
+            card.classList.toggle('active', idx === currentSlideIdx);
+        });
+        document.getElementById('page-indicator').textContent = `${currentSlideIdx + 1} / ${totalSlideCount}`;
+        
+        // PPT 모드 진입 시 해당 장표에 있는 Mermaid 다이어그램 재추출 가동
+        const activeCard = slideCards[currentSlideIdx];
+        const unrenderedMermaid = activeCard.querySelectorAll('.mermaid:not([data-processed])');
+        if (unrenderedMermaid.length > 0) {
+            mermaid.run({ nodes: unrenderedMermaid });
+        }
+    }
+
+    function navigateSlide(direction) {
+        if (!isSlideMode) return;
+        currentSlideIdx = Math.max(0, Math.min(totalSlideCount - 1, currentSlideIdx + direction));
+        refreshSlideUI();
+    }
+
+    // 인체공학적 키보드 단축키 연결 스펙 매핑
+    document.addEventListener('keydown', (e) => {
+        if (!isSlideMode) return;
+        if (e.key === 'ArrowRight' || e.key === ' ') { navigateSlide(1); e.preventDefault(); }
+        if (e.key === 'ArrowLeft') { navigateSlide(-1); e.preventDefault(); }
+        if (e.key === 'Escape') { togglePresentationMode(); }
+    });
+</script>
+
+</body>
+</html>

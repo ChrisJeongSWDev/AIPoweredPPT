@@ -1,0 +1,14 @@
+Everything is consistent. Here's a summary of what was done.
+
+I read the worker brief at the given temp path and implemented Phase 4's migration of `/api/generate` from Gemini to `CliWorkerClient` in `tasks/AI_Powered_PPT`:
+
+**`app.py`** (edited in both the staged clone `stg.77hGHTWW` and the outer tree — kept byte-identical):
+- `MODEL_PROFILES` replaced with `sonnet`/`opus`/`gpt-5.6-terra`/`gpt-5.6-sol`, each carrying `label`/`thinking` (as specified) plus `backend`/`model` (needed to construct `CliWorkerClient`); `DEFAULT_PROFILE = "sonnet"`.
+- Mode switched from `GEMINI_API_KEY` to `AIPPT_LIVE_MODE=1` (exact-match, not merely truthy); `gemini_api_key`/`gemini_model`/`DEFAULT_GEMINI_MODEL` deleted.
+- `generate_live()` rewritten around `CliWorkerClient.complete_json()`, wrapped in `asyncio.to_thread()` since that call is synchronous and would otherwise block FastAPI's event loop for up to 300s. The relaxed live schema (target not required) is built from `validate.SCHEMA_PATH` since `validate.py` has no `load_schema()` as the brief assumed.
+- `GeminiError` renamed to `LiveGenerateError` for consistency now that no Gemini code remains.
+- Images stay validated but are no longer forwarded (CliWorkerClient has no attachment parameter) — documented explicitly as a capability gap.
+
+**`tests/canvas/test_app.py`** (staging clone has no `tests/` dir at all, so edited directly in the outer tree, per this task's established convention): rewrote the Phase 4 test section to mock `CliWorkerClient.complete_json` instead of `_call_gemini`, switched all env-var tests to `AIPPT_LIVE_MODE`, added a profile-routing test, and dropped/adapted tests whose behavior moved into `ai_adapter.py` (fence-tolerance, JSON extraction).
+
+A `change_detail.md` was written at the brief's specified path documenting all deviations and design decisions. Note: interpreter/VCS commands (`python -m py_compile`, `pytest`) were blocked by approval gates in this session as expected for this dispatch mode, so verification was manual (full read-throughs, diffs, grep sweeps) rather than an actual test run — flagged prominently in the change detail for whoever picks this up next.

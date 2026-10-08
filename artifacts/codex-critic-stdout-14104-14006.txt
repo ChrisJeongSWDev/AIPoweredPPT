@@ -1,0 +1,7 @@
+VERDICT: REJECT
+
+[`restore()`](/C:/Users/2021670/Documents/멀티%20에이전트/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js:436) clears the stage and sends snapshot geometry directly through `makeEl()`/`appendChild()` at lines 447–448 without `illegalReason()`. Add an all-or-nothing, non-transforming legality preflight before touching the DOM; also defer the history `pop()` operations at lines 487 and 497 until restoration succeeds.
+
+The test at [`test_app.py:910`](/C:/Users/2021670/Documents/멀티%20에이전트/tasks/AI_Powered_PPT/tests/canvas/test_app.py:910) verifies only reconstruction and absence of measurement, so it misses this bypass.
+
+The Prime Directive and DOM-order stacking constraints otherwise pass: there is one `getBoundingClientRect()` call inside `toModel()`, no other measurement API, and no `z-index` inside `#stage`.

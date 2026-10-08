@@ -1,0 +1,441 @@
+{
+  "schema_version": "1.0",
+  "generated_by": "aippt.analyze_pptx_master",
+  "source": {
+    "filename": "Vieworks_R&D_ppt_Template.pptx",
+    "sha256": "0de7d70cf45197e959d93c31eedd7599c42c23c1153d7b67b18d332141e61442",
+    "bytes": 1881082
+  },
+  "deck": {
+    "slide_width_emu": 12192000,
+    "slide_height_emu": 6858000,
+    "slide_width_in": 13.3333,
+    "slide_height_in": 7.5,
+    "aspect_ratio": "16:9",
+    "master_count": 1,
+    "layout_count_first_master": 5,
+    "existing_slide_count": 23
+  },
+  "masters": [
+    {
+      "index": 0,
+      "name": "",
+      "theme_name": "Office 테마",
+      "font_scheme": {
+        "major": {
+          "latin": "맑은 고딕",
+          "ea": "",
+          "cs": ""
+        },
+        "minor": {
+          "latin": "맑은 고딕",
+          "ea": "",
+          "cs": ""
+        }
+      },
+      "color_map": {
+        "dk1": "000000",
+        "lt1": "FFFFFF",
+        "dk2": "44546A",
+        "lt2": "E7E6E6",
+        "accent1": "4472C4",
+        "accent2": "ED7D31",
+        "accent3": "A5A5A5",
+        "accent4": "FFC000",
+        "accent5": "5B9BD5",
+        "accent6": "70AD47",
+        "hlink": "0563C1",
+        "folHlink": "954F72"
+      },
+      "brand_accent": {
+        "theme_slots": [],
+        "hardcoded_in_master_xml": 0,
+        "resolution": "not-found"
+      },
+      "layout_count": 5,
+      "layouts": [
+        {
+          "index": 0,
+          "layout_id": "제목 슬라이드",
+          "name": "제목 슬라이드",
+          "semantic_role": "title",
+          "placeholder_count": 2,
+          "decoration_shapes": [
+            "그림 5",
+            "그래픽 4"
+          ],
+          "placeholders": [
+            {
+              "idx": 10,
+              "type": "BODY",
+              "name": "텍스트 개체 틀 2",
+              "geometry_inherited_from_master": false,
+              "emu": {
+                "left": 585181,
+                "top": 3087928,
+                "width": 9713912,
+                "height": 512762
+              },
+              "inches": {
+                "left": 0.64,
+                "top": 3.377,
+                "width": 10.6233,
+                "height": 0.5608
+              },
+              "font_pt": 36.0,
+              "font_pt_source": "layout",
+              "content_budget": {
+                "computable": true,
+                "font_pt": 36.0,
+                "chars_per_line_latin": 36,
+                "chars_per_line_cjk": 19,
+                "max_lines": 1,
+                "max_bullets": 1,
+                "max_words_per_bullet": 6,
+                "max_chars_per_bullet_latin": 36,
+                "max_chars_per_bullet_cjk": 19,
+                "note": "one line per bullet; a bullet that wraps consumes another slot"
+              }
+            },
+            {
+              "idx": 11,
+              "type": "BODY",
+              "name": "텍스트 개체 틀 2",
+              "geometry_inherited_from_master": false,
+              "emu": {
+                "left": 585181,
+                "top": 3770072,
+                "width": 9713912,
+                "height": 512762
+              },
+              "inches": {
+                "left": 0.64,
+                "top": 4.123,
+                "width": 10.6233,
+                "height": 0.5608
+              },
+              "font_pt": 16.0,
+              "font_pt_source": "layout",
+              "content_budget": {
+                "computable": true,
+                "font_pt": 16.0,
+                "chars_per_line_latin": 82,
+                "chars_per_line_cjk": 43,
+                "max_lines": 2,
+                "max_bullets": 1,
+                "max_words_per_bullet": 13,
+                "max_chars_per_bullet_latin": 82,
+                "max_chars_per_bullet_cjk": 43,
+                "note": "one line per bullet; a bullet that wraps consumes another slot"
+              }
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "layout_id": "사용자 지정 레이아웃",
+          "name": "사용자 지정 레이아웃",
+          "semantic_role": "blank",
+          "placeholder_count": 0,
+          "decoration_shapes": [
+            "그림 2",
+            "그래픽 5",
+            "슬라이드 번호 개체 틀 5"
+          ],
+          "placeholders": []
+        },
+        {
+          "index": 2,
+          "layout_id": "1_사용자 지정 레이아웃",
+          "name": "1_사용자 지정 레이아웃",
+          "semantic_role": "custom",
+          "placeholder_count": 3,
+          "decoration_shapes": [
+            "그림 3",
+            "슬라이드 번호 개체 틀 5"
+          ],
+          "placeholders": [
+            {
+              "idx": 10,
+              "type": "BODY",
+              "name": "텍스트 개체 틀 8",
+              "geometry_inherited_from_master": false,
+              "emu": {
+                "left": 585181,
+                "top": 2572216,
+                "width": 5475017,
+                "height": 443285
+              },
+              "inches": {
+                "left": 0.64,
+                "top": 2.813,
+                "width": 5.9876,
+                "height": 0.4848
+              },
+              "font_pt": 28.0,
+              "font_pt_source": "master-txStyles",
+              "content_budget": {
+                "computable": true,
+                "font_pt": 28.0,
+                "chars_per_line_latin": 26,
+                "chars_per_line_cjk": 13,
+                "max_lines": 1,
+                "max_bullets": 1,
+                "max_words_per_bullet": 4,
+                "max_chars_per_bullet_latin": 26,
+                "max_chars_per_bullet_cjk": 13,
+                "note": "one line per bullet; a bullet that wraps consumes another slot"
+              }
+            },
+            {
+              "idx": 11,
+              "type": "BODY",
+              "name": "텍스트 개체 틀 8",
+              "geometry_inherited_from_master": false,
+              "emu": {
+                "left": 585181,
+                "top": 3292682,
+                "width": 5475017,
+                "height": 443285
+              },
+              "inches": {
+                "left": 0.64,
+                "top": 3.6009,
+                "width": 5.9876,
+                "height": 0.4848
+              },
+              "font_pt": 36.0,
+              "font_pt_source": "layout",
+              "content_budget": {
+                "computable": true,
+                "font_pt": 36.0,
+                "chars_per_line_latin": 20,
+                "chars_per_line_cjk": 10,
+                "max_lines": 1,
+                "max_bullets": 1,
+                "max_words_per_bullet": 3,
+                "max_chars_per_bullet_latin": 20,
+                "max_chars_per_bullet_cjk": 10,
+                "note": "one line per bullet; a bullet that wraps consumes another slot"
+              }
+            },
+            {
+              "idx": 12,
+              "type": "BODY",
+              "name": "텍스트 개체 틀 8",
+              "geometry_inherited_from_master": false,
+              "emu": {
+                "left": 585181,
+                "top": 3874448,
+                "width": 5475017,
+                "height": 443285
+              },
+              "inches": {
+                "left": 0.64,
+                "top": 4.2371,
+                "width": 5.9876,
+                "height": 0.4848
+              },
+              "font_pt": 16.0,
+              "font_pt_source": "layout",
+              "content_budget": {
+                "computable": true,
+                "font_pt": 16.0,
+                "chars_per_line_latin": 46,
+                "chars_per_line_cjk": 24,
+                "max_lines": 1,
+                "max_bullets": 1,
+                "max_words_per_bullet": 7,
+                "max_chars_per_bullet_latin": 46,
+                "max_chars_per_bullet_cjk": 24,
+                "note": "one line per bullet; a bullet that wraps consumes another slot"
+              }
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "layout_id": "2_사용자 지정 레이아웃",
+          "name": "2_사용자 지정 레이아웃",
+          "semantic_role": "custom",
+          "placeholder_count": 1,
+          "decoration_shapes": [
+            "그림 3",
+            "그래픽 8",
+            "슬라이드 번호 개체 틀 5"
+          ],
+          "placeholders": [
+            {
+              "idx": 10,
+              "type": "BODY",
+              "name": "텍스트 개체 틀 2",
+              "geometry_inherited_from_master": false,
+              "emu": {
+                "left": 578541,
+                "top": 339725,
+                "width": 9211156,
+                "height": 473075
+              },
+              "inches": {
+                "left": 0.6327,
+                "top": 0.3715,
+                "width": 10.0734,
+                "height": 0.5174
+              },
+              "font_pt": 30.0,
+              "font_pt_source": "layout",
+              "content_budget": {
+                "computable": true,
+                "font_pt": 30.0,
+                "chars_per_line_latin": 41,
+                "chars_per_line_cjk": 21,
+                "max_lines": 1,
+                "max_bullets": 1,
+                "max_words_per_bullet": 6,
+                "max_chars_per_bullet_latin": 41,
+                "max_chars_per_bullet_cjk": 21,
+                "note": "one line per bullet; a bullet that wraps consumes another slot"
+              }
+            }
+          ]
+        },
+        {
+          "index": 4,
+          "layout_id": "3_사용자 지정 레이아웃",
+          "name": "3_사용자 지정 레이아웃",
+          "semantic_role": "blank",
+          "placeholder_count": 0,
+          "decoration_shapes": [
+            "그래픽 3",
+            "그림 4"
+          ],
+          "placeholders": []
+        }
+      ]
+    }
+  ],
+  "existing_slides": [
+    {
+      "index": 0,
+      "layout": "제목 슬라이드",
+      "shape_count": 2
+    },
+    {
+      "index": 1,
+      "layout": "사용자 지정 레이아웃",
+      "shape_count": 3
+    },
+    {
+      "index": 2,
+      "layout": "1_사용자 지정 레이아웃",
+      "shape_count": 3
+    },
+    {
+      "index": 3,
+      "layout": "2_사용자 지정 레이아웃",
+      "shape_count": 2
+    },
+    {
+      "index": 4,
+      "layout": "1_사용자 지정 레이아웃",
+      "shape_count": 3
+    },
+    {
+      "index": 5,
+      "layout": "2_사용자 지정 레이아웃",
+      "shape_count": 3
+    },
+    {
+      "index": 6,
+      "layout": "2_사용자 지정 레이아웃",
+      "shape_count": 9
+    },
+    {
+      "index": 7,
+      "layout": "2_사용자 지정 레이아웃",
+      "shape_count": 10
+    },
+    {
+      "index": 8,
+      "layout": "2_사용자 지정 레이아웃",
+      "shape_count": 8
+    },
+    {
+      "index": 9,
+      "layout": "1_사용자 지정 레이아웃",
+      "shape_count": 3
+    },
+    {
+      "index": 10,
+      "layout": "2_사용자 지정 레이아웃",
+      "shape_count": 9
+    },
+    {
+      "index": 11,
+      "layout": "2_사용자 지정 레이아웃",
+      "shape_count": 44
+    },
+    {
+      "index": 12,
+      "layout": "2_사용자 지정 레이아웃",
+      "shape_count": 48
+    },
+    {
+      "index": 13,
+      "layout": "2_사용자 지정 레이아웃",
+      "shape_count": 5
+    },
+    {
+      "index": 14,
+      "layout": "2_사용자 지정 레이아웃",
+      "shape_count": 6
+    },
+    {
+      "index": 15,
+      "layout": "2_사용자 지정 레이아웃",
+      "shape_count": 6
+    },
+    {
+      "index": 16,
+      "layout": "1_사용자 지정 레이아웃",
+      "shape_count": 4
+    },
+    {
+      "index": 17,
+      "layout": "2_사용자 지정 레이아웃",
+      "shape_count": 2
+    },
+    {
+      "index": 18,
+      "layout": "2_사용자 지정 레이아웃",
+      "shape_count": 51
+    },
+    {
+      "index": 19,
+      "layout": "2_사용자 지정 레이아웃",
+      "shape_count": 51
+    },
+    {
+      "index": 20,
+      "layout": "2_사용자 지정 레이아웃",
+      "shape_count": 41
+    },
+    {
+      "index": 21,
+      "layout": "2_사용자 지정 레이아웃",
+      "shape_count": 4
+    },
+    {
+      "index": 22,
+      "layout": "3_사용자 지정 레이아웃",
+      "shape_count": 1
+    }
+  ],
+  "budget_model": {
+    "latin_char_width_ratio": 0.52,
+    "cjk_char_width_ratio": 1.0,
+    "line_height_ratio": 1.22,
+    "safety_factor": 0.9,
+    "caveat": "typographic estimate, not a render; the render->PNG check is authoritative"
+  }
+}

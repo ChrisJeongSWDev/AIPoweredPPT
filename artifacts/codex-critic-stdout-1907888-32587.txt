@@ -1,0 +1,6 @@
+VERDICT: BLOCK
+
+- `editor.js:2145-2163` clones media elements with transient `blob:` URLs assigned at `editor.js:753-756`. Images/videos will break after the editor session ends, violating the stated standalone/offline requirement. Media must be embedded, such as with data URLs.
+- `editor.js:2150` places arbitrary `link` values into `href`. HTML escaping prevents attribute injection but does not block executable schemes such as `javascript:`. Restrict links to approved protocols and anchors.
+
+VERDICT: BLOCK

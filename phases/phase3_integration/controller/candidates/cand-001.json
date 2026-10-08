@@ -1,0 +1,14 @@
+{
+  "payload": {
+    "candidate_id": "cand-001",
+    "created_at": "2026-07-23T06:10:54+09:00",
+    "phase_id": "phase3",
+    "proposed_by": "agy",
+    "requested_reviewer": "codex-critic",
+    "requested_worker": "claude-main",
+    "requested_worker_model": "sonnet",
+    "session_id": "phase3_integration"
+  },
+  "payload_sha256": "4461ae066af7026923712f0354a86bd33f3b760d2dc71e6407f6b3637c3837ab",
+  "schema_version": 1
+}

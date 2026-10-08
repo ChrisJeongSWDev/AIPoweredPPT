@@ -1,0 +1,1022 @@
+## Blocked: this session is strictly read-only — no writes, no code execution
+
+I could not create a single file. Every write path is denied (`Write`, `Edit`, Bash redirection, PowerShell `Out-File`), and Python is denied too (`python -c`, `python -m pytest`, `pip`, `unzip` — only `python --version` passes). **This is the second consecutive stage to hit it**: `result.md:10` records the claude-review stage failing the same way, which is why `renderer_brief.md` had to be pasted back through stdout. `approved_write_manifest.txt` already lists all 28 in-scope paths correctly, so the manifest is not the problem — the worker session simply isn't being granted write permission.
+
+Three things you need before anything else:
+
+**1. The brief on disk is truncated and nobody knows.** `tasks/AI_Powered_PPT/renderer_brief.md` ends at line 129 — mid-§2.1, with the code block never opened. Sections §2.2 (relationship remapping), §2.3 (`p:bg`/`clrMapOvr`), §3 (the slot manifest), §4 (content replacement), §5–§9 are **absent from the file I was told to follow exactly**. They survive only in `artifacts/claude-review-stdout-2042-13567.txt:149-733`, which is what I worked from. The envelope truncated `result.md` at ~6 KB and the brief got saved from the truncated copy.
+
+**2. §8 step 1 cannot be done by anyone without code execution — this is a real finding, not an environment gripe.** The brief is explicit: *"`analyze_exemplars.py` + the inventory dump. Everything downstream depends on knowing what is actually on those 23 slides. Do this first, print it, and read it before designing slot names."* `layout_manifest.json` records only shape *counts* for the 23 slides — no shape ids, names, geometry, or text. So `reference/exemplar_manifest.json` **could not have been curated in this session even with write permission**, because the slot ids have to be assigned by a human reading real shape data that does not exist yet. Fabricating it would have been the worst outcome: it is keyed on `cNvPr/@id`, and invented ids would mis-bind every block silently.
+
+**3. The brief contradicts itself on the brand red, and I resolved it toward §0.** §0 says the user explicitly overrode to `#FF0032` and "Do NOT use `#DB0032`". §5 (recovered from the artifact) still says `BRAND_RED = RGBColor(0xDB, 0x00, 0x32)` — it predates the override. I took §0 as authoritative: `BRAND_RED = #FF0032`, with `#DB0032` retained *only* as `LEGACY_TEMPLATE_RED` so the clone pass can find and overwrite it. That last part matters and the brief doesn't spell it out: a cloned exemplar arrives carrying the template's own `DB0032` in its run properties and fills, so "default to `#FF0032`" is not enough — you have to actively rewrite the inherited value or the deck ships two reds.
+
+On the brief's other open question — **I agree with keeping both `exemplar_id` and `source_slide_index`.** A bare positional index has no drift detection; carrying both lets `models.py` assert `manifest[exemplar_id].source_slide_index == slide.source_slide_index` and hard-fail. It costs nothing.
+
+---
+
+## What to do next
+
+Re-run this stage with write + execute permission. The sequencing is then: run the analyzer's `--dump` (below), *read it*, curate the slot ids, then build. Below is the cloning core, ready to save verbatim — the five new modules, which are the correctness-critical part and are independent of curation. I have **not** run any of it; treat it as reviewed-but-unexecuted.
+
+### `src/aippt/analyze_exemplars.py` — run this first (§8 step 1)
+
+```python
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""Inventory the template's 23 slides and emit the exemplar manifest.
+
+Run this BEFORE designing slot names. layout_manifest.json records only shape *counts*
+for the slides; the design lives in the shapes themselves and nobody has looked at them.
+
+    python -m aippt.analyze_exemplars --dump          # read this. then curate.
+    python -m aippt.analyze_exemplars                 # write/merge the manifest
+
+Read-only by construction: the template is slurped to BytesIO, never opened by path.
+
+The manifest it writes is UNCURATED -- every shape lands in `slots` with `slot_id: null`.
+A human then assigns semantic slot_ids. Re-running merges on `shape_id` and NEVER clobbers
+a hand-assigned slot_id (that is the whole reason this is a merge and not a rewrite).
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import io
+import json
+import sys
+from pathlib import Path
+from typing import Any
+
+from pptx.oxml.ns import qn
+
+from .analyze_pptx_master import EMU_PER_INCH, content_budget, emu_to_in, find_default_template
+
+#: Slides with 41-51 shapes are bespoke hand-drawn figures (brief §1). Cloning one and
+#: hoping to swap the text produces garbage, and each is 40+ shapes of mapping ambiguity
+#: for zero reuse value.
+MAX_EXEMPLAR_SHAPES = 12
+
+#: The nine roles the HTML adapter needs to render the 30-card corpus (brief §3.3).
+REQUIRED_ROLES = (
+    "deck-title", "section-divider", "content-bullets", "content-two-col", "content-table",
+    "content-image", "content-steps", "content-cards", "content-code",
+)
+
+
+class ExemplarRejected(ValueError):
+    """A slide cannot be an exemplar. The reason is the message."""
+
+
+def _effective_style(shape: Any) -> dict[str, Any] | None:
+    """The run style read off the SLIDE's own <a:rPr> -- this is where the design is.
+
+    Not the theme, not the master: Q3 F-03 established that the brand red and the
+    뷰웍스 B / 뷰웍스 M typefaces live in slide- and layout-level run properties. The theme's
+    accent slots are stock Office blue.
+    """
+    if not getattr(shape, "has_text_frame", False):
+        return None
+    for para in shape.text_frame.paragraphs:
+        for run in para.runs:
+            rPr = run._r.find(qn("a:rPr"))
+            if rPr is None:
+                continue
+            latin = rPr.find(qn("a:latin"))
+            srgb = rPr.find(f"{qn('a:solidFill')}/{qn('a:srgbClr')}")
+            sz = rPr.get("sz")
+            return {
+                "font_pt": (int(sz) / 100.0) if sz else None,
+                "typeface": latin.get("typeface") if latin is not None else None,
+                "color": (srgb.get("val") or "").upper() or None if srgb is not None else None,
+                "bold": rPr.get("b") == "1",
+                "source": "slide-run-rPr",
+            }
+    return None
+
+
+def _shape_kind(shape: Any) -> str:
+    if getattr(shape, "has_table", False):
+        return "table"
+    if shape.shape_type is not None and "PICTURE" in str(shape.shape_type):
+        return "picture"
+    if shape._element.tag == qn("p:grpSp"):
+        return "group"
+    if getattr(shape, "has_text_frame", False):
+        return "text"
+    return "other"
+
+
+def _reject_unclonable(slide: Any, index: int) -> None:
+    """Charts and OLE objects are separate PARTS, and clone.py shares parts between the
+    source and the clone (brief §2.2). Two clones of a chart-bearing exemplar would share
+    one chart part, so rebranding one would recolour the other. Refuse the exemplar rather
+    than build a chart path we cannot test."""
+    for tag, what in ((qn("c:chart"), "a chart"), (qn("p:oleObj"), "an OLE object")):
+        if slide._element.find(f".//{tag}") is not None:
+            raise ExemplarRejected(
+                f"slide {index} contains {what}. Charts and OLE objects live in their own "
+                f"part; cloning shares the part between source and clone, so mutating one "
+                f"clone would mutate the other. Phase 1 exemplars may not contain them."
+            )
+
+
+def inventory_slide(slide: Any, index: int) -> dict[str, Any]:
+    _reject_unclonable(slide, index)
+
+    slots: list[dict[str, Any]] = []
+    seen_ids: set[int] = set()
+    for z, shape in enumerate(slide.shapes):
+        sid = shape.shape_id
+        if sid in seen_ids:
+            # PowerPoint can emit duplicate cNvPr ids across a group boundary. shape_id is
+            # our primary key, so a duplicate is not something to work around.
+            raise ExemplarRejected(
+                f"slide {index} has two top-level shapes with cNvPr id {sid}. Re-save the "
+                f"slide in PowerPoint to renumber them."
+            )
+        seen_ids.add(sid)
+
+        emu = {"left": shape.left, "top": shape.top,
+               "width": shape.width, "height": shape.height}
+        emu = {k: (None if v is None else int(v)) for k, v in emu.items()}
+        style = _effective_style(shape)
+        kind = _shape_kind(kind_shape := shape)
+        text = kind_shape.text_frame.text if getattr(shape, "has_text_frame", False) else None
+
+        slots.append({
+            "slot_id": None,                       # <-- the human fills this in
+            "role": None,                          # or "decoration"
+            "kind": kind,
+            "shape_id": sid,
+            "shape_name": shape.name,              # fingerprint only. NOT unique. Never a key.
+            "z_index": z,                          # fingerprint only
+            "is_placeholder": shape.is_placeholder,
+            "placeholder_idx": (shape.placeholder_format.idx
+                                if shape.is_placeholder else None),
+            "emu": emu,
+            "inches": {k: emu_to_in(v) for k, v in emu.items()},
+            "effective_style": style,
+            "budget": (content_budget(emu["width"], emu["height"],
+                                      (style or {}).get("font_pt") or 18.0, "BODY")
+                       if kind == "text" else None),
+            "sample_text": text,                   # the leftover-text test (V-4) asserts on this
+            "required": False,
+            "on_unbound": "remove",
+        })
+
+    return {
+        "exemplar_id": None,                       # <-- the human names this
+        "source_slide_index": index,
+        "layout_name": slide.slide_layout.name,
+        "roles": [],
+        "supports_blocks": [],
+        "shape_count": len(slots),
+        "slots": slots,
+        "brand_shapes": [],
+        "decorations": [],
+    }
+
+
+def analyze(template: Path) -> dict[str, Any]:
+    from pptx import Presentation
+
+    raw = template.read_bytes()
+    prs = Presentation(io.BytesIO(raw))          # BytesIO => the file on disk is never touched
+
+    exemplars, rejected = [], []
+    for i, slide in enumerate(prs.slides):
+        if len(slide.shapes) > MAX_EXEMPLAR_SHAPES:
+            rejected.append({"source_slide_index": i, "reason":
+                             f"{len(slide.shapes)} top-level shapes -- a bespoke figure, "
+                             f"not a reusable exemplar (brief §1)"})
+            continue
+        try:
+            exemplars.append(inventory_slide(slide, i))
+        except ExemplarRejected as exc:
+            rejected.append({"source_slide_index": i, "reason": str(exc)})
+
+    return {
+        "schema_version": "2.0",
+        "generated_by": "aippt.analyze_exemplars",
+        "curated": False,                          # slots.py REFUSES to load until this is true
+        "source": {"filename": template.name,
+                   "sha256": hashlib.sha256(raw).hexdigest(),
+                   "bytes": len(raw)},
+        "required_roles": list(REQUIRED_ROLES),
+        "exemplars": exemplars,
+        "rejected_slides": rejected,
+    }
+
+
+def merge(new: dict[str, Any], old: dict[str, Any]) -> dict[str, Any]:
+    """Re-run against the same template WITHOUT destroying an hour of curation.
+
+    Merge key is (source_slide_index, shape_id). Hand-assigned fields win; everything the
+    analyzer measures is refreshed. If a shape_id has vanished, the slot is dropped and the
+    loss is reported -- silently keeping a slot that no longer resolves is how you get a
+    TemplateDriftError three modules downstream instead of here.
+    """
+    hand = ("exemplar_id", "roles", "supports_blocks", "brand_shapes", "decorations")
+    hand_slot = ("slot_id", "role", "required", "on_unbound")
+
+    old_ex = {e["source_slide_index"]: e for e in old.get("exemplars", [])}
+    lost: list[str] = []
+
+    for ex in new["exemplars"]:
+        prev = old_ex.get(ex["source_slide_index"])
+        if prev is None:
+            continue
+        for key in hand:
+            if prev.get(key):
+                ex[key] = prev[key]
+        prev_slots = {s["shape_id"]: s for s in prev.get("slots", [])}
+        for slot in ex["slots"]:
+            p = prev_slots.pop(slot["shape_id"], None)
+            if p:
+                for key in hand_slot:
+                    if p.get(key) is not None:
+                        slot[key] = p[key]
+        for orphan in prev_slots.values():
+            if orphan.get("slot_id"):
+                lost.append(f"slide {ex['source_slide_index']}: slot "
+                            f"{orphan['slot_id']!r} (shape_id {orphan['shape_id']}) no longer "
+                            f"exists in the template")
+
+    new["curated"] = old.get("curated", False)
+    if lost:
+        new["curated"] = False                     # a lost slot invalidates the curation
+        new["merge_losses"] = lost
+    return new
+
+
+def render_catalog(manifest: dict[str, Any]) -> str:
+    out = ["# Exemplar Catalog", "",
+           f"Generated from `{manifest['source']['filename']}` "
+           f"(sha256 `{manifest['source']['sha256'][:12]}…`) by `analyze_exemplars.py`.",
+           f"**Curated: {manifest['curated']}** — the renderer refuses to run until this is true.",
+           ""]
+    for ex in manifest["exemplars"]:
+        out += [f"## slide {ex['source_slide_index']} — `{ex['exemplar_id'] or 'UNNAMED'}` "
+                f"({ex['shape_count']} shapes, layout `{ex['layout_name']}`)", "",
+                "| slot_id | kind | shape_id | name | z | box (in) | style | sample text |",
+                "|---|---|---|---|---|---|---|---|"]
+        for s in ex["slots"]:
+            box = s["inches"]
+            st = s["effective_style"] or {}
+            style = (f"{st.get('font_pt')}pt {st.get('typeface') or ''} "
+                     f"#{st.get('color') or '—'}") if st else "—"
+            sample = (s["sample_text"] or "").replace("\n", " ⏎ ")[:40]
+            out.append(f"| {s['slot_id'] or '**?**'} | {s['kind']} | {s['shape_id']} | "
+                       f"`{s['shape_name']}` | {s['z_index']} | "
+                       f"{box['left']},{box['top']} {box['width']}×{box['height']} | "
+                       f"{style} | {sample} |")
+        out.append("")
+    if manifest["rejected_slides"]:
+        out += ["## Rejected slides", ""]
+        out += [f"- **{r['source_slide_index']}** — {r['reason']}"
+                for r in manifest["rejected_slides"]]
+        out.append("")
+    return "\n".join(out) + "\n"
+
+
+def print_dump(manifest: dict[str, Any]) -> None:
+    """§8 step 1. READ THIS BEFORE YOU NAME A SINGLE SLOT."""
+    for ex in manifest["exemplars"]:
+        print(f"\n{'=' * 78}\nSLIDE {ex['source_slide_index']}  "
+              f"layout={ex['layout_name']!r}  shapes={ex['shape_count']}\n{'=' * 78}")
+        for s in ex["slots"]:
+            st = s["effective_style"] or {}
+            print(f"  [z={s['z_index']}] id={s['shape_id']:<4} {s['kind']:<8} "
+                  f"{s['shape_name']!r}")
+            print(f"        box   : {s['inches']}")
+            if st:
+                print(f"        style : {st.get('font_pt')}pt {st.get('typeface')!r} "
+                      f"#{st.get('color')} bold={st.get('bold')}")
+            if s["sample_text"]:
+                print(f"        text  : {s['sample_text'][:70]!r}")
+    print(f"\n{len(manifest['exemplars'])} candidate exemplars, "
+          f"{len(manifest['rejected_slides'])} rejected.")
+    print(f"Roles still to cover: {', '.join(REQUIRED_ROLES)}")
+
+
+def main(argv: list[str] | None = None) -> int:
+    repo_root = Path(__file__).resolve().parents[2]
+    ap = argparse.ArgumentParser(description="Inventory the template's slides as clone exemplars.")
+    ap.add_argument("--template", type=Path, default=None)
+    ap.add_argument("--out-dir", type=Path, default=repo_root / "reference")
+    ap.add_argument("--dump", action="store_true", help="print the inventory and write nothing")
+    args = ap.parse_args(argv)
+
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")   # Hangul on a Windows console
+    except (AttributeError, ValueError):
+        pass
+
+    template = args.template or find_default_template(repo_root)
+    if template is None or not Path(template).is_file():
+        print("ERROR: template not found. Pass --template <path>.", file=sys.stderr)
+        return 2
+
+    manifest = analyze(Path(template).resolve())
+
+    if args.dump:
+        print_dump(manifest)
+        return 0
+
+    json_path = args.out_dir / "exemplar_manifest.json"
+    if json_path.is_file():
+        manifest = merge(manifest, json.loads(json_path.read_text(encoding="utf-8")))
+        for loss in manifest.get("merge_losses", []):
+            print(f"CURATION LOST: {loss}", file=sys.stderr)
+
+    args.out_dir.mkdir(parents=True, exist_ok=True)
+    json_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
+    (args.out_dir / "exemplar_catalog.md").write_text(render_catalog(manifest), encoding="utf-8")
+    print(f"wrote {json_path}\nwrote {args.out_dir / 'exemplar_catalog.md'}")
+    if not manifest["curated"]:
+        print("\nNOT CURATED. Assign slot_ids + exemplar_ids, then set \"curated\": true.")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+```
+
+### `src/aippt/render/clone.py` — the load-bearing module (§2)
+
+```python
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""Slide cloning. The naive recipe produces a file PowerPoint offers to repair.
+
+The Stack Overflow version -- deepcopy the spTree children into a new slide -- is wrong in
+two ways that do not show up until someone opens the file:
+
+  C-1  r:embed / r:id / r:link inside the copied XML point at rels on the SOURCE part.
+       Deep-copied into a new part they dangle. -> repair prompt, or a missing image.
+  C-2  <p:bg> and <p:clrMapOvr> are NOT inside spTree. An spTree-only copy silently drops
+       a custom background and a colour-map override.
+
+Both are fixed here. package_audit.py is the test that proves it.
+"""
+
+from __future__ import annotations
+
+import copy
+from typing import Any
+
+from pptx.oxml.ns import qn
+
+_R_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+
+
+def clone_slide(prs: Any, src_slide: Any) -> Any:
+    """Append a self-contained copy of ``src_slide`` to ``prs``. Returns the new Slide.
+
+    Self-contained means: it survives deletion of ``src_slide`` (§2.5), because every
+    relationship it needs has been re-registered on its own slide part.
+    """
+    # Same layout => the layout's decoration (logo, page-number graphic) and its layout-level
+    # run styling are INHERITED, not copied. This is why cloning beats recipe-extraction.
+    dst = prs.slides.add_slide(src_slide.slide_layout)
+
+    # add_slide() cloned the layout's placeholders in. We don't want them -- the source slide
+    # carries its own copies of whatever it uses. Iterate slide.shapes, NOT spTree children:
+    # spTree also holds <p:nvGrpSpPr> and <p:grpSpPr>, which are structural.
+    for shape in list(dst.shapes):
+        shape._element.getparent().remove(shape._element)
+
+    _copy_background(src_slide, dst)          # C-2
+    _copy_clr_map_ovr(src_slide, dst)         # C-2
+
+    dst_spTree = dst.shapes._spTree
+    for shape in src_slide.shapes:
+        element = copy.deepcopy(shape._element)
+        _remap_rels(src_slide.part, dst.part, element)     # C-1 -- BEFORE append
+        dst_spTree.append(element)
+
+    return dst
+
+
+def _remap_rels(src_part: Any, dst_part: Any, element: Any) -> int:
+    """Re-point every r:id / r:embed / r:link in ``element`` at a rel on ``dst_part``.
+
+    Swept generically rather than by element type. A whitelist would eventually miss one:
+    a:blip/@r:embed (pictures), asvg:svgBlip/@r:embed (the SVG fallback inside a modern
+    picture), a:hlinkClick/@r:id (hyperlinks -- including ones on individual text runs),
+    c:chart/@r:id, p:oleObj/@r:id, p:videoFile/@r:link. Every attribute in the relationships
+    namespace IS a relationship id, so the sweep is exhaustive by construction.
+
+    relate_to() is idempotent on (target, reltype): two pictures sharing one image part
+    collapse to one rel, as they should.
+
+    The part-sharing hazard: relate_to(rel.target_part, ...) makes the clone point at the
+    SAME part object as the source. Correct for parts we only READ (images, media) -- keeps
+    the file small. WRONG for parts we MUTATE (a chart part and its embedded workbook), which
+    is why analyze_exemplars.py refuses chart- and OLE-bearing slides outright. Tables are
+    safe: <a:tbl> is inline XML inside the graphicFrame, not a separate part.
+    """
+    remapped = 0
+    for el in element.iter():
+        for attr, rid in list(el.attrib.items()):
+            if not attr.startswith("{%s}" % _R_NS) or not rid:
+                continue
+            rel = src_part.rels[rid]
+            if rel.is_external:
+                new_rid = dst_part.relate_to(rel.target_ref, rel.reltype, is_external=True)
+            else:
+                new_rid = dst_part.relate_to(rel.target_part, rel.reltype)
+            el.set(attr, new_rid)
+            remapped += 1
+    return remapped
+
+
+def _copy_background(src: Any, dst: Any) -> None:
+    """<p:bg> is a child of <p:cSld> and must be its FIRST child, before <p:spTree>."""
+    src_bg = src._element.find(qn("p:cSld")).find(qn("p:bg"))
+    if src_bg is None:
+        return
+    dst_cSld = dst._element.find(qn("p:cSld"))
+    existing = dst_cSld.find(qn("p:bg"))
+    if existing is not None:
+        dst_cSld.remove(existing)
+    new_bg = copy.deepcopy(src_bg)
+    _remap_rels(src.part, dst.part, new_bg)   # a picture-fill background carries an r:embed
+    dst_cSld.insert(0, new_bg)
+
+
+def _copy_clr_map_ovr(src: Any, dst: Any) -> None:
+    """<p:clrMapOvr> is a child of <p:sld> and must come AFTER <p:cSld>."""
+    src_ovr = src._element.find(qn("p:clrMapOvr"))
+    if src_ovr is None:
+        return
+    dst_sld = dst._element
+    existing = dst_sld.find(qn("p:clrMapOvr"))
+    if existing is not None:
+        dst_sld.remove(existing)
+    cSld_pos = list(dst_sld).index(dst_sld.find(qn("p:cSld")))
+    dst_sld.insert(cSld_pos + 1, copy.deepcopy(src_ovr))
+
+
+# <p:transition> and <p:timing> are deliberately NOT copied: presentation behaviour, not
+# design, and the IR does not model them. Speaker notes are not cloned either -- the IR
+# supplies its own, and touching slide.notes_slide CREATES a notes slide as a side effect
+# (Q3 F-17). Only touch it when ir_slide.notes is non-empty, and guard notes_text_frame is None.
+
+
+def drop_slides(prs: Any, count: int) -> int:
+    """Delete the first ``count`` slides. Call this AFTER every clone exists.
+
+    Ordering is the whole trick and the failure is silent until someone opens the file:
+
+        1. clone each exemplar (appends at index 23, 24, 25 ...)
+        2. THEN delete the original 23
+        => len(prs.slides) == len(ir.slides), in IR order, with no reorder code.
+
+    Deleting the sources is safe only after every clone has re-registered its own rels: the
+    image parts then stay reachable through the clones and survive serialisation.
+
+    Both halves, in this order. Dropping the sldIdLst entry WITHOUT drop_rel leaves an
+    orphaned relationship and PowerPoint calls the file corrupt.
+    """
+    sld_id_lst = prs.slides._sldIdLst
+    for sld_id in list(sld_id_lst)[:count]:
+        prs.part.drop_rel(sld_id.get(qn("r:id")))
+        sld_id_lst.remove(sld_id)
+    return count
+```
+
+### `src/aippt/package_audit.py` — V-2, the corruption gate
+
+```python
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""Every r:-namespaced attribute in the package resolves to a rel that exists on ITS part.
+
+This IS the corruption test. We have no PowerPoint to test against, and LibreOffice is far
+more forgiving than PowerPoint about a dangling relationship -- it will happily render a
+deck that PowerPoint offers to repair. So a clean LibreOffice render proves nothing here;
+this audit does.
+
+Cheap enough to run as a post-render assertion in production, not just in tests.
+"""
+
+from __future__ import annotations
+
+import io
+from pathlib import Path
+from typing import Any
+
+_R_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+
+
+class DanglingRelationship(RuntimeError):
+    """A relationship id in the XML has no matching entry in that part's .rels."""
+
+
+def _rel_ids(part: Any) -> set[str]:
+    try:
+        return set(part.rels.keys())
+    except AttributeError:                        # older Relationships types
+        return {r.rId for r in part.rels}
+
+
+def audit_part(part: Any) -> list[str]:
+    element = getattr(part, "_element", None)
+    if element is None:                           # binary part (image, media): no XML, no refs
+        return []
+    known = _rel_ids(part)
+    problems = []
+    for el in element.iter():
+        for attr, rid in el.attrib.items():
+            if not attr.startswith("{%s}" % _R_NS) or not rid:
+                continue
+            if rid not in known:
+                problems.append(
+                    f"{part.partname}: <{el.tag.split('}')[-1]} {attr.split('}')[-1]}=\"{rid}\"> "
+                    f"-> no such relationship on this part"
+                )
+    return problems
+
+
+def audit_package(prs: Any) -> list[str]:
+    problems = []
+    for part in prs.part.package.iter_parts():
+        problems.extend(audit_part(part))
+    return problems
+
+
+def audit_file(path: Path) -> list[str]:
+    """Reopen a saved .pptx and audit it. Reopening matters: it is the round-trip through
+    serialisation that turns an in-memory inconsistency into a real dangling id."""
+    from pptx import Presentation
+    return audit_package(Presentation(io.BytesIO(Path(path).read_bytes())))
+
+
+def assert_clean(path: Path) -> None:
+    problems = audit_file(path)
+    if problems:
+        raise DanglingRelationship(
+            f"{len(problems)} dangling relationship(s) in {path.name} -- PowerPoint will offer "
+            f"to repair this file:\n  " + "\n  ".join(problems[:20])
+        )
+```
+
+### `src/aippt/render/brand.py` (§5, with the `#FF0032` override)
+
+```python
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""The brand palette, and the single pass that enforces it. One module, one constant.
+
+BRAND_RED is #FF0032. This is a USER OVERRIDE and it is deliberately not the colour the
+template contains: every piece of evidence says the template's red is #DB0032 (Q3 F-03 found
+the literal in slideLayout3.xml and slide2.xml; it is the CSS variable in all three corpus
+decks). The user specified #FF0032 and instructed the renderer to forcefully override.
+
+So LEGACY_TEMPLATE_RED exists ONLY so enforce_brand() can recognise the old colour and
+replace it -- a cloned exemplar arrives carrying #DB0032 in its run properties and fills, and
+a deck that mixes the two reds looks like a rendering bug, because it is one.
+
+Why a literal RGBColor and not MSO_THEME_COLOR: the accent is not in the theme.
+layout_manifest.json reports brand_accent.resolution "not-found"; the six accent slots are
+stock Office blue/orange/grey. MSO_THEME_COLOR.ACCENT_n would paint the wrong colour, silently.
+(renderer.py's current docstring says to prefer the theme slot. It was written before the
+analyzer ran and it is wrong for this template. Delete that line.)
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+from pptx.dml.color import RGBColor
+from pptx.oxml.ns import qn
+
+BRAND_RED = RGBColor(0xFF, 0x00, 0x32)             # USER OVERRIDE. The only brand red.
+LEGACY_TEMPLATE_RED = RGBColor(0xDB, 0x00, 0x32)   # Referenced ONLY by rewrite_legacy_red().
+
+CALLOUT_ACCENT = {                                 # .alert-box x4 / .warn-box x2 / .ok-box x1
+    "info": BRAND_RED,
+    "warn": RGBColor(0xE8, 0x8B, 0x00),
+    "ok": RGBColor(0x1E, 0x8E, 0x3E),
+}
+ON_BRAND_TEXT = RGBColor(0xFF, 0xFF, 0xFF)         # black on #FF0032 fails contrast
+CODE_FONT = "Consolas"
+
+
+class BrandViolation(RuntimeError):
+    """A shape the exemplar nominates as a brand shape could not be branded. A bug in the
+    block writer or a stale manifest -- not something to paper over here."""
+
+
+def rewrite_legacy_red(element: Any) -> int:
+    """Repoint every literal DB0032 in a subtree at BRAND_RED. Returns the count rewritten.
+
+    Operates on raw XML, not the typed colour API, on purpose: the colour can sit in a run's
+    <a:solidFill>, a shape's <a:ln>, a gradient stop, or a table cell fill, and no single
+    typed accessor reaches all four.
+    """
+    legacy, replacement = str(LEGACY_TEMPLATE_RED), str(BRAND_RED)
+    count = 0
+    for clr in element.iter(qn("a:srgbClr")):
+        if (clr.get("val") or "").upper() == legacy:
+            clr.set("val", replacement)
+            count += 1
+    return count
+
+
+def paint_solid(shape: Any, color: RGBColor) -> None:
+    """solid() first -- fore_color raises if there is no fill type to take a colour."""
+    shape.fill.solid()
+    shape.fill.fore_color.rgb = color
+
+
+def enforce_brand(slide: Any, exemplar: Any, *, strict: bool = True) -> dict[str, int]:
+    """Runs LAST on every slide (renderer §4.1). The single choke point for colour.
+
+    After fill, so nothing a block writer does can leave an off-brand run behind. After
+    unbound-slot removal, so we don't rebrand shapes we are about to delete.
+
+    Charts are out of scope in Phase 1 and that is deliberate: cloning shares the chart part
+    between source and clone, so recolouring one would recolour the other. analyze_exemplars
+    refuses chart-bearing slides, and there is no chart path here to test. Phase 2, with
+    charts we create ourselves, is where that belongs.
+    """
+    stats = {"legacy_red_rewritten": 0, "brand_shapes_painted": 0, "table_headers_branded": 0}
+
+    # Sweep the whole <p:sld>, not just spTree -- <p:bg> lives outside spTree and can be red.
+    stats["legacy_red_rewritten"] = rewrite_legacy_red(slide._element)
+
+    by_id = {sh.shape_id: sh for sh in slide.shapes}
+    for shape_id in exemplar.brand_shapes:
+        shape = by_id.get(shape_id)
+        if shape is None:
+            if strict:
+                raise BrandViolation(
+                    f"exemplar {exemplar.exemplar_id!r} nominates shape_id {shape_id} as a "
+                    f"brand shape but no such shape is on the cloned slide -- the exemplar "
+                    f"manifest is stale. Re-run analyze_exemplars.py."
+                )
+            continue
+        try:
+            paint_solid(shape, BRAND_RED)
+            stats["brand_shapes_painted"] += 1
+        except (AttributeError, TypeError):
+            if strict:
+                raise BrandViolation(
+                    f"exemplar {exemplar.exemplar_id!r} nominates shape_id {shape_id}, but a "
+                    f"{type(shape).__name__} has no fill. Remove it from brand_shapes."
+                ) from None
+
+    for shape in slide.shapes:
+        if getattr(shape, "has_table", False):
+            brand_table_header(shape.table)
+            stats["table_headers_branded"] += 1
+
+    return stats
+
+
+def brand_table_header(table: Any) -> None:
+    """Row 0 -> brand fill + white bold text. first_row=True stops the table style from
+    banding row 0 as a body row and fighting our explicit fill."""
+    table.first_row = True
+    for cell in table.rows[0].cells:
+        paint_solid(cell, BRAND_RED)
+        for para in cell.text_frame.paragraphs:
+            for run in para.runs:
+                run.font.bold = True
+                run.font.color.rgb = ON_BRAND_TEXT
+
+
+def style_code_run(run: Any) -> None:
+    """Inline <code> -- monospace + brand red. The ONE sanctioned exception to "styling comes
+    from the exemplar's <a:rPr>". 111 of them in the corpus; rendering VEO_Focus_Initialize()
+    as body prose on an API slide reads as a bug.
+
+    Note it does NOT set font.size: the run keeps the size it inherited from the prototype.
+    fit.py is the only module allowed to change a size.
+    """
+    run.font.name = CODE_FONT
+    run.font.color.rgb = BRAND_RED
+```
+
+### `src/aippt/render/slots.py` (§3, §4.2, §4.3, §4.5)
+
+```python
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""slot_id -> shape_id -> the shape. And how to write into it without destroying the design.
+
+Why shape_id and not shape.name: layout `1_사용자 지정 레이아웃` has three DIFFERENT placeholders
+at three different positions with three different font sizes (28/36/16pt) and all three are
+named `텍스트 개체 틀 8` (layout_manifest.json:161,195,225). PowerPoint's auto-generated Korean
+names are neither semantic nor unique. cNvPr/@id is unique within a slide, stable across
+renaming and re-ordering, and broken only when someone deletes and recreates a shape -- which
+is exactly when you WANT a hard failure.
+"""
+
+from __future__ import annotations
+
+import copy
+import json
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any
+
+from pptx.oxml import parse_xml
+from pptx.oxml.ns import nsdecls, qn
+
+from .brand import style_code_run
+
+_XML_SPACE = "{http://www.w3.org/XML/1998/namespace}space"
+
+#: Geometry fingerprints are compared with this slack. 1000 EMU is ~0.001 inch -- far below
+#: anything a human could have moved a shape by, and far above float noise.
+GEOMETRY_TOLERANCE_EMU = 1000
+
+
+class ExemplarManifestNotCurated(RuntimeError):
+    """The manifest exists but no human has assigned slot_ids yet."""
+
+
+class TemplateDriftError(RuntimeError):
+    """A slot's fingerprint no longer matches the template. Never guess past this."""
+
+
+@dataclass
+class Slot:
+    slot_id: str
+    kind: str                      # text | picture | table | group
+    shape_id: int                  # PRIMARY KEY
+    shape_name: str                # fingerprint only -- NOT unique, never a key
+    z_index: int                   # fingerprint only
+    emu: dict[str, int]
+    effective_style: dict[str, Any] | None = None
+    budget: dict[str, Any] | None = None
+    sample_text: str | None = None
+    required: bool = False
+    on_unbound: str = "remove"     # remove | keep | blank
+
+
+@dataclass
+class Exemplar:
+    exemplar_id: str
+    source_slide_index: int
+    layout_name: str
+    roles: list[str] = field(default_factory=list)
+    supports_blocks: list[str] = field(default_factory=list)
+    slots: dict[str, Slot] = field(default_factory=dict)
+    brand_shapes: list[int] = field(default_factory=list)
+
+
+def load_exemplar_manifest(path: Path, *, template_sha256: str) -> dict[str, Exemplar]:
+    """Load and pin. Refuses an uncurated or stale manifest -- loudly, at load time.
+
+    This is the gate that makes "not yet curated" safe: nothing downstream can render against
+    invented slot bindings, because there is nothing to load.
+    """
+    raw = json.loads(Path(path).read_text(encoding="utf-8"))
+
+    if not raw.get("curated"):
+        raise ExemplarManifestNotCurated(
+            f"{path} has not been curated. Run `python -m aippt.analyze_exemplars --dump`, "
+            f"read the inventory, assign slot_ids and exemplar_ids, then set \"curated\": true."
+        )
+    if raw["source"]["sha256"] != template_sha256:
+        raise TemplateDriftError(
+            f"{path} was generated against template sha256 {raw['source']['sha256'][:12]}… but "
+            f"the template on disk is {template_sha256[:12]}…. Re-run analyze_exemplars.py; do "
+            f"not render against a manifest that does not describe this file."
+        )
+
+    out: dict[str, Exemplar] = {}
+    for ex in raw["exemplars"]:
+        if not ex.get("exemplar_id"):
+            continue
+        slots = {s["slot_id"]: Slot(**{k: s[k] for k in
+                                       ("slot_id", "kind", "shape_id", "shape_name",
+                                        "z_index", "emu", "effective_style", "budget",
+                                        "sample_text", "required", "on_unbound")})
+                 for s in ex["slots"] if s.get("slot_id")}
+        out[ex["exemplar_id"]] = Exemplar(
+            exemplar_id=ex["exemplar_id"], source_slide_index=ex["source_slide_index"],
+            layout_name=ex["layout_name"], roles=ex.get("roles", []),
+            supports_blocks=ex.get("supports_blocks", []), slots=slots,
+            brand_shapes=ex.get("brand_shapes", []))
+    return out
+
+
+def resolve_shape(slide: Any, slot: Slot) -> Any:
+    """slot -> the shape on the cloned slide. Verifies the fingerprint. Never falls back.
+
+    A silent substitution here yields a deck that looks fine and is wrong -- the worst possible
+    outcome, because nobody notices.
+    """
+    for z, shape in enumerate(slide.shapes):
+        if shape.shape_id != slot.shape_id:
+            continue
+        drift = []
+        if shape.name != slot.shape_name:
+            drift.append(f"name {shape.name!r} != {slot.shape_name!r}")
+        if z != slot.z_index:
+            drift.append(f"z_index {z} != {slot.z_index}")
+        for key in ("left", "top", "width", "height"):
+            actual, expected = getattr(shape, key), slot.emu.get(key)
+            if actual is None or expected is None:
+                continue
+            if abs(int(actual) - expected) > GEOMETRY_TOLERANCE_EMU:
+                drift.append(f"{key} {int(actual)} != {expected} "
+                             f"(Δ{int(actual) - expected} EMU)")
+        if drift:
+            raise TemplateDriftError(
+                f"slot {slot.slot_id!r} (shape_id {slot.shape_id}): the template has changed "
+                f"under the manifest -- {'; '.join(drift)}. Re-run analyze_exemplars.py and "
+                f"re-check the curation."
+            )
+        return shape
+    raise TemplateDriftError(
+        f"slot {slot.slot_id!r}: no shape with cNvPr id {slot.shape_id} on the cloned slide. "
+        f"It was deleted and recreated in the template. Re-run analyze_exemplars.py."
+    )
+
+
+# --------------------------------------------------------------------------------------
+# C-3 -- writing text without destroying the design
+# --------------------------------------------------------------------------------------
+#
+# tf.text = "x"  -> drops every paragraph and every <a:rPr>. The 30pt 뷰웍스 B in brand red
+#                   becomes 18pt Calibri black. BANNED. Grep for it in review.
+# run.text = "x" -> replaces the literal text inside an existing <a:r>, leaving its <a:rPr>
+#                   untouched. THIS is the primitive.
+
+def set_text_preserving_style(tf: Any, text: str) -> None:
+    """Single-line slot (title, card title, step title). Keeps run[0]'s rPr -- the design."""
+    para = tf.paragraphs[0]
+    if para.runs:
+        para.runs[0].text = text
+        for extra in para.runs[1:]:
+            extra._r.getparent().remove(extra._r)
+    else:
+        para.add_run().text = text          # no run to inherit from: last resort
+    for extra in tf.paragraphs[1:]:
+        extra._p.getparent().remove(extra._p)
+
+
+def rewrite_paragraphs(tf: Any, lines: list[tuple[int, Any]]) -> None:
+    """Multi-paragraph slot (bullets, body prose). ``lines`` is [(level, RichText), ...].
+
+    Harvest a style PROTOTYPE from the exemplar before touching anything, then stamp it per
+    line. The prototype carries <a:pPr> (indent, bullet char, spacing) and <a:rPr> (size,
+    typeface, colour) -- i.e. it carries the design.
+    """
+    txBody = tf._txBody
+    protos: dict[int, Any] = {}
+    for para in tf.paragraphs:
+        protos.setdefault(para.level, copy.deepcopy(para._p))
+    proto0 = protos.get(0) or copy.deepcopy(tf.paragraphs[0]._p)
+
+    for para in list(tf.paragraphs):
+        txBody.remove(para._p)
+
+    for level, rich in lines:
+        new_p = copy.deepcopy(protos.get(level, proto0))
+        _restructure_runs(new_p, rich)
+        txBody.append(new_p)
+
+    # Second pass, over the TYPED proxies: python-pptx inserts rPr children in schema order,
+    # which is fiddly to get right by hand (a:solidFill before a:latin before a:hlinkClick...).
+    for para, (level, rich) in zip(tf.paragraphs, lines):
+        para.level = level                                  # explicit, in case we reused proto0
+        for run, ir_run in zip(para.runs, rich.runs):
+            if ir_run.b:
+                run.font.bold = True
+            if ir_run.i:
+                run.font.italic = True
+            if ir_run.code:
+                style_code_run(run)                          # the one sanctioned deviation
+            if ir_run.link:
+                run.hyperlink.address = ir_run.link
+
+
+def _restructure_runs(p_element: Any, rich: Any) -> None:
+    """Keep <a:pPr> and <a:endParaRPr>; drop the existing <a:r>/<a:br>/<a:fld>; append one
+    <a:r> per IR run, each carrying a deepcopy of the prototype's <a:rPr>."""
+    proto_rPr = None
+    first_r = p_element.find(qn("a:r"))
+    if first_r is not None and first_r.find(qn("a:rPr")) is not None:
+        proto_rPr = copy.deepcopy(first_r.find(qn("a:rPr")))
+    elif (end := p_element.find(qn("a:endParaRPr"))) is not None:
+        proto_rPr = copy.deepcopy(end)
+        proto_rPr.tag = qn("a:rPr")          # endParaRPr and rPr share CT_TextCharacterProperties
+
+    for tag in ("a:r", "a:br", "a:fld"):
+        for el in p_element.findall(qn(tag)):
+            p_element.remove(el)
+
+    end_para = p_element.find(qn("a:endParaRPr"))
+    for ir_run in rich.runs:
+        r = parse_xml("<a:r %s><a:t/></a:r>" % nsdecls("a"))
+        if proto_rPr is not None:
+            r.insert(0, copy.deepcopy(proto_rPr))
+        t = r.find(qn("a:t"))
+        t.text = ir_run.t
+        if ir_run.t != ir_run.t.strip():
+            t.set(_XML_SPACE, "preserve")    # leading/trailing space is significant
+        if end_para is not None:
+            end_para.addprevious(r)
+        else:
+            p_element.append(r)
+
+
+# --------------------------------------------------------------------------------------
+# §4.3 -- images: swap the blip, keep the frame
+# --------------------------------------------------------------------------------------
+
+def replace_picture(slide: Any, pic: Any, image_stream: Any) -> Any:
+    """Swap the image PART underneath the existing <p:pic>.
+
+    The exemplar's picture already has the right position, size, and often a picture style
+    (rounded corners, a border, a shadow). Deleting it and calling add_picture() at the same
+    geometry throws all of that away.
+    """
+    image_part, rId = slide.part.get_or_add_image_part(image_stream)
+    blip = pic._element.blipFill.find(qn("a:blip"))
+    blip.set(qn("r:embed"), rId)
+    _fit_src_rect(pic, image_part)
+    return pic
+
+
+def _fit_src_rect(pic: Any, image_part: Any) -> None:
+    """The trap: the new image is now stretched to the old frame's aspect ratio.
+
+    PowerPoint's own behaviour is aspect-FILL with a centre crop, expressed as <a:srcRect>
+    inside <a:blipFill>. Units are thousandths of a percent (50000 == 50%).
+
+    Pillow is a HARD dependency precisely here: without image.size, aspect-fill degrades
+    silently into stretch.
+    """
+    px_w, px_h = image_part.image.size
+    if not px_w or not px_h or not pic.width or not pic.height:
+        return
+    frame_ar, img_ar = pic.width / pic.height, px_w / px_h
+
+    if img_ar > frame_ar:                     # image too wide -> crop left/right
+        crop = (1 - frame_ar / img_ar) / 2
+        attrs = {"l": str(int(crop * 100000)), "r": str(int(crop * 100000))}
+    else:                                     # image too tall -> crop top/bottom
+        crop = (1 - img_ar / frame_ar) / 2
+        attrs = {"t": str(int(crop * 100000)), "b": str(int(crop * 100000))}
+
+    blip_fill = pic._element.blipFill
+    for old in blip_fill.findall(qn("a:srcRect")):
+        blip_fill.remove(old)                 # reset any inherited crop first
+    src_rect = parse_xml("<a:srcRect %s/>" % nsdecls("a"))
+    for k, v in attrs.items():
+        src_rect.set(k, v)
+    # Child order in CT_BlipFillProperties: a:blip, a:srcRect, then a:tile|a:stretch.
+    blip_fill.find(qn("a:blip")).addnext(src_rect)
+
+
+# --------------------------------------------------------------------------------------
+# C-4 -- the leftover-demo-text problem
+# --------------------------------------------------------------------------------------
+
+def remove_unbound_slots(slide: Any, exemplar: Exemplar, bound: set[str]) -> int:
+    """Every slot no IR block bound MUST go.
+
+    Skip this and the exemplar's own demo content -- "제목을 입력하세요", a sample bullet, a stock
+    photo -- ships inside the customer's deck, on brand, in the right font, looking entirely
+    intentional. This is THE signature failure of slide cloning, and a shape-count assertion
+    will not catch it.
+
+    `decorations` are never touched. That is the entire point of cloning.
+    """
+    removed = 0
+    for slot in exemplar.slots.values():
+        if slot.slot_id in bound:
+            continue
+        if slot.required:
+            raise ValueError(
+                f"exemplar {exemplar.exemplar_id!r} requires slot {slot.slot_id!r}, but no "
+                f"block bound it."
+            )
+        shape = resolve_shape(slide, slot)
+        if slot.on_unbound == "remove":
+            shape._element.getparent().remove(shape._element)
+            removed += 1
+        elif slot.on_unbound == "blank" and shape.has_text_frame:
+            shape.text_frame.clear()      # keeps the box -- e.g. a design element that must stay
+    return removed
+```
+
+---
+
+## What is still owed, and why I stopped rather than bluff
+
+The remaining in-scope files — `schema.json` / `models.py` (the `exemplar_id` + `slot_id` pivot, §6), `renderer.py` (the §4.1 orchestration), `fit.py` (rebased on slot budgets), `html_adapter.py` (`choose_layout` → `choose_exemplar`), the analyzer fixes for F-03/F-14, the prompts, the docs, and the ten `tests/` files — all depend on **slot names that do not exist yet**. `models.py` must cross-check `slot_id ∈ exemplar.slots` and `block.type ∈ slot.supports_blocks`; `html_adapter.choose_exemplar()` matches on `exemplar.roles`. Writing those against invented slot names would produce exactly the "plausible-looking but silently wrong" artifact the brief spends four pages warning about.
+
+Two more things worth flagging while they're cheap:
+
+- **`reference/layout_manifest.json` cannot be regenerated as the brief requires**, and that is fine — under the cloning architecture it stops being load-bearing. Cloning inherits the layout's decoration and run styling by *relationship*, and the brand red is now a constant, so the manifest degrades to analysis evidence plus prompt-layer budgets. The F-03/F-14 analyzer fixes are still worth making; the regeneration is a follow-up command, not a blocker.
+- **`README.md` and `foundation_research.md` still claim the analyzer has never run** (Q3 F-18) while `layout_manifest.json` is byte-linked to the current template. That's the same stale-status bug, still unfixed, and it will keep misleading every stage that reads it.

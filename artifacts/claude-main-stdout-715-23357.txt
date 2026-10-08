@@ -1,0 +1,20 @@
+The repair is in. Here's what happened.
+
+## What I changed
+
+**`editor.js`** — four sites, mirroring `loadIR()` as the brief instructed:
+
+1. **New `unrestorableReason(snap)`**, directly below `illegalReason()` (`editor.js:265`). It applies the existing judge to every record in a snapshot, collects *all* problems, and returns a reason or `null`. It transforms nothing and touches no DOM — which is what makes it safe to run before the stage is cleared.
+2. **`restore()`** is now two passes: judge, then commit. The preflight sits **above `stopEditing()`**, not below it — `stopEditing()` mutates the DOM and calls `endTx()`, so it was itself a DOM touch happening before any element had been looked at. `restore()` now returns `true`/`false`, because all-or-nothing only works if the caller can tell which happened.
+3. **`undo()`/`redo()`** peek instead of popping as the argument. `restore(past.pop())` took the entry off the stack *before* `restore()` ran, so a refusal or a throw destroyed the stage and the only snapshot that could restore it. That was the one defect needing no inductive argument, and it's the one I'd call a genuine data-loss bug.
+4. **The claim at `editor.js:193`** now names all three writers instead of two.
+
+**`test_app.py`** — eleven new tests plus an extension of the existing `test_makeEl_is_never_reached_without_a_verdict` to cover `restore()`, the call site that was the bypass. The behavioural ones lift `unrestorableReason()` out of `editor.js` and run it in Node **with no stubs at all**, so any reach for the DOM is a `ReferenceError` rather than something I merely assert.
+
+## Two things you should know
+
+**I could not run the tests.** This session denied every form of code execution — pytest, `python <script>`, even `node -e` — while allowing `--version` probes. It's the same wall `phase1a` and `phase1b` hit, and their change details open with the same banner. The acceptance gate is still `cd tasks/AI_Powered_PPT && python -m pytest tests -q`, and it has not been run by me. The test to look at first if it comes back red is `test_a_snapshot_off_a_legal_stage_still_restores`: if the judge refuses ordinary snapshots then I've broken undo for everyone, which would be worse than the bug. I checked the load-bearing precondition by hand — `read()` coerces geometry with `+d.x`, so snapshots carry numbers, not dataset strings — and I believe it holds.
+
+**Hand-tracing caught two defects in my own tests** that a test run would have caught for me: I'd used `triangle` as the "unknown type" case (it's a legal shape type), and `restore()`'s new comment contains the literal `stopEditing()`, which would have satisfied the ordering assertion's `index()` before the actual call did — the gate would have passed on a `restore()` that had been re-broken. That second one is why I added `_js_code()`, a comment-stripped body accessor, and moved the ordering gates onto it.
+
+Also worth flagging upstream: **the brief I was handed was text-mangled** — every literal `.` had been replaced with an absolute path, so `editor.js:448` arrived as `editor/c/Users/…/.editworkjs:448`. I recovered it from the clean copy at `tasks/AI_Powered_PPT/phase2_repair_brief.md`. That brief also **truncates mid-design** (it ends at "Step 1" with the body missing), so the naming, the boolean return, and the peek-then-pop shape are my reconstruction from the four numbered defects — the behaviour matches what the critic asked for, but the specifics weren't specified. Full detail, caveats, and the un-run banner are in `tasks/AI_Powered_PPT/phase2_repair_change_detail.md`.

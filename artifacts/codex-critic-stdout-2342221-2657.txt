@@ -1,0 +1,3 @@
+VERDICT: APPROVE
+The reviewed diff matches the brief: image sources are converted to data URIs, decoded in memory, and routed through `draw_image`. Changes stay within the declared three-file scope. The absolute import preserves bare-script compatibility. No blocking issue found; automated tests were not run.
+VERDICT: APPROVE

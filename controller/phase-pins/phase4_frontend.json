@@ -1,0 +1,10 @@
+{
+  "payload": {
+    "phase_id": "phase4_frontend",
+    "phase_started_at": "2026-07-23T08:49:22+09:00",
+    "pinned_decision_id": "decision-014",
+    "pinned_payload_sha256": "441d2e6a67d8734fba2cb7e6509da8ce33a70232fede64e0739ea67c21943fd2"
+  },
+  "payload_sha256": "d2b4a7d29830b78f27b86b063967d1c8fd2c296484db15d06e57b90e61f10c59",
+  "schema_version": 1
+}

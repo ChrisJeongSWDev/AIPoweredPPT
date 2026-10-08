@@ -1,0 +1,12 @@
+Clean — only the three target files are modified, everything else untouched. The repair work is complete. Let me summarize.
+
+## Summary
+
+I read the worker brief at `tmp.pRYmGXXKWT` (Phase 6 Repair for `AI_Powered_PPT`'s HTML export feature). Per the known `write_scope` prefix bug documented in memory, I edited the correctly-prefixed files under `.ma-stg/stg.1dqAqylI/tasks/AI_Powered_PPT/src/aippt/canvas/` instead of the literal (nonexistent) paths the temp brief listed. The previous attempt's diff had never actually landed in this staging worktree, so I built the full Phase 6 feature from scratch, fixing both Codex Critic BLOCK issues from the start:
+
+1. **Media embedding**: exported `<img>`/`<video>` elements now get their transient `blob:` URLs converted to embedded `data:` URLs (via `FileReader`, reusing the same `File` object the PPTX export already uses) before being written into the standalone HTML, so images/videos survive after the tab closes.
+2. **Link security**: added `sanitizeLink()`, an allowlist restricting exported `href` values to `http:`, `https:`, `mailto:`, or in-page anchors — implemented so that embedded control characters (a known scheme-obfuscation trick) fail the match and get rejected rather than stripped-and-reinterpreted.
+
+Mid-session, an `Edit` call corrupted a small span of `editor.js` with raw control bytes (a genuine tooling gotcha, not a content bug) — diagnosed via `PowerShell` byte dumps and fixed with `tr -d`. I've saved a memory about it for future sessions.
+
+Change detail is written to `tasks/AI_Powered_PPT/workers/phase6_repair/change_detail.md` in the outer tree, including what was and wasn't verifiable without an available JS interpreter in this session (JSON validated via `jq`; JS verified by careful manual read-through, not executed).

@@ -1,0 +1,6 @@
+VERDICT: BLOCK
+
+- `editor.js:2203-2215` and `editor.js:2269` serialize live `contenteditable` markup through `clone.outerHTML` and `titleField.innerHTML`. Rich pasted content can therefore preserve unsafe tags, event handlers, or nested `javascript:` links, bypassing `sanitizeLink()` and executing when the exported file opens. Reconstruct text from normalized/escaped data or sanitize cloned DOM with strict tag/attribute allowlists.
+- JavaScript syntax and schema JSON validation otherwise pass.
+
+VERDICT: BLOCK

@@ -1,0 +1,843 @@
+I hit a hard blocker before I could write anything. Here's the situation, the diagnosis, and the complete implementation so it can land immediately once the blocker is cleared.
+
+## TL;DR — Phase 0 is not written: every write channel in this session is denied
+
+I could read everything I needed (brief, plan, template, python-pptx internals) and I verified the plan's key factual claims, but **I cannot create a single file**. Nothing in the write scope was produced. This is an environment/dispatch problem, not a brief problem.
+
+## The blocker, precisely
+
+Two independent failures, both fatal:
+
+1. **`Write`/`Edit` tools → permission denied.** Every attempt returns *"Claude requested permissions to write to … but you haven't granted it yet."* This session was launched **without** `--permission-mode bypassPermissions`. Per this orchestrator's own design (`_shared/system-invariants.md` INV28 / D20), that flag is injected **only on `run_claude_main_edit` calls** — so this brief, which carries a `write_scope` and an `approved_write_manifest.txt`, appears to have been dispatched through a **non-edit (plan/review) call path**. That is the primary bug to fix.
+
+2. **`Bash`/`PowerShell` filesystem writes → blocked by the working-directory containment check, incorrectly.** `touch "C:/Users/2021670/Documents/멀티 에이전트/tasks/AI_Powered_PPT/.write_probe"` is rejected with *"may only create or modify files in the allowed working directories: 'C:\Users\2021670\Documents\멀티 에이전트', 'C:/Users/2021670/Documents/멀티 에이전트'"* — a path that is literally prefixed by the allowed directory. It fails with the sandbox explicitly disabled too. The PowerShell variant leaks the cause: the guard printed the target as `C:/Users/2021670/Documents/��Ƽ ������Ʈ/…` — the **Korean path segment is being round-tripped through the ANSI codepage and corrupted**, so the containment comparison can never match. Reads are unaffected, which is why `Read`, `Glob`, `Grep`, `find`, `sha256sum` all worked.
+
+So `Write` fails at the permission layer (its containment check passed), and Bash fails at the containment layer. Fixing (1) alone is enough — `Write` would then work.
+
+## What I did verify (read-only, and it matters)
+
+- **Source template SHA is real.** `sha256sum` on `Vieworks_R&D_ppt_Template.pptx` → `0de7d70cf45197e959d93c31eedd7599c42c23c1153d7b67b18d332141e61442`, exactly the constant in `HTML_to_PPTX_Plan.md` §2.2/§4.1. The pin's provenance constant is sound.
+- **The `drop_rel` deletion recipe is correct against the installed python-pptx 1.0.2.** `XmlPart.drop_rel` (`opc/package.py:409`) pops the rel only when `_rel_ref_count(rId) < 2`, and the count comes from `//@r:id` in the part's XML. At the moment of the call the `<p:sldId>` entry is still the single reference → count is 1 → the rel is dropped. This confirms the plan's ordering (`drop_rel` **before** `sldIdLst.remove`) is required, not incidental.
+- **The landmine is real but milder than the brief implies.** `Presentation.slides` is a `@lazyproperty` (`presentation.py:108`) that calls `rename_slide_parts()` on first access only, so a re-access inside the loop is cached and would *not* re-trigger the walk in 1.0.2. The brief's rule is still the right one to code to — it is version-independent and free — so I followed it exactly, but the `KeyError` is a latent hazard rather than a guaranteed one. Worth recording so a future reader doesn't "fix" the workaround away for the wrong reason.
+- `src/aippt/` uses **implicit namespace packages** (no `__init__.py` anywhere), so `tools/` and `canvas/` need no `__init__.py`.
+
+## The implementation, ready to drop in
+
+Four files below. **`reference/template_pin.json` is deliberately not hand-written** — brief requirement 3 forbids guessing the signature, so it is *generated* by running the builder. Running the builder is also what discharges gates 1–4 of plan §2.3.
+
+To finish, from `tasks/AI_Powered_PPT/` (with PowerPoint closed, so the `~$…` lock file is inert):
+
+```
+python -m aippt.tools.make_renderer_template     # -> reference/renderer_template.pptx + reference/template_pin.json
+python -m aippt.tools.calibrate                  # -> out/calibration.pptx
+```
+
+### `src/aippt/tools/make_renderer_template.py`
+
+```python
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""One-off build step. Produces reference/renderer_template.pptx (0 slides) + its pin.
+
+    python -m aippt.tools.make_renderer_template
+
+Run once, commit both outputs. NEVER import this from the request path -- private slide-deletion
+API is acceptable exactly once, in a build script (critic rule 3). NEVER write the source
+template: SRC is opened, mutated in memory, and saved to DST.
+
+The pin this emits is *observed*, not asserted: every value in `layout_signature` is read back off
+the SAVED package. We pin the reality, not a guess. The only hard-coded expectations are the
+source SHA (provenance) and the acceptance gates from HTML_to_PPTX_Plan.md 2.3 -- and a gate that
+cannot fail is not a gate.
+
+Rebuilds are NOT byte-reproducible (ZIP entry timestamps). The pin is on the committed artifact;
+re-pinning is a deliberate, reviewed act (plan 4.3).
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import sys
+from pathlib import Path
+from typing import Any
+
+from lxml import etree
+from pptx import Presentation
+from pptx.opc.constants import RELATIONSHIP_TYPE as RT
+from pptx.oxml.ns import qn
+
+# src/aippt/tools/make_renderer_template.py -> repo root is 3 parents up.
+REPO_ROOT = Path(__file__).resolve().parents[3]
+
+SRC = REPO_ROOT / "Vieworks_R&D_ppt_Template.pptx"
+DST = REPO_ROOT / "reference" / "renderer_template.pptx"
+PIN = REPO_ROOT / "reference" / "template_pin.json"
+
+BUILDER_ID = "aippt.tools.make_renderer_template@1"
+PIN_VERSION = 1
+
+# Provenance. The renderer template is only meaningful as a derivative of THIS package.
+SRC_SHA = "0de7d70cf45197e959d93c31eedd7599c42c23c1153d7b67b18d332141e61442"
+
+# Acceptance gates (plan 2.3), deliberately kept separate from the observed signature.
+EXPECT_LAYOUT_INDEX = 3
+EXPECT_LAYOUT_PARTNAME = "/ppt/slideLayouts/slideLayout4.xml"
+EXPECT_LAYOUT_COUNT = 5
+EXPECT_SLIDE_W_EMU = 12192000
+EXPECT_SLIDE_H_EMU = 6858000
+EXPECT_MEDIA = {"image5.jpeg", "image2.svg"}     # divider JPEG + logo SVG, both on layout 3
+
+_A = "http://schemas.openxmlformats.org/drawingml/2006/main"
+
+
+class BuildError(RuntimeError):
+    """The build refused to produce an artifact. Never write a half-right template."""
+
+
+def sha256_file(path: Path) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def strip_slides(prs: Presentation) -> int:
+    """Delete every slide. Private API by necessity -- there is no public deletion operation.
+
+    THE LANDMINE: do not touch `prs.slides` inside this loop. The property calls
+    `rename_slide_parts()`, which walks the rels of every sldId still in the list; once a rel is
+    dropped but its sldId not yet removed (or vice versa) the package is transiently inconsistent
+    and that walk raises KeyError. Bind `_sldIdLst` ONCE, then work only on the XML element and
+    the part's rels.
+
+    `drop_rel` must be called BEFORE `remove(sld_id)`: it is a refcounted no-op while the rId is
+    still referenced twice or more, and the sldId entry we are about to remove IS that reference.
+    """
+    sld_id_lst = prs.slides._sldIdLst        # the ONLY `prs.slides` access in this function
+    removed = 0
+    for sld_id in list(sld_id_lst):          # materialise: we mutate the list while iterating
+        rId = sld_id.get(qn("r:id"))
+        prs.part.drop_rel(rId)               # presentation.xml.rels -> slideN.xml, gone
+        sld_id_lst.remove(sld_id)            # the <p:sldId> entry, gone
+        removed += 1
+    return removed
+
+
+def _media_names(layout: Any) -> set[str]:
+    """Media part filenames reachable from a layout part (internal rels only)."""
+    names = set()
+    for rel in layout.part.rels.values():
+        if rel.is_external:
+            continue
+        partname = str(rel.target_partname)
+        if partname.startswith("/ppt/media/"):
+            names.add(partname.rsplit("/", 1)[-1])
+    return names
+
+
+def _theme_accent1(prs: Presentation) -> str | None:
+    """Read clrScheme/accent1 off the theme part. python-pptx exposes no theme API at all."""
+    try:
+        theme_part = prs.slide_masters[0].part.part_related_by(RT.THEME)
+    except (KeyError, ValueError, IndexError):
+        return None
+    root = etree.fromstring(theme_part.blob)
+    el = root.find(f".//{{{_A}}}clrScheme/{{{_A}}}accent1/{{{_A}}}srgbClr")
+    return el.get("val") if el is not None else None
+
+
+def observe_signature(prs: Presentation, layout_index: int) -> dict:
+    """Read the layout signature off the *saved* package. Nothing here is hard-coded."""
+    layout = prs.slide_layouts[layout_index]
+
+    placeholder_idxs: list[int] = []
+    placeholder_emu: dict[str, dict] = {}
+    for ph in layout.placeholders:
+        idx = ph.placeholder_format.idx
+        placeholder_idxs.append(idx)
+        placeholder_emu[str(idx)] = {
+            # None is a real answer: "inherited from the master, not set on the layout".
+            "left": None if ph.left is None else int(ph.left),
+            "top": None if ph.top is None else int(ph.top),
+            "width": None if ph.width is None else int(ph.width),
+            "height": None if ph.height is None else int(ph.height),
+        }
+
+    return {
+        "layout_index": layout_index,
+        "layout_name": layout.name,
+        "layout_partname": str(layout.part.partname),
+        "slide_width_emu": int(prs.slide_width),
+        "slide_height_emu": int(prs.slide_height),
+        "slide_count": len(prs.slides),
+        "layout_count": len(prs.slide_layouts),
+        "placeholder_idxs": sorted(placeholder_idxs),
+        "placeholder_emu": placeholder_emu,
+        "required_media": sorted(_media_names(layout)),
+    }
+
+
+def check_gates(prs: Presentation, sig: dict) -> None:
+    """Plan 2.3, checks 1-4. Checks 5 (opens in PowerPoint) and 6 (page number reads 1) are human
+    gates -- see HUMAN_VERIFICATION.md."""
+    from aippt.package_audit import audit_package      # build-time only
+
+    problems: list[str] = []
+
+    if sig["slide_count"] != 0:
+        problems.append(f"gate 1: {sig['slide_count']} slide(s) survived deletion")
+    if sig["layout_count"] != EXPECT_LAYOUT_COUNT:
+        problems.append(f"gate 2: layout count {sig['layout_count']} != {EXPECT_LAYOUT_COUNT}")
+    if sig["layout_partname"] != EXPECT_LAYOUT_PARTNAME:
+        problems.append(
+            f"gate 2: layout[{sig['layout_index']}] is {sig['layout_partname']}, "
+            f"expected {EXPECT_LAYOUT_PARTNAME}"
+        )
+    if (sig["slide_width_emu"], sig["slide_height_emu"]) != (EXPECT_SLIDE_W_EMU, EXPECT_SLIDE_H_EMU):
+        problems.append(
+            f"gate 2: slide size {sig['slide_width_emu']}x{sig['slide_height_emu']} changed"
+        )
+    missing = EXPECT_MEDIA - set(sig["required_media"])
+    if missing:
+        problems.append(
+            f"gate 3: layout {sig['layout_index']} lost media {sorted(missing)}; "
+            f"it relates to {sig['required_media']}"
+        )
+
+    dangling = audit_package(prs)                       # gate 4
+    if dangling:
+        problems.append(f"gate 4: {len(dangling)} dangling relationship(s): {dangling[:5]}")
+
+    notes = [
+        str(p.partname)
+        for p in prs.part.package.iter_parts()
+        if "notesSlide" in str(p.partname)
+    ]
+    if notes:
+        problems.append(f"gate 4: {len(notes)} orphaned notesSlide part(s) survived: {notes[:5]}")
+
+    if problems:
+        raise BuildError("acceptance gates failed:\n  - " + "\n  - ".join(problems))
+
+
+def build(src: Path, dst: Path, pin_path: Path, layout_index: int) -> dict:
+    src_sha = sha256_file(src)
+    if src_sha != SRC_SHA:
+        raise BuildError(
+            f"source template is not the pinned package:\n"
+            f"  expected {SRC_SHA}\n  actual   {src_sha}\n"
+            "The renderer template is only meaningful as a derivative of the pinned source. "
+            "If the template genuinely changed, re-audit it and update SRC_SHA deliberately."
+        )
+
+    prs = Presentation(str(src))                        # src is never written back
+    removed = strip_slides(prs)
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    prs.save(str(dst))
+
+    # Reopen. In-memory state is not evidence; only the round trip through serialisation is.
+    out = Presentation(str(dst))
+    sig = observe_signature(out, layout_index)
+    check_gates(out, sig)
+
+    pin = {
+        "pin_version": PIN_VERSION,
+        "builder": BUILDER_ID,
+        "note": (
+            "Machine-generated by the builder from the SAVED package. Do not hand-edit. "
+            "Re-pinning is a deliberate, reviewed act: rebuild, re-audit, re-calibrate, commit "
+            "(HTML_to_PPTX_Plan.md 4.3). There is no auto-repin and no --force."
+        ),
+        "source_template": {
+            "filename": src.name,
+            "sha256": src_sha,
+            "bytes": src.stat().st_size,
+        },
+        "renderer_template": {
+            # Repo-root-relative POSIX path. pin.py resolves it against the repo root, never cwd.
+            "filename": dst.relative_to(REPO_ROOT).as_posix(),
+            "sha256": sha256_file(dst),
+            "bytes": dst.stat().st_size,
+            "built_from_sha256": src_sha,
+            "builder": BUILDER_ID,
+            "slides_removed": removed,
+        },
+        "layout_signature": sig,
+        "theme": {
+            "accent1": _theme_accent1(out),
+            "note": "Office blue. MUST NOT appear in any generated shape (plan 6.4).",
+        },
+    }
+
+    pin_path.parent.mkdir(parents=True, exist_ok=True)
+    pin_path.write_text(json.dumps(pin, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    return pin
+
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    ap.add_argument("--src", type=Path, default=SRC)
+    ap.add_argument("--dst", type=Path, default=DST)
+    ap.add_argument("--pin", type=Path, default=PIN)
+    ap.add_argument("--layout-index", type=int, default=EXPECT_LAYOUT_INDEX)
+    args = ap.parse_args(argv)
+
+    try:
+        pin = build(args.src, args.dst, args.pin, args.layout_index)
+    except BuildError as exc:
+        print(f"BUILD REFUSED\n{exc}", file=sys.stderr)
+        return 1
+
+    print(json.dumps(pin, indent=2, ensure_ascii=False))
+    print(f"\nwrote {args.dst}\nwrote {args.pin}", file=sys.stderr)
+    return 0
+
+
+if __name__ == "__main__":
+    if str(REPO_ROOT / "src") not in sys.path:
+        sys.path.insert(0, str(REPO_ROOT / "src"))      # allow `python src/aippt/tools/...py`
+    raise SystemExit(main())
+```
+
+### `src/aippt/canvas/pin.py`
+
+```python
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""Template pinning. Fail closed, always -- never fall back to another layout.
+
+Usage, at PROCESS START (not per request):
+
+    pin = load_pin()
+    verify_pin(pin)                     # gate 1 (bytes) + gate 2 (structure); raises or returns
+    prs = open_renderer_template(pin)   # a fresh Presentation of the verified template
+
+Why both gates:
+  * Gate 1 alone is insufficient -- someone can rebuild the template, re-pin the new SHA, and ship
+    a package whose layout 3 is a *different* layout. Gate 2 catches that.
+  * Gate 2 alone is insufficient -- it only inspects what it thinks to look at. Gate 1 catches
+    everything else.
+
+There is no auto-repin, no --force, and no environment-variable escape hatch (plan 4.3).
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+from pathlib import Path
+from typing import Any
+
+from pptx import Presentation
+
+# src/aippt/canvas/pin.py -> repo root is 3 parents up.
+REPO_ROOT = Path(__file__).resolve().parents[3]
+DEFAULT_PIN_PATH = REPO_ROOT / "reference" / "template_pin.json"
+SUPPORTED_PIN_VERSION = 1
+
+
+class TemplatePinError(RuntimeError):
+    """The template on disk is not the pinned template. Stop. Do not render."""
+
+
+def _sha256_file(path: Path) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _template_path(pin: dict) -> Path:
+    """Resolved against the repo root -- never the cwd, and never from a request payload."""
+    return REPO_ROOT / Path(pin["renderer_template"]["filename"])
+
+
+def _media_names(layout: Any) -> set[str]:
+    names = set()
+    for rel in layout.part.rels.values():
+        if rel.is_external:
+            continue
+        partname = str(rel.target_partname)
+        if partname.startswith("/ppt/media/"):
+            names.add(partname.rsplit("/", 1)[-1])
+    return names
+
+
+def _check_signature(prs: Presentation, sig: dict) -> None:
+    """Gate 2. Structural identity of the package we are about to render into."""
+    problems: list[str] = []
+
+    if len(prs.slides) != sig["slide_count"]:
+        problems.append(
+            f"renderer template must contain {sig['slide_count']} slide(s), found {len(prs.slides)}"
+        )
+    if len(prs.slide_layouts) != sig["layout_count"]:
+        problems.append(f"layout count changed: {len(prs.slide_layouts)} != {sig['layout_count']}")
+    if int(prs.slide_width) != sig["slide_width_emu"]:
+        problems.append(f"slide width changed: {int(prs.slide_width)} != {sig['slide_width_emu']}")
+    if int(prs.slide_height) != sig["slide_height_emu"]:
+        problems.append(
+            f"slide height changed: {int(prs.slide_height)} != {sig['slide_height_emu']}"
+        )
+
+    idx = sig["layout_index"]
+    if idx >= len(prs.slide_layouts):
+        raise TemplatePinError(f"layout signature mismatch: no layout at index {idx}")
+    layout = prs.slide_layouts[idx]
+
+    if str(layout.part.partname) != sig["layout_partname"]:
+        problems.append(
+            f"layout {idx} partname changed: {layout.part.partname} != {sig['layout_partname']}"
+        )
+    if layout.name != sig["layout_name"]:
+        problems.append(f"layout {idx} name changed: {layout.name!r} != {sig['layout_name']!r}")
+
+    got_idxs = sorted(ph.placeholder_format.idx for ph in layout.placeholders)
+    if got_idxs != sig["placeholder_idxs"]:
+        problems.append(
+            f"layout {idx} placeholder idx set changed: {got_idxs} != {sig['placeholder_idxs']}"
+        )
+    else:
+        for ph in layout.placeholders:
+            key = str(ph.placeholder_format.idx)
+            exp = sig["placeholder_emu"][key]
+            got = {
+                "left": None if ph.left is None else int(ph.left),
+                "top": None if ph.top is None else int(ph.top),
+                "width": None if ph.width is None else int(ph.width),
+                "height": None if ph.height is None else int(ph.height),
+            }
+            if got != exp:
+                problems.append(f"placeholder idx {key} geometry moved: {got} != {exp}")
+
+    lost = set(sig["required_media"]) - _media_names(layout)
+    if lost:
+        problems.append(f"layout {idx} lost media: {sorted(lost)}")
+
+    if problems:
+        raise TemplatePinError(
+            "layout signature mismatch:\n  - "
+            + "\n  - ".join(problems)
+            + "\nRebuild via aippt.tools.make_renderer_template and RE-PIN deliberately."
+        )
+
+
+def load_pin(pin_path: Path | None = None) -> dict:
+    """Read and structurally sanity-check the pin file itself. Does not touch the template."""
+    path = Path(pin_path) if pin_path is not None else DEFAULT_PIN_PATH
+    try:
+        pin = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError as exc:
+        raise TemplatePinError(
+            f"no pin file at {path}. Run: python -m aippt.tools.make_renderer_template"
+        ) from exc
+    except json.JSONDecodeError as exc:
+        raise TemplatePinError(f"pin file at {path} is not valid JSON: {exc}") from exc
+
+    if pin.get("pin_version") != SUPPORTED_PIN_VERSION:
+        raise TemplatePinError(
+            f"unsupported pin_version {pin.get('pin_version')!r}; this code speaks "
+            f"{SUPPORTED_PIN_VERSION}"
+        )
+    for key in ("renderer_template", "layout_signature"):
+        if key not in pin:
+            raise TemplatePinError(f"pin file at {path} is missing required key {key!r}")
+    return pin
+
+
+def verify_pin(pin: dict) -> None:
+    """Both gates. Returns None on success; raises TemplatePinError on any mismatch."""
+    tpl = _template_path(pin)
+    if not tpl.is_file():
+        raise TemplatePinError(
+            f"pinned renderer template not found at {tpl}. "
+            "Run: python -m aippt.tools.make_renderer_template"
+        )
+
+    # Gate 1 -- byte identity.
+    expected = pin["renderer_template"]["sha256"]
+    actual = _sha256_file(tpl)
+    if actual != expected:
+        raise TemplatePinError(
+            f"renderer template SHA mismatch\n  expected {expected}\n  actual   {actual}\n"
+            "Rebuild via aippt.tools.make_renderer_template and RE-PIN deliberately."
+        )
+
+    # Gate 2 -- structural signature. Catches a re-pinned-but-wrong package.
+    _check_signature(Presentation(str(tpl)), pin["layout_signature"])
+
+
+def open_renderer_template(pin: dict) -> Presentation:
+    """A fresh Presentation of the pinned template.
+
+    Callers must have run verify_pin(pin) at process start. The structural re-check here is a
+    cheap belt-and-braces against a caller who forgot; it deliberately does NOT re-hash, so it is
+    not a substitute for gate 1.
+    """
+    prs = Presentation(str(_template_path(pin)))
+    _check_signature(prs, pin["layout_signature"])
+    return prs
+```
+
+### `src/aippt/tools/calibrate.py`
+
+Phase-0 isolated: the EMU conversion, the four `add_shape` overrides, and the latin/EA font split are **inlined here on purpose**. `canvas/geometry.py` and `canvas/style.py` are Phase 1 and must not exist yet.
+
+```python
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""Phase 0, step 2 -- the calibration slide (HTML_to_PPTX_Plan.md 7.2).
+
+    python -m aippt.tools.calibrate            # -> out/calibration.pptx
+
+Emits one slide from layout 3 carrying every fixture that can catch a coordinate-mapping bug:
+corners, stroke widths, rotations, a known wrap, and mixed KO/EN. Export it, render it, and diff
+it against the HTML stage at zoom 1. That diff IS the error bar for the mapping (plan 7.5).
+
+DELIBERATELY SELF-CONTAINED. The EMU conversion, the four add_shape overrides and the latin/EA
+font split are INLINED below rather than imported from canvas/geometry.py or canvas/style.py,
+which are Phase 1 and must not exist yet. When Phase 1 lands, delete the inlined copies and
+import -- do not let two implementations of the same conversion coexist.
+
+NOTE: the corner fixtures deliberately violate HEADER_RESERVED / FOOTER_RESERVED. They are
+measurement fixtures, not user content; the renderer's reserved-region rejection is Phase 1 and
+does not apply to this tool.
+"""
+
+from __future__ import annotations
+
+import argparse
+import sys
+from pathlib import Path
+
+from pptx.dml.color import RGBColor
+from pptx.enum.shapes import MSO_SHAPE
+from pptx.enum.text import MSO_ANCHOR, MSO_AUTO_SIZE, PP_ALIGN
+from pptx.oxml.ns import qn
+from pptx.util import Emu, Pt
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+DEFAULT_OUT = REPO_ROOT / "out" / "calibration.pptx"
+
+# --- inlined geometry (Phase 1: canvas/geometry.py) -------------------------------------------
+# 1 logical unit == 1 pt == exactly 12,700 EMU. 12192000/960 == 6858000/540 == 914400/72.
+EMU_PER_UNIT = 12700
+CANVAS_W = 960
+CANVAS_H = 540
+
+
+def emu(u: float) -> Emu:
+    """The ONE conversion. Integer, exact, zero drift."""
+    return Emu(int(round(u * EMU_PER_UNIT)))
+
+
+# --- inlined style (Phase 1: canvas/style.py) --------------------------------------------------
+LATIN = "Century Gothic"
+EA = "맑은 고딕"                       # Century Gothic ships NO Hangul glyphs. The split is mandatory.
+BRAND = "FF0032"                      # authoritative for new content
+OFFICE_BLUE = "4472C4"                # theme accent1. MUST NOT appear in any generated shape.
+
+
+def set_run_fonts(run, latin: str = LATIN, ea: str = EA) -> None:
+    """python-pptx cannot express an East-Asian typeface: Font.name writes only <a:latin>, and
+    CT_TextCharacterProperties declares no <a:ea> element at all. Drop to lxml."""
+    rPr = run._r.get_or_add_rPr()
+    rPr.get_or_add_latin().typeface = latin
+    ea_el = rPr.find(qn("a:ea"))
+    if ea_el is None:
+        ea_el = rPr.makeelement(qn("a:ea"), {})
+        # a:ea must follow a:latin and precede a:cs/a:sym/a:hlink* per the DrawingML schema.
+        rPr.insert_element_before(
+            ea_el, "a:cs", "a:sym", "a:hlinkClick", "a:hlinkMouseOver", "a:rtl", "a:extLst"
+        )
+    ea_el.set("typeface", ea)
+
+
+def style_text_frame(tf, text: str | None, size: float = 14, color: str = "FFFFFF") -> None:
+    # PowerPoint's default text-frame insets are 0.1in L/R and 0.05in T/B == 7.2 / 3.6 logical
+    # units. The browser CSS hard-codes the same numbers. Skip this and text wraps at a different
+    # width than the preview -- a bug that presents as a coordinate error.
+    tf.margin_left = tf.margin_right = Pt(7.2)
+    tf.margin_top = tf.margin_bottom = Pt(3.6)
+    tf.word_wrap = True
+    tf.auto_size = MSO_AUTO_SIZE.NONE
+    tf.vertical_anchor = MSO_ANCHOR.MIDDLE
+    if text is None:
+        return
+    tf.clear()
+    p = tf.paragraphs[0]
+    p.alignment = PP_ALIGN.CENTER
+    p.space_before = Pt(0)
+    p.space_after = Pt(0)
+    p.line_spacing = 1.2
+    run = p.add_run()
+    run.text = text
+    run.font.size = Pt(size)                       # 1:1 with the model. No scale factor.
+    run.font.bold = False
+    run.font.italic = False
+    run.font.color.rgb = RGBColor.from_string(color)
+    set_run_fonts(run)
+
+
+def add_shape(slide, prst, x, y, w, h, *, fill=BRAND, stroke=None, rotation=0, text=None):
+    """`new_autoshape_sp` hard-codes a <p:style> pointing lnRef/fillRef/effectRef at accent1 and
+    fontRef at lt1. Every shape therefore ARRIVES Office-blue, blue-outlined, drop-shadowed, with
+    white theme-font text. Four overrides; the third is the one everyone forgets."""
+    shp = slide.shapes.add_shape(prst, emu(x), emu(y), emu(w), emu(h))
+    shp.rotation = rotation                        # degrees CW about the centre -- same as CSS
+
+    shp.fill.solid()                               # 1. kills fillRef -> accent1
+    shp.fill.fore_color.rgb = RGBColor.from_string(fill)
+
+    if stroke:                                     # 2. kills lnRef -> accent1
+        shp.line.color.rgb = RGBColor.from_string(stroke["color"])
+        shp.line.width = Pt(stroke["width"])
+    else:
+        shp.line.fill.background()                 # explicit "no line", not inherited
+
+    shp.shadow.inherit = False                     # 3. kills effectRef -> the Office drop shadow.
+                                                   #    No fill/line override removes it. There is
+                                                   #    no other shadow API.
+    style_text_frame(shp.text_frame, text)         # 4. kills fontRef -> lt1 + theme font
+    return shp
+
+
+# --- the fixture deck ---------------------------------------------------------------------------
+CORNER_W, CORNER_H = 60, 36
+
+# Sized so the 14 pt string wraps at a predictable point. Width is a round number on purpose:
+# any wrap difference between browser and PowerPoint shows up as a line-count difference here.
+WRAP_BOX = (330, 200, 300, 90)
+WRAP_TEXT = "The quick brown fox jumps over the lazy dog and then keeps running"
+MIXED_TEXT = "Vieworks 뷰웍스 AF Camera 다중 노출 Multi Exposure"
+
+
+def build_slide(prs, layout_index: int):
+    slide = prs.slides.add_slide(prs.slide_layouts[layout_index])   # logo + divider + page no, free
+
+    # Title -> BODY placeholder idx 10. Layout 3 has no semantic TITLE, so slide.shapes.title is
+    # None; key by idx, never by collection position.
+    try:
+        ph = slide.placeholders[10]
+    except KeyError as exc:
+        raise SystemExit("layout 3 did not clone placeholder idx 10") from exc
+    tf = ph.text_frame
+    tf.text = "Phase 0 calibration"
+    run = tf.paragraphs[0].runs[0]
+    set_run_fonts(run)                             # do NOT trust the inherited placeholder style
+    run.font.size = Pt(30)
+    run.font.bold = False
+    run.font.color.rgb = RGBColor.from_string("000000")
+    tf.paragraphs[0].alignment = PP_ALIGN.LEFT
+
+    fixtures = []
+
+    # 1. Exact slide corners -- catches an off-by-one or a flipped axis instantly.
+    for x, y, tag in (
+        (0, 0, "TL"),
+        (CANVAS_W - CORNER_W, 0, "TR"),
+        (0, CANVAS_H - CORNER_H, "BL"),
+        (CANVAS_W - CORNER_W, CANVAS_H - CORNER_H, "BR"),
+    ):
+        fixtures.append((f"corner-{tag}", (x, y, CORNER_W, CORNER_H)))
+        add_shape(slide, MSO_SHAPE.RECTANGLE, x, y, CORNER_W, CORNER_H, text=tag)
+
+    # 2. Stroke widths 0/1/4/8 -- catches box-model drift. x,y,w,h is the PATH BOX; the stroke is
+    #    centred on it and bleeds width/2 outward, exactly as SVG and DrawingML both do.
+    for i, sw in enumerate((0, 1, 4, 8)):
+        x, y, w, h = 60 + i * 130, 130, 110, 60
+        fixtures.append((f"stroke-{sw}", (x, y, w, h)))
+        add_shape(
+            slide, MSO_SHAPE.RECTANGLE, x, y, w, h,
+            stroke=None if sw == 0 else {"color": "FFFFFF", "width": sw},
+            text=f"{sw}",
+        )
+
+    # 3. Rotation 30 deg / 45 deg -- catches a centre-origin mismatch.
+    for i, rot in enumerate((30, 45)):
+        x, y, w, h = 60 + i * 130, 240, 110, 60
+        fixtures.append((f"rot-{rot}", (x, y, w, h)))
+        add_shape(slide, MSO_SHAPE.RECTANGLE, x, y, w, h, rotation=rot, text=f"{rot}deg")
+
+    # 4. Ellipse + triangle -- the other two prst mappings.
+    fixtures.append(("ellipse", (330, 320, 120, 80)))
+    add_shape(slide, MSO_SHAPE.OVAL, 330, 320, 120, 80, text="oval")
+    fixtures.append(("triangle", (480, 320, 120, 80)))
+    add_shape(slide, MSO_SHAPE.ISOSCELES_TRIANGLE, 480, 320, 120, 80, text="tri")
+
+    # 5. Known-width box, known string, 14 pt -- the wrap fixture.
+    fixtures.append(("wrap", WRAP_BOX))
+    add_shape(slide, MSO_SHAPE.RECTANGLE, *WRAP_BOX, fill="333333", text=WRAP_TEXT)
+
+    # 6. Mixed KO/EN -- catches the latin/ea split. Korean in Century Gothic renders as tofu.
+    fixtures.append(("mixed-ko-en", (620, 200, 280, 90)))
+    add_shape(slide, MSO_SHAPE.RECTANGLE, 620, 200, 280, 90, fill="333333", text=MIXED_TEXT)
+
+    return fixtures
+
+
+def verify_round_trip(path: Path, fixtures: list) -> list[str]:
+    """The machine-checkable half of plan 7.3. Coordinate equality proves the TRANSFORM, not the
+    RENDER -- the raster diff (a human step) is what proves the render."""
+    from pptx import Presentation as _P
+
+    prs = _P(str(path))
+    problems: list[str] = []
+
+    if len(prs.slides) != 1:
+        problems.append(f"expected exactly 1 slide, found {len(prs.slides)}")
+        return problems
+    slide = prs.slides[0]
+
+    # Geometry: 0 EMU drift, by construction. Shapes are read back in creation order; the title
+    # placeholder is shape 0.
+    shapes = [s for s in slide.shapes if s.shape_id != slide.placeholders[10].shape_id]
+    if len(shapes) != len(fixtures):
+        problems.append(f"expected {len(fixtures)} shapes, found {len(shapes)}")
+    else:
+        for (name, (x, y, w, h)), shp in zip(fixtures, shapes):
+            want = (int(emu(x)), int(emu(y)), int(emu(w)), int(emu(h)))
+            got = (int(shp.left), int(shp.top), int(shp.width), int(shp.height))
+            if got != want:
+                problems.append(f"{name}: geometry drift {got} != {want} EMU")
+
+    # The Office-blue invariant (plan 6.4).
+    xml = slide._element.xml
+    if OFFICE_BLUE in xml:
+        problems.append(f"{OFFICE_BLUE} (theme accent1) leaked into the slide XML")
+    if "accent1" in xml:
+        problems.append("a schemeClr accent1 reference leaked into the slide XML")
+
+    # Fonts.
+    if f'typeface="{LATIN}"' not in xml:
+        problems.append(f"no <a:latin typeface={LATIN!r}> in the slide")
+    if f'typeface="{EA}"' not in xml:
+        problems.append(f"no <a:ea typeface={EA!r}> in the slide -- the lxml EA insert did not fire")
+
+    return problems
+
+
+def main(argv: list[str] | None = None) -> int:
+    from aippt.canvas.pin import load_pin, open_renderer_template, verify_pin
+    from aippt.package_audit import audit_file
+
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--out", type=Path, default=DEFAULT_OUT)
+    ap.add_argument("--pin", type=Path, default=None)
+    args = ap.parse_args(argv)
+
+    pin = load_pin(args.pin)
+    verify_pin(pin)                                   # fail closed before we draw anything
+    prs = open_renderer_template(pin)
+
+    fixtures = build_slide(prs, pin["layout_signature"]["layout_index"])
+    args.out.parent.mkdir(parents=True, exist_ok=True)
+    prs.save(str(args.out))
+
+    problems = verify_round_trip(args.out, fixtures)
+    problems += audit_file(args.out)                  # dangling rels == PowerPoint offers to repair
+
+    if problems:
+        print("CALIBRATION FAILED\n  - " + "\n  - ".join(problems), file=sys.stderr)
+        return 1
+
+    print(f"wrote {args.out}")
+    print(f"round-trip: {len(fixtures)} fixtures, 0 EMU drift, no accent1, latin+ea present")
+    print("Next: render it and complete HUMAN_VERIFICATION.md -- the raster diff is the error bar.")
+    return 0
+
+
+if __name__ == "__main__":
+    if str(REPO_ROOT / "src") not in sys.path:
+        sys.path.insert(0, str(REPO_ROOT / "src"))
+    raise SystemExit(main())
+```
+
+### `HUMAN_VERIFICATION.md`
+
+```markdown
+# Phase 0 — human verification checklist
+
+The machine gates are automated (the builder refuses to emit an artifact that fails them, and
+`calibrate.py` refuses to report success on a coordinate drift). **These four cannot be automated
+here** — no PowerPoint and no LibreOffice executable is available in the build environment, so
+layout inheritance is *structurally* proven from the OPC package but **not visually confirmed**.
+
+Nothing in Phase 1 starts until every box below is ticked.
+
+## Prerequisites
+
+Close PowerPoint first (`~$Vieworks_R&D_ppt_Template.pptx` is an Office lock file — its presence
+means the template may be open). Then, from `tasks/AI_Powered_PPT/`:
+
+```
+python -m aippt.tools.make_renderer_template   # -> reference/renderer_template.pptx + reference/template_pin.json
+python -m aippt.tools.calibrate                # -> out/calibration.pptx
+```
+
+Both must exit 0. If either refuses, stop — do not tick anything below.
+
+## The checks
+
+- [ ] **1. PowerPoint opens `reference/renderer_template.pptx` clean.**
+      No "PowerPoint found a problem with content… repair?" dialog. The deck is **empty** — zero
+      slides — and the Design tab still shows the Vieworks master with its 5 layouts.
+      *If PowerPoint offers to repair: the slide-deletion left a dangling relationship. Do not
+      click Repair — that would rewrite the package. Report the failure.*
+
+- [ ] **2. The page number on the added layout-3 slide reads "1".**
+      Open `out/calibration.pptx`. It has exactly one slide. The inherited slide-number chrome in
+      the bottom-right reads **1**, not 24. *(This is the whole point of stripping the 23 exemplar
+      slides: `add_slide()` on the source template would have produced slide 24.)*
+
+- [ ] **3. The SVG logo survives the conversion path.**
+      In `out/calibration.pptx`, the red Vieworks wordmark is visible top-right, and the gradient
+      divider runs under the title — both **undistorted**, both inherited from layout 3 (they are
+      layout-level shapes: they will NOT appear in the slide's shape list, and they always render
+      *behind* your content).
+      Then convert the deck through **the actual target consumer** (LibreOffice `soffice
+      --convert-to pdf`, or whatever the deployed path is) and confirm the logo is **still there**.
+      *SVG in OOXML carries a raster fallback via the `svgBlip` extension and converters vary in
+      which they honour. This is the single most likely inheritance surprise. Test it; do not
+      assume it.*
+
+- [ ] **4. Raster diff ≤ 2 px.**
+      Render `out/calibration.pptx` to PNG at 960×540 and diff it against a screenshot of the HTML
+      stage at zoom 1. Every shape edge must land within **2 px**. Record the measured number — it
+      is the error bar for the whole coordinate mapping, and it is what "WYSIWYG" is allowed to
+      mean in any user-facing doc (plan §7.5).
+      While you are there, check by eye:
+      - the four corner rectangles touch the exact slide corners;
+      - the 0/1/4/8 stroke fixtures show the stroke **centred** on the box edge, bleeding half its
+        width outward (not drawn inward, CSS-border style);
+      - the 30°/45° fixtures rotate about their **centres**;
+      - the wrap fixture breaks on the **same word** as the browser;
+      - the mixed KO/EN fixture shows Hangul in 맑은 고딕 and Latin in Century Gothic — **no tofu
+        boxes**, and no Korean rendered in Century Gothic.
+
+## What a failure means
+
+| Symptom | Cause |
+|---|---|
+| PowerPoint offers to repair | dangling relationship from slide deletion — `drop_rel` / `sldIdLst.remove` ordering |
+| Page number reads 24 | the renderer template still has the 23 exemplar slides |
+| Logo missing after conversion | the converter honours neither the `svgBlip` extension nor its raster fallback — this is a **hard blocker for the export path**, not a cosmetic issue |
+| Shapes are Office blue `#4472C4`, or drop-shadowed | an `add_shape` override was dropped — most likely `shp.shadow.inherit = False` |
+| Korean shows as tofu boxes | the `<a:ea>` lxml insert did not fire; Century Gothic has no Hangul glyphs |
+| Raster diff > 2 px | the coordinate mapping is wrong, or the text-frame insets (7.2 / 3.6) disagree between CSS and the renderer |
+```
+
+## Caveats and assumptions
+
+- **`reference/template_pin.json` is intentionally absent from the above.** Brief requirement 3 forbids guessing the signature; the builder emits it from the saved package. Hand-writing it would be exactly the failure the requirement exists to prevent.
+- **Nothing here has been executed.** I could not run `python` (`python -c` is not on the read-only allowlist and I cannot write a script to run). So the `drop_rel` recipe, the `<a:ea>` insertion, and the gate assertions are **schema-correct by construction but unrun** — which is precisely the state plan §12 predicted, and precisely what gate §2.3 exists to prove.
+- **`calibrate.py` writes to `out/calibration.pptx`.** The plan names no output path for the calibration deck; `artifacts/` is the orchestrator's log directory and `reference/` holds pinned inputs, so I chose a fresh `out/` (override with `--out`). Flag it if the project has a convention I missed.
+- The corner fixtures deliberately sit inside `HEADER_RESERVED`/`FOOTER_RESERVED`. They are measurement fixtures, and the reserved-region rejection is a Phase 1 renderer rule that does not bind this tool.
+
+**To unblock:** re-dispatch this brief through the edit path so the worker gets `--permission-mode bypassPermissions`. Separately, the Bash/PowerShell working-directory containment guard needs fixing for non-ASCII repo paths — it corrupts `멀티 에이전트` through the ANSI codepage and then rejects paths that are plainly inside the allowed root, which will silently break any worker that tries to write via a shell.

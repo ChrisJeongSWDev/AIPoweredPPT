@@ -1,0 +1,67 @@
+{
+  "schema": "canvas-ir/1",
+  "canvas": {"w": 960, "h": 540, "unit": "pt"},
+  "target": {
+    "template_sha256": "60fe35466ed2bb477d592603d0eab9d8748521e54ae0632c9f6a94d0b02a855a",
+    "layout_index": 3
+  },
+  "title": "Rejected: C0 control characters in run text",
+  "elements": [
+    {
+      "id": "backspace_u0008",
+      "type": "rect",
+      "x": 45.6,
+      "y": 120,
+      "w": 200,
+      "h": 100,
+      "fill": "#FFFFFF",
+      "text": {
+        "align": "LEFT",
+        "valign": "TOP",
+        "paragraphs": [{"runs": [{"t": "back\bspace", "size": 14, "color": "#000000"}]}]
+      }
+    },
+    {
+      "id": "formfeed_u000c",
+      "type": "rect",
+      "x": 265.6,
+      "y": 120,
+      "w": 200,
+      "h": 100,
+      "fill": "#FFFFFF",
+      "text": {
+        "align": "LEFT",
+        "valign": "TOP",
+        "paragraphs": [{"runs": [{"t": "form\ffeed", "size": 14, "color": "#000000"}]}]
+      }
+    },
+    {
+      "id": "carriage_return_u000d",
+      "type": "rect",
+      "x": 485.6,
+      "y": 120,
+      "w": 200,
+      "h": 100,
+      "fill": "#FFFFFF",
+      "text": {
+        "align": "LEFT",
+        "valign": "TOP",
+        "paragraphs": [{"runs": [{"t": "crlf\r\nstyle", "size": 14, "color": "#000000"}]}]
+      }
+    },
+    {
+      "id": "tab_and_newline_are_legal",
+      "type": "rect",
+      "x": 705.6,
+      "y": 120,
+      "w": 200,
+      "h": 100,
+      "fill": "#FFFFFF",
+      "text": {
+        "align": "LEFT",
+        "valign": "TOP",
+        "paragraphs": [{"runs": [{"t": "tab\there\nand a break", "size": 14, "color": "#000000"}]}]
+      }
+    }
+  ]
+}

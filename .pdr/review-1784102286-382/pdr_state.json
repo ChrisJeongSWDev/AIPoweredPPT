@@ -1,0 +1,16 @@
+{
+  "session_id": "review-1784102286-382",
+  "kind": "edit_review_decision",
+  "worktree": "C:/Users/2021670/Documents/멀티 에이전트/tasks/AI_Powered_PPT/.editwork",
+  "is_git": "1",
+  "target_repo": "C:/Users/2021670/Documents/멀티 에이전트",
+  "write_scope": "tasks/AI_Powered_PPT/src/aippt/canvas/static/index.html,tasks/AI_Powered_PPT/src/aippt/canvas/static/style.css,tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js,tasks/AI_Powered_PPT/src/aippt/canvas/static/interactions.js",
+  "diff_path": "C:/Users/2021670/Documents/멀티 에이전트/tasks/AI_Powered_PPT/artifacts/claude-main-diff-382-19814.txt",
+  "review_verdict": "APPROVE",
+  "model": "sonnet",
+  "reviewer": "claude-review",
+  "reviewer_model": "opus",
+  "review_stdout_path": "C:/Users/2021670/Documents/멀티 에이전트/tasks/AI_Powered_PPT/artifacts/claude-main-stdout-382-4537.txt",
+  "review_stderr_path": "C:/Users/2021670/Documents/멀티 에이전트/tasks/AI_Powered_PPT/artifacts/claude-main-stderr-382-13752.txt",
+  "brief_path": "C:/Users/2021670/Documents/멀티 에이전트/tasks/AI_Powered_PPT/phase6_frontend_work_order.md"
+}

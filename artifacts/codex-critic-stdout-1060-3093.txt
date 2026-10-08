@@ -1,0 +1,3 @@
+VERDICT: APPROVE
+
+Verified all six constraints: exactly one `getBoundingClientRect` inside `toModel()`, complete zoom inversion, startup pin verification and context-provided SHA, strict reserved-region enforcement, unclipped inline SVG strokes, and no EMU math in JavaScript. The reported 302-test pass is consistent with the source-level checks.

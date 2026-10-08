@@ -1,0 +1,5 @@
+[결정 확인 요청] cand-012
+1. Worker: claude-main (sonnet)
+2. Reviewer: codex-critic
+3. Session: phase3_integration / Phase: phase3
+위 값이 사용자가 선택한 값과 정확히 일치하면 confirm을 진행하십시오. 하나라도 다르면 confirm하지 말고 candidate를 다시 생성하십시오.

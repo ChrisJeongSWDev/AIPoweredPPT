@@ -1,0 +1,11 @@
+VERDICT: APPROVE
+
+All five required constraints pass:
+
+- Slide deletion binds `prs.slides` once; `drop_rel()` precedes XML removal.
+- Pin data is observed from the rebuilt package, not guessed.
+- `pin.py` defines exactly the three required functions.
+- Calibration logic is inlined; no Phase 1 geometry/style modules exist.
+- The renderer package matches its pin and contains zero slides, five layouts, required media relationships, and no dangling relationships.
+
+Caveat: Python execution was unavailable, so verification used static analysis and direct PPTX ZIP/XML inspection. Manual PowerPoint and raster checks remain as documented.

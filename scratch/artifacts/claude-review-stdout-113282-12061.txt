@@ -1,0 +1,268 @@
+I have enough grounding. Here is the WorkDirector output.
+
+---
+
+# Phase 1 — Enhanced Work Order: Unified Design Style Guide (`GEM_Knowledge_API.md` §8)
+
+**Role of this document:** strengthened brief + verified context for the *next* edit phase. No files were modified by this session (read-only director).
+
+---
+
+## A. Verified context (read from the target repo, with citations)
+
+**A1. `GEM_Knowledge_API.md` is loaded verbatim as the API system prompt.**
+`src/aippt/canvas/app.py:156` — `PROMPT_PATH = Path(__file__).resolve().parents[3] / "GEM_Knowledge_API.md"`, read whole by `system_instruction()` (`app.py:766-772`) and passed as `system=` to `CliWorkerClient.complete_json()` (`app.py:868`). Anything added to this file becomes system-prompt text on every live generation.
+
+**A2. "Gemini and Sonnet 5" are two *different* delivery paths, and only one reads this file.**
+- `MODEL_PROFILES` in this repo is `{"sonnet": "Claude Sonnet 5", "opus": "Claude Opus"}`, `DEFAULT_PROFILE = "sonnet"`, both `backend: "claude"` (`app.py:110-118`). This is the path that reads `GEM_Knowledge_API.md`.
+- Gemini is the **manual web-paste path**: `GEM_Knowledge.md` and `Gemini_Web_Prompt.md` are pasted into gemini.google.com. No code reads them (grep: zero references outside docs). `app.py:153-155` *claims* the contract is "kept in one file so the two paths cannot drift" — **that claim is currently false**; there are three prompt files and they have already drifted (see A5).
+- **Consequence:** editing `GEM_Knowledge_API.md` alone unifies style for Sonnet/Opus only. Gemini keeps its old style until §8 is propagated. This is called out as a mandatory follow-up in §F, and §8 must be authored as a **self-contained, copy-pasteable block** so propagation is a pure copy, not a rewrite.
+
+**A3. Hard constraints the style guide must not contradict (enforced in code):**
+
+| Constraint | Source | Note |
+|---|---|---|
+| `#4472C4` is **rejected** (theme accent1) | `validate.py:59,291-300`; `schema.json:261` | Hard validation failure, not a style preference |
+| `fill` is **required** even when `null` | `schema.json:82,265` | Omitted fill ⇒ silent accent1 inheritance |
+| run `color` is **required** on every run | `schema.json:349,363-366` | Uncoloured run inherits `lt1` = **white** |
+| HEADER reject box `(0, 0, 960, 92)` | `geometry.py:49` | Edge contact is legal: `y == 92` does **not** intersect (`geometry.py:69-77`) |
+| FOOTER reject box `(733.6, 500, 960, 540)` | `geometry.py:50` | Real box is **narrower** than the doc's full-width rule; keep the doc's stricter rule (a safe superset) |
+| BODY_SAFE `(45.6, 92, 914.4, 500)` | `geometry.py:51` | Advisory in code, mandatory in the prompt |
+| Title auto-renders at **30 pt, `#000000`, LEFT**, placeholder idx 10 | `render_canvas.py:46-55,58-85` | Not an element; never in `elements` |
+| Fonts are **fixed**, not model-selectable | `style.py:47-48` — `Century Gothic` + `맑은 고딕` | There is no font field in the schema |
+| Line-height fixed 1.2, para spacing 0 | `style.py:191-193` | |
+| Text-frame margins 7.2 L/R, 3.6 T/B; **no autofit** | `style.py:177-180` | Overflow spills silently — size discipline matters |
+| `target` must be **omitted** by the model | `app.py:775-808` | Server injects it from the live pin; §7 examples correctly omit it |
+
+**A4. Model output is schema-validated before it reaches the user** (`app.py:854-858`, `ai_adapter.py`), with two silent repairs: missing `arrow` → `"none"`, missing run `color` → `#1A1A1A` (`app.py:813-827`). §8 should adopt `#1A1A1A` as body ink so the fallback and the guide agree.
+
+**A5. The brand-red conflict is real, pre-existing, and documented.**
+- Code-authoritative: `#FF0032` — `style.py:50` `BRAND_RED`, `validate.py:60`, `schema.json:261` ("`#FF0032` (brand red) is the default for new content"), mock deck card fill (`app.py:928`), and an explicit **user override on record**: `renderer_brief.md:77-78` ("You MUST default to `#FF0032` … Do NOT use `#DB0032`").
+- Prompt docs say `#E63312` — `GEM_Knowledge_API.md:48`, `GEM_Knowledge.md:46`, `Gemini_Web_Prompt.md:13,27`.
+- Already flagged and deliberately deferred once: `phase4_brief.md:539`, `phase4_change_detail.md:108` ("unifying the two reds is out of scope for this brief"). **Phase 1 is where it gets resolved.**
+
+**A6. The §7 few-shot examples are the *de facto* style guide.** They currently use `#0052CC` (Atlassian blue) and `#F4F5F7` — colours that appear **nowhere else in the codebase**. In practice an LLM copies the examples over the prose rules. **A §8 that contradicts §7 will not change model behaviour.** Rewriting §7 to §8's tokens is therefore not optional polish; it is the load-bearing half of this task.
+
+**A7. Existing house style, from the mock deck** (`app.py:903-1025`) — the only rendered-and-reviewed reference layout: `_PAPER #FFFFFF`, `_INK #1A1A1A`, `_MUTED #6B727C`; content band x 60 → 900 (w 840); 3 cards w 244 at x 60/358/656 (gutter 54); sizes 20 bold / 18 bold / 14 / 13 / 12.
+
+**A8. No test touches this file.** `grep -rn "system_instruction|PROMPT_PATH|GEM_Knowledge" tests/` → zero hits. The edit is test-neutral; do not expect a gate to confirm it.
+
+---
+
+## B. Decisions required — with the director's recommendation
+
+The next worker must **not** leave two options in the file. Each decision below is pre-resolved; deviate only with a written rationale in the change-detail.
+
+**D-1 — PRIMARY colour: `#FF0032` (brand red).** *Recommended, and treat as decided.*
+Rationale: it is the only value with code authority (A5) and it is backed by a recorded user override. The brief's `#0052CC` example is descriptive of the file's current state, not a mandate; `#0052CC` has no provenance in this project. **If the owner overrides this to `#0052CC`, the substitution must be applied in §5, §7 and §8 together — a mixed state is worse than either choice.**
+
+**D-2 — Connector colour is `#1A1A1A`, never brand red.**
+§3 forbids mimicking the template's red gradient divider. Red *fills* on body shapes are sanctioned (the mock deck does exactly that), but a thin red **line** is confusable with template chrome. Both existing §7 examples already use `#1A1A1A`. §8 must state this distinction explicitly — it is precisely the kind of unstated tension that produces divergent output across models.
+
+**D-3 — Alpha (`#RRGGBBAA`) is forbidden in AI-generated output.**
+§5 documents alpha as *legal* (schema.json:260). §8 narrows it to *not chosen*. Framing to use throughout: **§5 says what the schema permits; §8 says what you must actually pick.** §8 narrows §1–§7 and never contradicts them. Alpha remains available to the human editor.
+
+**D-4 — "Title = 24" from the brief means the *section heading inside a textbox*, not the slide title.**
+The slide title is auto-rendered at 30 pt and §3 already forbids a title element. §8 must say this in one sentence or a worker/model will reintroduce the duplicate-title bug §3 exists to prevent.
+
+---
+
+## C. The exact content to add — `## 8. 통일 디자인 스타일 가이드 (STRICT TEMPLATE)`
+
+Insert **after §7** (last section of the file). Korean, to match the document. All arithmetic below was hand-verified against `x ∈ [45.6, 914.4]`, `y ∈ [92, 500]`.
+
+````markdown
+---
+
+## 8. 통일 디자인 스타일 가이드 (STRICT TEMPLATE)
+
+**이 섹션은 §1~§7의 "허용 범위"를 좁히는 강제 규칙입니다.** §5가 "스키마가 허용하는 것"을
+말한다면, §8은 "당신이 반드시 선택해야 하는 것"을 말합니다. §7 예시와 §8이 충돌하면 §8이
+우선합니다. 아래 표에 없는 색상 코드, 폰트 크기, 좌표는 **사용 금지**입니다.
+
+### 8.1. 색상 토큰 (이 6개만 사용)
+
+| 토큰 | 코드 | 용도 |
+|---|---|---|
+| PRIMARY | `#FF0032` | 강조 도형 채우기, 핵심 카드 |
+| SECONDARY | `#6B727C` | 보조 도형 채우기, 부가 설명 텍스트, 얇은 테두리 |
+| SURFACE | `#F4F5F7` | 중립 배경 카드/패널 채우기 |
+| INK | `#1A1A1A` | 밝은 배경 위의 본문 텍스트, 모든 연결선 |
+| PAPER | `#FFFFFF` | PRIMARY/SECONDARY 채우기 위의 텍스트 |
+| (없음) | `null` | 투명 배경 (textbox 기본값) |
+
+- **금지 색상 `#4472C4`**: 템플릿 테마 색상입니다. 사용 시 렌더링이 **하드 실패**합니다.
+- **투명도(Alpha) 금지**: `#RRGGBBAA` 8자리 형식을 출력하지 마세요. 항상 6자리 `#RRGGBB`만
+  사용합니다.
+- **대비 규칙**: PRIMARY/SECONDARY 채우기 위 텍스트는 반드시 PAPER. SURFACE 또는 `null`
+  채우기 위 텍스트는 반드시 INK (보조 설명만 SECONDARY 허용).
+- **빨간 선 금지**: 연결선(`connector`)의 `color`는 **항상 INK `#1A1A1A`** 입니다. 빨간색 선은
+  템플릿이 자동 삽입하는 상단 그라데이션 구분선과 혼동되므로 절대 그리지 마세요 (§3 참조).
+  빨간색은 "선"이 아니라 "면(채우기)"으로만 사용합니다.
+
+### 8.2. 좌표 그리드 (이 값만 사용)
+
+본문 영역은 **x: 60.0 ~ 900.0 (너비 840.0)** 으로 고정합니다. 임의의 x 좌표를 만들지 마세요.
+
+**열(Column) — 카드가 서로 떨어져 있을 때 (간격 30.0):**
+
+| 열 개수 | `w` | `x` 값 |
+|---|---|---|
+| 2 | 405.0 | 60.0 / 495.0 |
+| 3 | 260.0 | 60.0 / 350.0 / 640.0 |
+| 4 | 187.5 | 60.0 / 277.5 / 495.0 / 712.5 |
+| 5 | 144.0 | 60.0 / 234.0 / 408.0 / 582.0 / 756.0 |
+
+**열(Column) — 카드를 화살표로 연결할 때 (간격 54.0):**
+
+| 열 개수 | `w` | `x` 값 |
+|---|---|---|
+| 2 | 393.0 | 60.0 / 507.0 |
+| 3 | 244.0 | 60.0 / 358.0 / 656.0 |
+| 4 | 169.5 | 60.0 / 283.5 / 507.0 / 730.5 |
+
+**행(Row) — `y`와 `h`는 아래 조합만 사용:**
+
+| 이름 | `y` | `h` | 용도 |
+|---|---|---|---|
+| LEAD | 112.0 | 56.0 | 제목 아래 한 줄 요약 (textbox, `fill: null`) |
+| ROW-A | 200.0 | 120.0 | 본문 카드 1행 (기본값) |
+| ROW-A-TALL | 200.0 | 160.0 | 카드가 1행뿐이고 내용이 많을 때 |
+| ROW-B | 350.0 | 120.0 | 본문 카드 2행 (ROW-A와 함께 쓸 때만) |
+| NOTE | 452.0 | 36.0 | 하단 각주 (ROW-B를 쓰지 않을 때만) |
+
+- **정사각 도형(`ellipse`, `triangle`)**: `w = h = 120.0`, 소속 열의 가운데에 배치.
+  (예: 3열-연결 그리드 1열 `x=60.0, w=244.0` → 원의 `x = 60.0 + (244.0-120.0)/2 = 122.0`)
+- **연결선의 y**: 카드 세로 중심선을 사용합니다. ROW-A 기준 `y = 200.0 + 120.0/2 = 260.0`.
+- **경계 규칙**: `y`는 92.0 이상, `y + h`는 500.0 이하여야 합니다. 정확히 `y = 92.0`,
+  `y + h = 500.0`은 **합법**입니다. 이 범위를 벗어나면 렌더링이 거부됩니다.
+
+### 8.3. 폰트 크기 (이 4개만 사용)
+
+| 역할 | `size` | `bold` | `color` |
+|---|---|---|---|
+| 섹션 제목 (본문 안의 소제목) | 24 | `true` | INK |
+| 본문 (카드 제목, 일반 문장) | 18 | 카드 제목만 `true` | 대비 규칙에 따름 |
+| 보조 설명 | 14 | `false` | SECONDARY |
+| 각주 | 12 | `false` | SECONDARY |
+
+- **슬라이드 제목은 크기를 지정하지 않습니다.** 최상위 `"title"` 필드에 문자열만 넣으면
+  템플릿이 30pt로 자동 렌더링합니다. `elements` 안에 제목 텍스트 박스를 만들지 마세요 (§3).
+  위 표의 "섹션 제목 24"는 본문 영역 **안쪽**의 소제목을 뜻합니다.
+- **글꼴은 선택할 수 없습니다.** 렌더러가 Century Gothic + 맑은 고딕을 강제 적용합니다.
+- **자동 축소 없음**: 글자가 상자보다 크면 그대로 넘칩니다. 폭 244.0 카드의 실제 텍스트 폭은
+  좌우 여백 7.2씩을 뺀 **229.6**입니다. 18pt 한글 기준 **한 줄 약 12자**로 계산하고, 넘치면
+  줄 수를 늘리지 말고 문장을 줄이세요.
+
+### 8.4. 정렬 및 간격
+
+- 도형(`rect`/`ellipse`/`triangle`) 내부 텍스트: `"align": "CENTER"`, `"valign": "MIDDLE"`.
+- 문장형 텍스트 박스(`textbox`): `"align": "LEFT"`, `"valign": "MIDDLE"`.
+- 같은 행의 모든 카드는 `y`와 `h`가 **완전히 동일**해야 합니다.
+- `stroke`는 기본적으로 생략하거나 `null`입니다. 테두리가 꼭 필요할 때만
+  `{"color": "#6B727C", "width": 1.0}`을 사용하세요. `width: 0`은 "선 없음"이 아니라
+  **가장 얇은 선**이므로 사용하지 마세요.
+- `rotation`은 사용하지 마세요 (항상 0 / 생략).
+- 요소 개수는 **3~9개**를 유지하세요. 그 이상은 슬라이드가 읽히지 않습니다.
+
+### 8.5. 배열 순서와 id 규칙
+
+- `elements` 배열 순서: **① connector → ② 배경/카드 도형 → ③ 텍스트 박스** (§2의 Z-Index).
+- `id`는 `타입약어_의미_번호` 형식의 snake_case로, 슬라이드 안에서 **중복 불가**:
+  `rect_step_1`, `txt_lead`, `conn_1_2`, `ell_core`, `tri_up`.
+
+### 8.6. 자가 점검 (출력 직전 반드시 확인)
+
+1. 모든 색상이 8.1의 6개 토큰 안에 있는가? (`#4472C4` 없음, 8자리 alpha 없음)
+2. 모든 `x`/`w`가 8.2의 열 표에 있는 값인가?
+3. 모든 `y`/`h`가 8.2의 행 표에 있는 값인가? (`y ≥ 92.0`, `y + h ≤ 500.0`)
+4. 모든 `size`가 24 / 18 / 14 / 12 중 하나인가?
+5. 모든 `run`에 `t`, `size`, `color`가 있는가? (공백 " " 하나짜리 run 포함)
+6. `elements` 안에 제목용 텍스트 박스가 없는가?
+7. `target` 필드를 출력하지 않았는가? (서버가 주입합니다)
+````
+
+---
+
+## D. §5 and §7 must be brought into agreement — same phase, same file
+
+Per A6, this is load-bearing.
+
+**D-a. `GEM_Knowledge_API.md:48`** — replace `회사 브랜드 빨강 #E63312` with `회사 브랜드 빨강 #FF0032`, and adjust the alpha example so §5 documents the format while pointing at §8's narrowing (e.g. append `(단, AI 생성 출력에서는 §8.1에 따라 alpha 사용 금지)`).
+
+**D-b. §7 Example 1** — recolour and re-grid to the 3-column *flow* grid, columns 1 and 3:
+
+| field | old | new |
+|---|---|---|
+| `circle_A` | `x 200, y 220, w/h 100`, `fill #0052CC` | `x 122.0, y 200.0, w 120.0, h 120.0`, `fill #FF0032` |
+| `circle_B` | `x 660, y 220, w/h 100`, `fill #0052CC` | `x 718.0, y 200.0, w 120.0, h 120.0`, `fill #FF0032` |
+| run size | 24 | 24 (unchanged), `color #FFFFFF` |
+| `arrow_A_to_B` | `x1 300, y1 270, x2 660, y2 270, width 3.0` | `x1 242.0, y1 260.0, x2 718.0, y2 260.0, width 2.0`, `color #1A1A1A` |
+
+*(check: 122 + 120 = 242; 718 + 120 = 838 ≤ 900; centres 182 and 778 are symmetric about 480.)*
+
+**D-c. §7 Example 2** — re-grid to the 3-column *spaced* grid and fix the run size to the 8.3 scale:
+
+| field | old | new |
+|---|---|---|
+| `box_1/2/3` `x` | 130 / 380 / 630 | **60.0 / 350.0 / 640.0** |
+| `w`, `y`, `h` | 200, 200, 120 | **260.0**, **200.0**, 120.0 |
+| `fill` | `#F4F5F7` | `#F4F5F7` (unchanged — SURFACE) |
+| run `size` | 20 | **18** |
+| run `color` | `#1A1A1A` | `#1A1A1A` (unchanged — INK on SURFACE) |
+
+**D-d.** Optionally add a one-line pointer at the end of §7 (`이 예시들은 §8의 규칙을 그대로 따릅니다`) so the two sections are visibly coupled for the next editor.
+
+---
+
+## E. Scope and dispatch metadata for the next phase
+
+```yaml
+target_repo: C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT
+write_scope:
+  - GEM_Knowledge_API.md          # the ONLY writable file
+read_refs:
+  - src/aippt/canvas/schema.json
+  - src/aippt/canvas/geometry.py
+  - src/aippt/canvas/style.py
+  - src/aippt/canvas/validate.py
+  - src/aippt/canvas/render_canvas.py
+  - src/aippt/canvas/app.py
+change_detail_path: <orchestrator's convention — see caveat 3>
+```
+
+**Explicitly out of scope for this phase:** any `.py`, `.js`, `.json`, `.css` file; `GEM_Knowledge.md`; `Gemini_Web_Prompt.md`; `schema.json`. §8 is a *prompt-level* narrowing — it must not be encoded as validation, or the human editor loses legitimate freedom (alpha, rotation, off-grid coordinates) that only the *AI author* is being restricted from.
+
+---
+
+## F. Acceptance criteria
+
+1. `## 8. 통일 디자인 스타일 가이드 (STRICT TEMPLATE)` exists after §7, containing 8.1–8.6.
+2. `#E63312` no longer appears anywhere in `GEM_Knowledge_API.md`.
+3. `#0052CC` no longer appears anywhere in `GEM_Knowledge_API.md`.
+4. Every colour literal in the file is one of `#FF0032 #6B727C #F4F5F7 #1A1A1A #FFFFFF`, plus `#4472C4` and `#00000080` **only** where named as forbidden/illustrative.
+5. Every `size` in §7 is one of 24 / 18 / 14 / 12.
+6. Every `x`/`w` in §7 appears in an 8.2 column table; every `y`/`h` in a row table.
+7. For every element in §7: `y ≥ 92.0` and `y + h ≤ 500.0` (connectors: both `y1`,`y2` in `[92, 500]`).
+8. Neither §7 example emits a `target` field, and neither adds a title textbox.
+9. No file other than `GEM_Knowledge_API.md` differs from HEAD.
+
+**Verification.** Criteria 2–5 are greps; 6–8 are the arithmetic already tabulated above and can be checked by eye against the tables. If command execution is available, the strongest check is to load each §7 example, inject `target` from `reference/template_pin.json`, and call `aippt.canvas.validate.validate()` — a clean return proves the examples are renderable. **Do not block on this:** command execution in these worker sessions is frequently gated behind an approval that never resolves; if so, state that in the change-detail and fall back to the table check rather than skipping verification silently.
+
+---
+
+## G. Mandatory follow-up (do NOT fold into this phase)
+
+**Phase 1b — propagate §8 to the Gemini web-paste path.** Copy the §8 block verbatim into `GEM_Knowledge.md` (as its own §8) and into `Gemini_Web_Prompt.md`, and replace `#E63312` in both (`GEM_Knowledge.md:46,70`; `Gemini_Web_Prompt.md:13,27`). **Until this ships, the user's stated goal — Gemini and Sonnet producing identical design style — is only half met.** `app.py:153-155`'s comment ("kept in one file so the two paths cannot drift") is currently inaccurate and should be corrected in a later, code-scoped phase.
+
+---
+
+## H. Assumptions and caveats
+
+1. **`#FF0032` over `#0052CC` is a judgement call, not a fact.** The user's brief offered `#0052CC` as an example; I recommend `#FF0032` because it is the only red with code authority and a recorded user override (`renderer_brief.md:77-78`). Switching is a mechanical substitution in three places (§5, §7, §8.1) — but it must be all three or none.
+2. **"Title = 24" was reinterpreted** as the in-body section heading (D-4). Taking it literally would require a title textbox, which §3 forbids and which produces a visibly duplicated title.
+3. **`change_detail_path` is unspecified** in the source brief. This task has used at least three conventions (`phaseN_*_change_detail.md` at the repo root; `workers/<agent>/<NN-phase>/change_detail.md`; a flat `change_detail.md`). The next worker should follow whatever path its own dispatch frontmatter names, and file it in the **outer** tree even if `target_repo` points at a `.ma-stg/stg.*` staging worktree.
+4. **Expect an `empty_diff_no_capture` report.** Stage diffs are taken with `git add -A` (no `-f`) against a `.gitignore` containing `tasks/*`; every `tasks/`-scoped phase in this project reports an empty diff regardless of what was written. Read the file to confirm the edit landed — do not treat the empty diff as failure, and do not "re-apply" the edit in response to one.
+5. **The 12-Korean-characters-per-line figure in §8.3 is an approximation** (229.6 pt usable width ÷ 18 pt per full-width glyph), not a measurement. There is no autofit in the pipeline (`style.py:180`), so it is a budgeting heuristic for the model, not a guarantee.
+6. **§8 lengthens the system prompt on every generation.** The draft above is ~110 lines; that is the deliberate cost of determinism. Do not compress it by dropping the 8.6 self-check — a terminal checklist is what actually converts prose rules into consistent output.
+7. I did not execute any command (the one arithmetic-verification run I attempted was denied). All coordinate arithmetic in §C and §D was verified by hand and each result is shown inline so it can be re-checked without running anything.

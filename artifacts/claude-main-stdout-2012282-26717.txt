@@ -1,0 +1,9 @@
+Good, single occurrence in each file, no duplicates. The patch is fully and correctly applied.
+
+## Summary
+
+The staging worktree (`stg.t0liYUQf`) started at the **pre-Phase-6-HTML-export baseline** — none of the previous repair rounds' work had actually landed there (a recurring pattern in this task: each fresh `.ma-stg/stg.*` clone doesn't inherit prior rounds' edits, confirmed in memory and cross-checked against `phase6_repair2`'s own change-detail doc). I also hit the known `write_scope` prefix bug (temp brief dropped the `tasks/AI_Powered_PPT/` prefix) and edited the real, correctly-prefixed files instead.
+
+I applied the complete diff from `claude-main-diff-1989583-17592.txt` to `schema.json`, `index.html`, and `editor.js`, hunk-by-hunk, verifying each anchor point against the actual file before editing (not a blind patch-apply). Notably, that diff **already contains** the fix the brief asks for: `exportElementHTML()` reconstructs shape/textbox bodies via `normalizeText()`/`paragraphsToHTML()` instead of serializing live `contenteditable` markup via `outerHTML`, and the title uses `esc(titleString())` instead of `titleField.innerHTML` — both discard any tags/attributes/scripts a rich paste could carry, closing the XSS the Codex Critic flagged. The blob→`data:`-URL media fix and `sanitizeLink()` allowlist were carried forward unchanged.
+
+`schema.json` validated as well-formed JSON via PowerShell's `ConvertFrom-Json`; no interpreter (node/python/git) was available in this session to run the test suite, so I hand-verified every touch point against `tests/canvas/test_editor_source.py`'s Gate 1 assertions and traced brace/reference correctness by re-reading each edited region. Full details, caveats, and a recommendation to the orchestrator (about durably merging reviewed diffs so this doesn't need re-fixing a 5th time) are in `tasks/AI_Powered_PPT/workers/phase6_repair3/change_detail.md`.

@@ -1,0 +1,5 @@
+VERDICT: APPROVE
+
+The patch implements the required layout-match check and local, per-item rounded-line budget validation. It avoids the unimplemented renderer budget check and correctly retries repairable schema/budget failures.
+
+VERDICT: APPROVE

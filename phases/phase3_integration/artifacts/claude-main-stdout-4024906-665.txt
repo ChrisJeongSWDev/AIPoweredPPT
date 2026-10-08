@@ -1,0 +1,18 @@
+## Summary
+
+Implemented all four functions in `ai_adapter.py` (`build_system_prompt`, `generate_outline`, `fill_slide`, `generate_deck`), replacing their `NotImplementedError` stubs, and addressed all four codex-critic repair points from the brief.
+
+**Two things worth flagging explicitly:**
+
+1. **Path mismatch in the brief itself.** The temp brief's `write_scope` and `change_detail_path` both dropped the `tasks/AI_Powered_PPT/` prefix (pointing at paths that don't exist in the staging clone). This is a well-documented recurring dispatcher bug for this task family. I edited the real file at `tasks/AI_Powered_PPT/src/aippt/adapters/ai_adapter.py` and wrote the change-detail doc to the canonical path the actual `brief.md` specifies (`tasks/AI_Powered_PPT/tasks/phase3_integration/change_detail.md`) rather than the non-existent one the temp brief named.
+
+2. **Cross-checked the repair instructions against real records before complying.** I found `result.json`/`decision-001.json` confirming a genuine `codex-critic` BLOCK, and an outer-tree `change_detail.md` from the actual blocked attempt (staging clone `stg.qRwYMvMC`). All four critic complaints checked out as real: no layout-match check, `check_budget()` called against a still-`NotImplementedError` `fit.py` (unconditionally aborting every slide), and a title-budget lookup keyed on `max_title_chars_cjk` that can never match because every placeholder in this manifest is typed `BODY` (confirmed directly in `layout_manifest.json`).
+
+**Fixes applied**, per the brief's explicit instruction to avoid `fit.py`:
+- `_check_layout_matches_entry` — raises if `fill_slide`'s returned `layout_id` drifts from the outline's.
+- `_check_slide_budget` — implemented **locally** (no `fit.py` dependency), checking `slide.title` against a title-role placeholder and each `slide.blocks[i]` positionally against `body_placeholders[i]`, per `ir/schema.json`'s own documented block→placeholder mapping.
+- Title-placeholder fallback: since no placeholder is typed `TITLE` in this manifest, falls back to the first-listed placeholder (documented heuristic, with a note for when a manifest regeneration eventually adds real `TITLE` typing).
+
+Since each staging clone starts fresh, the prior blocked attempt's code no longer exists — I reimplemented from scratch rather than porting it, independently re-verifying every fix against current source files.
+
+**Not verifiable in this session:** Python execution (`py_compile`) was gated with no approval prompt surfacing, consistent with prior sessions on this task. I hand-traced the file twice for syntax/brace balance instead; a session with execution access should run `py_compile` and a smoke test before trusting this in production. Full details are in `change_detail.md`.

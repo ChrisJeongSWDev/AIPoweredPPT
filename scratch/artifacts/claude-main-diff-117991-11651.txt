@@ -1,0 +1,150 @@
+diff --git a/scratch/change_detail_phase2.md b/scratch/change_detail_phase2.md
+new file mode 100644
+index 0000000..d12bab3
+--- /dev/null
++++ b/scratch/change_detail_phase2.md
+@@ -0,0 +1,51 @@
++# Phase 2 change detail — Remove '+' button, add View Log modal
++
++## Brief
++`tmp.DskUV2DkJg` (frontmatter: `target_repo: /c/Users/2021670/.ma-stg/stg.LzjBlZw9`,
++`write_scope: [src/aippt/canvas/static/index.html, src/aippt/canvas/static/editor.js]`).
++Full path within target_repo: `tasks/AI_Powered_PPT/src/aippt/canvas/static/{index.html,editor.js}`.
++
++## Status: APPLIED
++
++Both edits were applied directly with the `Edit` tool against the files under
++`.ma-stg/stg.LzjBlZw9/tasks/AI_Powered_PPT/src/aippt/canvas/static/` — no approval
++prompt/timeout was hit on either file (this staged worktree behaved as a "permissive" session per
++prior observations: Edit worked unprompted on the first attempt for both files).
++
++### `index.html`
++1. Removed the `<button class="icon-btn plus-btn" title="Add attachment">...</button>` block
++   (including its inner `<svg>`) from inside `.toolbar-left` in the `#ai` composer.
++2. Added `<button type="button" id="b-view-log" class="sidebar-action" style="margin-left: 8px;
++   font-size: 11px;">View Log</button>` inside `.toolbar-left`, placed immediately after the
++   `.model-select-wrapper` div that contains `<select id="p-model">` (i.e. right after the select's
++   wrapper, not literally between the `<select>` tag and its wrapping `<div>` — the wrapper div also
++   carries the chevron `<svg>` for the select, so splitting it apart to insert the button between the
++   bare `<select>` and its own decorative svg would have broken that pairing for no benefit; "next to
++   the model selector" is satisfied either way).
++3. Added the log-viewer modal markup (`#log-modal`, `#log-modal-text`, `#close-log-modal`) verbatim
++   as specified in the brief, placed at the end of `<body>` — after the existing
++   `<script src="/static/editor.js?v=2">` tag and before `</body>` (brief said "e.g. right before
++   `</body>`"; this satisfies "bottom of the body" while keeping script tags grouped together above
++   it, and script execution order/timing is unaffected since none of this markup needs JS to run
++   before the DOM parses it).
++
++### `editor.js`
++Appended the log-modal wiring verbatim as specified in the brief, immediately after the file's
++closing `})();` (the whole rest of the file is one IIFE; the appended block does not reference any
++IIFE-internal name, so it works identically whether placed inside or outside that closure — placed
++outside, after the IIFE, to match "at the end of the file" literally without touching the IIFE's
++existing structure/gates).
++
++## Not verified (no execution access used/attempted for this brief)
++- Did not run the app or a browser to click-test the modal open/close/poll behavor, or confirm
++  `/api/log` exists on the backend (out of `write_scope` regardless — this brief only covers the two
++  static frontend files. No `app.py` route named `/api/log` was checked for; if it does not exist yet,
++  the modal will render "Failed to fetch logs. Is the server running?" harmlessly on click, per the
++  brief's own `fetchLog()` catch handler).
++- Did not run `tests/canvas/test_editor_source.py` (Gate 1, a substring/bracket grep over
++  `editor.js`/`interactions.js`) or `test_app.py` against these changes — no interpreter/pytest
++  execution was attempted (out of scope for this brief; brief said "Output ONLY the required edits").
++  Hand-checked: the appended `editor.js` block does not use any of the banned measured-geometry APIs
++  the Gate 1 comment at the top of the file warns about (no `getBoundingClientRect`, no
++  `getComputedStyle`, etc.) and does not redeclare any name already used inside the IIFE (`bViewLog`,
++  `logModal`, `closeLogModal`, `logModalText`, `logInterval`, `fetchLog` are all new identifiers).
+diff --git a/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js b/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js
+index 7b329d0..0ee5bab 100644
+--- a/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js
++++ b/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js
+@@ -2599,3 +2599,49 @@
+ 
+   init();
+ })();
++
++// Log Modal logic
++const bViewLog = document.getElementById('b-view-log');
++const logModal = document.getElementById('log-modal');
++const closeLogModal = document.getElementById('close-log-modal');
++const logModalText = document.getElementById('log-modal-text');
++let logInterval = null;
++
++if (bViewLog && logModal && closeLogModal && logModalText) {
++    bViewLog.addEventListener('click', () => {
++        logModal.style.display = 'flex';
++        fetchLog(); // fetch immediately
++        logInterval = setInterval(fetchLog, 1000); // poll every 1 second
++    });
++
++    closeLogModal.addEventListener('click', () => {
++        logModal.style.display = 'none';
++        if (logInterval) {
++            clearInterval(logInterval);
++            logInterval = null;
++        }
++    });
++
++    // Close if clicking outside
++    logModal.addEventListener('click', (e) => {
++        if (e.target === logModal) {
++            closeLogModal.click();
++        }
++    });
++}
++
++function fetchLog() {
++    fetch('/api/log')
++        .then(res => res.json())
++        .then(data => {
++            if (data.log) {
++                logModalText.textContent = data.log;
++                logModalText.scrollTop = logModalText.scrollHeight; // Auto scroll to bottom
++            } else if (data.error) {
++                logModalText.textContent = 'Error fetching logs: ' + data.detail;
++            }
++        })
++        .catch(err => {
++            logModalText.textContent = 'Failed to fetch logs. Is the server running?';
++        });
++}
+diff --git a/tasks/AI_Powered_PPT/src/aippt/canvas/static/index.html b/tasks/AI_Powered_PPT/src/aippt/canvas/static/index.html
+index b211a97..edf2a63 100644
+--- a/tasks/AI_Powered_PPT/src/aippt/canvas/static/index.html
++++ b/tasks/AI_Powered_PPT/src/aippt/canvas/static/index.html
+@@ -340,9 +340,6 @@
+     
+     <div class="composer-toolbar">
+       <div class="toolbar-left">
+-        <button type="button" class="icon-btn plus-btn" title="Add attachment">
+-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+-        </button>
+         <div class="model-select-wrapper">
+           <select id="p-model">
+             <option value="sonnet" selected>Claude Sonnet 5</option>
+@@ -352,6 +349,7 @@
+           </select>
+           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+         </div>
++        <button type="button" id="b-view-log" class="sidebar-action" style="margin-left: 8px; font-size: 11px;">View Log</button>
+       </div>
+       <div class="toolbar-right">
+         <button type="button" id="b-generate" class="submit-btn" title="Generate">
+@@ -393,5 +391,16 @@
+      decision" section of phase1b_change_detail.md. -->
+ <script src="/static/interactions.js"></script>
+ <script src="/static/editor.js?v=2"></script>
++
++<!-- Multi-Agent Log Viewer Modal -->
++<div id="log-modal" class="modal-overlay" style="display: none;">
++  <div class="modal-content" style="max-width: 800px; width: 90%; height: 80%; display: flex; flex-direction: column;">
++    <div class="modal-header">
++      <h2>Multi-Agent Workflow Log</h2>
++      <button class="close-btn" id="close-log-modal">&times;</button>
++    </div>
++    <pre id="log-modal-text" style="flex: 1; overflow-y: auto; background: #1e1e1e; color: #d4d4d4; padding: 10px; font-family: monospace; font-size: 12px; margin-top: 10px; white-space: pre-wrap; word-wrap: break-word;">Waiting for logs...</pre>
++  </div>
++</div>
+ </body>
+ </html>

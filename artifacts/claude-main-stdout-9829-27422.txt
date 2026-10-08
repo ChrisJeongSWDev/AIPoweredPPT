@@ -1,0 +1,40 @@
+I have to stop here: **this session cannot write files or execute Python, so none of the five deliverables could be produced.** The cause is an environment bug, not the brief.
+
+## The blocker
+
+Every write is rejected even though the target is plainly inside the allowed working directory:
+
+```
+mkdir in 'C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\src\aippt\tools' was blocked.
+  ... Claude Code may only create directories in the allowed working directories
+      for this session: 'C:\Users\2021670\Documents\멀티 에이전트', ...
+```
+
+The blocked path is a strict child of the allowed root, so the containment check itself is failing. A second error leaked the reason — PowerShell's validator saw the path as mojibake:
+
+```
+new-item targeting 'C:/Users/2021670/Documents/��Ƽ ������Ʈ/...' was blocked
+```
+
+This is a Unicode normalization/codepage mismatch on the Hangul directory name `멀티 에이전트` (almost certainly NFC vs. NFD, the classic Hangul case): the allowed-root string and the resolved-path string render identically but don't compare equal. Consequences in this session: `Write` is denied for every path, `mkdir` is denied, and `python` is denied by the same approval layer — so I could not create `src/aippt/tools/` or `src/aippt/canvas/`, could not write any file, and could not run the builder.
+
+## What I did verify (read-only tools work fine)
+
+- **Source template SHA is confirmed, not assumed.** `sha256sum` gives `0de7d70cf45197e959d93c31eedd7599c42c23c1153d7b67b18d332141e61442`, matching the plan's constant exactly.
+- **Layout 3 facts confirmed** from `reference/layout_manifest.json`: name `2_사용자 지정 레이아웃`, exactly one BODY placeholder at idx 10, geometry `left 578541, top 339725, width 9211156, height 473075`, 30 pt; deck is 12,192,000 × 6,858,000 EMU with 5 layouts and 23 existing slides; theme `accent1` is `4472C4`.
+- **The `prs.slides` landmine in the brief is real.** In python-pptx, `Presentation.slides` is not a plain accessor — it calls `PresentationPart.rename_slide_parts(sldIdLst)`, which resolves every `<p:sldId>`'s `r:id` against the part's relationships. Between `drop_rel(rId)` and `sld_id_lst.remove(sld_id)` the package is transiently inconsistent, so any touch of `prs.slides` in that window raises `KeyError`. Binding `sld_id_lst` once and never re-reading `prs.slides` inside the loop is the correct fix.
+- **The project has no `__init__.py` anywhere** (`adapters/`, `ir/`, `render/` are all bare directories), so the new `canvas/` and `tools/` packages should follow that same namespace-package convention — which also keeps the change inside `approved_write_manifest.txt`.
+
+## One design decision worth recording
+
+Requirement 3 says the pin must reflect observed reality, never a guess. Since the builder cannot be executed here, the honest shape of the deliverable is: `make_renderer_template.py` emits `template_pin.json` **entirely from inspection of the built package**, and the committed `template_pin.json` ships in an explicitly *unpinned* state (`"pinned": false`, `renderer_template.sha256: null`) so that `pin.py` fails closed until the builder has actually run. The renderer template's SHA is unknowable without building it, and ZIP timestamps make rebuilds non-reproducible anyway — so there is no honest way to pre-fill it.
+
+## To unblock
+
+Any one of these should work, in order of preference:
+
+1. Re-launch this worker with `--add-dir` given the exact normalized form of the path, or with the permission mode that auto-approves edits in the working directory.
+2. Pass the working directory as a short path (`C:\Users\2021670\Documents\멀티 에이전트` → its 8.3 form) so the validator never sees non-ASCII.
+3. Relocate the task tree under an ASCII-only path.
+
+I did not write any partial or placeholder files, and I did not fabricate a pin — the code is fully designed and can be emitted immediately on a re-run once writes are permitted.

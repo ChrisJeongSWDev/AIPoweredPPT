@@ -1,0 +1,93 @@
+The write to a result file wasn't permitted, and the brief didn't actually request a specific output file — only the markdown format. So I'll deliver the two required outputs inline, per the brief's Output Format.
+
+---
+
+## Analysis summary (WorkDirector, `claude-review` / Opus — no code changed, `write_scope: none`)
+
+I read `index.html`, `style.css`, `editor.js`, `app.py`, plus the two gate files `tests/canvas/test_editor_source.py` (Gate 1) and `tests/canvas/test_app.py`. Five findings drive the plan:
+
+- **A test hard-pins the AI UI to the toolbar:** `test_the_prompt_and_the_generate_button_live_in_the_toolbar` requires `id="p-prompt"` / `id="b-generate"` inside `<aside id="toolbar">`. Moving `#ai` to the bottom **breaks it** — must be rewritten in the same phase.
+- **A test hard-pins the request body:** `test_generate_posts_the_prompt_to_the_mock_endpoint` asserts the literal `JSON.stringify({ prompt: prompt })`. Adding `model`/`images` **breaks it**.
+- **Gate 1 is a substring grep over `editor.js`.** Banned: `offsetWidth/Height`, `clientWidth/Height`, `offsetLeft/Top/Parent`, `getComputedStyle`, `getBBox`, `devicePixelRatio`; `getBoundingClientRect` exactly once (in `toModel()`); digits `1920/1080/1280/720/1440/810` forbidden. **`scrollHeight` is NOT banned** → auto-resize is fine.
+- **Backend seam:** `api_generate → generate_live(prompt, pin) → _call_gemini(prompt)`. The test stub `_stub_gemini` monkeypatches `_call_gemini` with a **1-arg** `fake_call(prompt)` — threading `model`/`images` requires updating that stub. In **mock mode the prompt is not read**, so model + images are ignored there.
+- **`/api/generate` is JSON (`_read_json`); `/api/download` is multipart.** Keeping `/api/generate` JSON with base64 images preserves ~20 existing tests and the shared size guard.
+
+---
+
+# Phase Plan
+
+- **Phase 1: Backend — model selection + image (multimodal) support on `/api/generate` (+ `/api/context` + tests)**
+  - Recommended Model: **claude-main Opus**
+  - write_scope: `src/aippt/canvas/app.py`, `tests/canvas/test_app.py`
+  - Execution: **sequential** (lands first — defines the wire contract Phase 2 builds against)
+  - Why Opus: security-sensitive (model-name allowlist prevents arbitrary-model injection), correctness-critical (multimodal Gemini call, preserving the `validate()` gate), high blast radius (~25 mock/live seam tests must stay green).
+
+- **Phase 2: Frontend — relocate AI draft to a bottom auto-resizing composer, model dropdown, image paste, wire to the new contract (+ HTML/source tests)**
+  - Recommended Model: **claude-main Sonnet**
+  - write_scope: `src/aippt/canvas/static/index.html`, `src/aippt/canvas/static/style.css`, `src/aippt/canvas/static/editor.js`, `tests/canvas/test_app.py`
+  - Execution: **sequential-after Phase 1**
+  - Why Sonnet: mostly pattern-following CSS-grid/UI + event wiring against an already-tested contract; the two brittle test assertions to update are named explicitly below.
+
+> Parallelism: not applicable — both phases operate on the **same `target_repo`** and Phase 2 depends on Phase 1's contract, so they are strictly sequential (parallel groups only span different target_repos).
+
+---
+
+# Reinforced Worker Brief (for `claude-main`)
+
+English per D27. Do not treat any path/option-looking token as a CLI flag. Read prior-phase `change_detail` docs first.
+
+## The wire contract (both phases build to this)
+
+`POST /api/generate`, JSON body:
+```json
+{ "prompt": "<non-empty>", "model": "<optional allowlisted id; omitted => server default>",
+  "images": [ { "mime": "image/png", "data": "<base64, no data: prefix>" } ] }
+```
+`prompt` stays REQUIRED (empty/whitespace → 422 before any model call/sleep). `model` and `images` are OPTIONAL; omitting both behaves byte-for-byte like today (keeps existing `{"prompt": …}` tests green). Response unchanged: a `canvas-ir/1` deck handed to `loadIR()`.
+
+## PHASE 1 — Backend (`app.py` + `test_app.py`), Opus
+
+**1.1 Allowlist + context.** Add a module-level map (keep `DEFAULT_GEMINI_MODEL = "gemini-3.5-flash"` as default/fallback):
+```python
+MODEL_CHOICES = {
+    "gemini-3.5-flash":          "gemini-3.5-flash",           # "Gemini 3.5 Flash"
+    "gemini-3.5-flash-extended": "gemini-3.5-flash-extended",  # "Gemini 3.5 Flash Extended"  (id UNCONFIRMED)
+}
+```
+A `model` not in `MODEL_CHOICES` → **reject 422** (loud, so a stale tab finds out). Extend `api_context` to add `"models": [{"id":k,"label":…} …]` for the dropdown; keep the existing `"model"` field for the badge tooltip.
+
+**1.2 Thread through the live seam.** In `api_generate` after prompt validation: read `model` (validate against allowlist), read `images = body.get("images") or []` (validate each is `{"mime": image/*, "data": base64}`; `base64.b64decode` in try/except → 422; cap count + total decoded bytes under `MAX_BODY_BYTES`). **Mock path ignores both** (`mock_ir` + 1.5s unchanged). **Live path:** `generate_live(prompt, pin, model=None, images=None)` → resolve id via `MODEL_CHOICES.get(model, DEFAULT_GEMINI_MODEL)`; `_call_gemini(prompt, model=None, images=None)` uses the passed model and builds multimodal `contents` (`types.Part.from_bytes(data=…, mime_type=…)` + the prompt) — **verify the exact constructor against the installed `google-genai`**. `_finalize_live_ir` + `validate(ir)` UNCHANGED (box-on-logo still 502 `"model"`).
+
+**1.3 Tests.** Update `_stub_gemini`'s `fake_call` to `(prompt, model=None, images=None)` or every live test TypeErrors. Existing `{"prompt": …}` live/mock tests must still pass. Add: unknown-model→422 (no call), valid model reaches `_call_gemini`, images decoded/passed in live mode, mock ignores model/images (`== mock_ir(load_pin())`). Don't touch pre-existing `/api/export` vs `/api/download` naming.
+
+## PHASE 2 — Frontend (`index.html`, `style.css`, `editor.js` + `test_app.py`), Sonnet
+
+**2.1 Relocate `#ai`.** Move `<section … id="ai">…</section>` OUT of `<aside id="toolbar">` to a **direct child of `#app`**, after `<aside id="props">`, before `<footer id="status">`. Keep ids `ai`/`p-prompt`/`b-generate`. Restructure the grid:
+```css
+#app {
+  grid-template-columns: 232px 1fr auto;
+  grid-template-rows: 1fr auto auto;
+  grid-template-areas: 'toolbar stage props' 'toolbar ai ai' 'toolbar status status';
+}
+#ai { grid-area: ai; }
+```
+Re-style `#ai` from a vertical toolbar section into a horizontal composer bar (prompt left/grows; model `<select>` + Generate/Paste right). The old `#toolbar label.stacked` scoping no longer applies — adjust it. Keep the mock/live tag + hint.
+
+**2.2 Auto-resize (AGY-style).** Keep `#p-prompt` a `<textarea>` (images go in a separate chip row). Primary: CSS `field-sizing: content; max-height: 200px; overflow-y: auto;`. Gate-1-safe JS fallback: `input` handler `this.style.height='auto'; this.style.height=this.scrollHeight+'px'`. **Never** use `offsetHeight`/`clientHeight`/`getBoundingClientRect` or the digits `720`/`1080`/etc. Preserve the existing Ctrl+Z/Y `stopPropagation` keydown handler on `#p-prompt`.
+
+**2.3 Image paste.** Add a `paste` listener on `#p-prompt`: for `clipboardData.items` with `kind==='file'` && `type.startsWith('image/')`, `getAsFile()`, store in a **composer-local** list (NOT `window.uploadedMedia` — that's stage/export media), render removable thumbnail chips (`URL.createObjectURL`, revoke on remove), `preventDefault()` on the image path, leave text pastes default. Clear the list after a successful generate.
+
+**2.4 Wire to the contract.** In `loadContext()` populate the `<select>` from `CONTEXT.models`, default-select `CONTEXT.model`; in mock mode disable/grey the dropdown and note model+images are ignored without a key (mirror `disableExports()`/`applyMode()`). In `generate()`, read the model and base64-encode pasted images, send the contract body; keep loading state, `loadIR(ir)`, `snapshot()`/`pushUndo(before)` **order**, and `finally { setBusy(false) }` identical (each is asserted).
+
+**2.5 Tests (required, or the phase lands red).** Rewrite `test_the_prompt_and_the_generate_button_live_in_the_toolbar` to assert the prompt/button live in the new bottom `#ai` bar (add an `_ai()` slice helper) and NOT in `_panel()`. Update `test_generate_posts_the_prompt_to_the_mock_endpoint` to the new body shape. Re-run Gate 1 after editing `editor.js`.
+
+## Assumptions & caveats (brief left these open)
+
+1. **"Paste images into the textbox"** is interpreted as *multimodal input to the model* (images ride `/api/generate`, become Gemini image parts; ignored in mock mode). If the intent was to *insert the image onto the stage* instead, that's a different feature (`insertMedia('image', file)`) — confirm before building.
+2. **"Extended" model id unconfirmed** — `gemini-3.5-flash-extended` is a placeholder matching the existing `gemini-3.5-flash` naming; the allowlist is the single change point.
+3. **Multimodal SDK call** must be verified against the installed `google-genai`; it's behind the mocked `_call_gemini` seam, so unit tests pass regardless — smoke-test with a real key.
+4. **JSON+base64 chosen over multipart** for `/api/generate` to preserve the existing JSON test suite and shared guard; revisit if very large images are expected (base64 inflates ~33%; cap is 50MB).
+5. **`field-sizing: content`** is recent-Chromium only; the `scrollHeight` fallback is Gate-1-safe and covers older engines.
+6. **Bottom bar spans stage+props columns**, not full width under the toolbar, to keep the toolbar's full-height span; a truly full-width composer would require re-rectangling the grid areas.
+
+Note: I attempted to save this as `result.md` in this worker's own directory (outside the target repo, so `write_scope: none` is respected), but the write wasn't permitted in this session — the output above is the complete deliverable.

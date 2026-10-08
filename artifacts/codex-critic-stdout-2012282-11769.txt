@@ -1,0 +1,10 @@
+VERDICT: WARNING
+
+The reported XSS is fixed: editable title/body content is normalized and escaped before export. `node --check` and schema parsing pass; changes stay within scope.
+
+Issues:
+
+- `editor.js:2298` downloads `<title>.html`, but the requirement explicitly specifies `presentation.html`.
+- `EXPORT_CSS` omits the canvas’s visible `#stage::after` red divider, so exported HTML does not fully match the canvas.
+
+VERDICT: WARNING

@@ -1,0 +1,12 @@
+VERDICT: REJECT
+
+`validate()` does not accumulate all violations:
+
+- `src/aippt/canvas/validate.py:80-89` short-circuits stale canvases and separates schema and semantic validation.
+- `src/aippt/canvas/validate.py:95-100` raises schema errors before semantic checks can run.
+- `src/aippt/canvas/validate.py:231-232` raises semantic errors separately.
+- `tests/canvas/test_validate.py:114-125` explicitly expects other detectable violations to be suppressed.
+
+For example, a zero-width element combined with a separate `#4472C4` element reports only the schema error. Refactor the validation stages to return problem lists and raise one aggregated `CanvasValidationError`; update the short-circuit test and add mixed schema-plus-semantic coverage.
+
+The geometry, font XML sequencing, `<p:style>` removal, arrowhead ordering, pin comparison, and no-autofit constraints otherwise conform.

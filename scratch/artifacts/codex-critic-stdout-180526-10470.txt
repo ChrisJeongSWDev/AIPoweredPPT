@@ -1,0 +1,30 @@
+VERDICT: BLOCK
+
+The workflow is wired end-to-end, but review-pass output can replace a valid draft with a semantically invalid one and make the request fail instead of falling back.
+
+### Scope 1 — JSON/schema/defaults
+
+- `ai_adapter.py` supplies the full Slide IR JSON Schema to `complete_json`, then validates returned JSON; `25_slide_review.md` also preserves `id` and `layout_id`. This is structurally sound. [ai_adapter.py](/C:/Users/2021670/Documents/멀티%20에이전트/tasks/AI_Powered_PPT/src/aippt/adapters/ai_adapter.py:243)
+
+- The review prompt itself does not embed a concrete schema/template; it relies on the client-side schema injection. That is adequate for the current client, but weakens the prompt if reused elsewhere. [25_slide_review.md](/C:/Users/2021670/Documents/멀티%20에이전트/tasks/AI_Powered_PPT/prompts/25_slide_review.md:19)
+
+- `_finalize_live_ir` correctly pins `schema`, `canvas`, and `target`, and provides narrow defaults for title, connector arrows, and missing run colors. However, a non-list `elements` value is silently converted to an empty deck, losing the model’s content without surfacing a failure. [app.py](/C:/Users/2021670/Documents/멀티%20에이전트/tasks/AI_Powered_PPT/src/aippt/canvas/app.py:867)
+
+- `stateFromIR` is appropriately defensive for optional style/text fields, while intentionally leaving required geometry and identity fields absent so `loadIR` rejects malformed elements. This is fail-closed and correct. [editor.js](/C:/Users/2021670/Documents/멀티%20에이전트/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js:2568)
+
+### Scope 2 — review selector and two-pass flow
+
+- The frontend correctly hides/shows the reviewer selector, sends `review` as a boolean, and sends the chosen `reviewer_model`. [index.html](/C:/Users/2021670/Documents/멀티%20에이전트/tasks/AI_Powered_PPT/src/aippt/canvas/static/index.html:353) [editor.js](/C:/Users/2021670/Documents/멀티%20에이전트/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js:2388)
+
+- In live mode, `generate_live` correctly creates a second client from the reviewer profile and runs a second structured-output call. Exceptions from that call retain the initial draft. [app.py](/C:/Users/2021670/Documents/멀티%20에이전트/tasks/AI_Powered_PPT/src/aippt/canvas/app.py:932)
+
+- Blocker: a schema-valid but render-invalid review result—for example, an element in a reserved region or duplicate IDs—replaces the initial draft at line 951. Validation occurs only later in `api_generate`, which returns HTTP 502 rather than falling back to the valid first-pass result. [app.py](/C:/Users/2021670/Documents/멀티%20에이전트/tasks/AI_Powered_PPT/src/aippt/canvas/app.py:950) [app.py](/C:/Users/2021670/Documents/멀티%20에이전트/tasks/AI_Powered_PPT/src/aippt/canvas/app.py:471)
+
+- The semantic Slide IR flow has the same gap: review exceptions fall back, but a reviewer result that later fails layout/budget validation causes another author attempt rather than retaining the known-good initial slide. It also swallows reviewer errors without logging. [ai_adapter.py](/C:/Users/2021670/Documents/멀티%20에이전트/tasks/AI_Powered_PPT/src/aippt/adapters/ai_adapter.py:486)
+
+### Recommendations
+
+- Validate a finalized review candidate before assigning it; on any validation failure, retain the first-pass draft and log the review failure.
+- In the Slide IR path, validate the reviewed slide separately before replacement.
+- Reject non-boolean `review` and invalid `reviewer_model` values rather than coercing/falling back silently. [app.py](/C:/Users/2021670/Documents/멀티%20에이전트/tasks/AI_Powered_PPT/src/aippt/canvas/app.py:419)
+- Add tests for reviewer exception, schema-valid/render-invalid reviewer output, and fallback preservation.

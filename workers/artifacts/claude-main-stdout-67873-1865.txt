@@ -1,0 +1,7 @@
+I've completed the repair task. Summary:
+
+**Change made** — `editor.js` (the only file with an actual gap): the `generate()` function (click handler for `#b-generate`) now reads `#p-model`'s selected value and includes it as `"model"` in the `POST /api/generate` JSON body, alongside the existing `"prompt"`. Previously it sent only `{prompt}`, so the dropdown was decorative.
+
+**No changes needed** in `app.py` / `ai_adapter.py` — after reading both files fully, every requirement the brief listed for backend model-resolution, `CliWorkerClient` wiring, the 300s-timeout concern, and image-attachment handling was already correctly implemented there (`_resolve_profile()`, profile-based `backend`/`model` passed to `CliWorkerClient` with `timeout_s=900`, images validated-then-gracefully-dropped with an explicit comment explaining why). The frontend fix now actually exercises that previously-dead code path.
+
+Full rationale, line references, and caveats (including that no test suite exists in this staging clone to run against) are written to `C:\Users\2021670\.ma-stg\stg.uA1RMKrD\workers\change_detail.md` as the brief requested.

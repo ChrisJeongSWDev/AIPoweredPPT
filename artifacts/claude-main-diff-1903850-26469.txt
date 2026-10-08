@@ -1,0 +1,262 @@
+diff --git a/tasks/AI_Powered_PPT/src/aippt/canvas/schema.json b/tasks/AI_Powered_PPT/src/aippt/canvas/schema.json
+index 0fa706e..7a0b822 100644
+--- a/tasks/AI_Powered_PPT/src/aippt/canvas/schema.json
++++ b/tasks/AI_Powered_PPT/src/aippt/canvas/schema.json
+@@ -91,7 +91,8 @@
+         "rotation": {"$ref": "#/$defs/rotation"},
+         "fill": {"$ref": "#/$defs/fill"},
+         "stroke": {"$ref": "#/$defs/stroke"},
+-        "text": {"$ref": "#/$defs/text"}
++        "text": {"$ref": "#/$defs/text"},
++        "link": {"$ref": "#/$defs/link"}
+       }
+     },
+ 
+@@ -110,7 +111,8 @@
+         "rotation": {"$ref": "#/$defs/rotation"},
+         "fill": {"$ref": "#/$defs/fill"},
+         "stroke": {"$ref": "#/$defs/stroke"},
+-        "text": {"$ref": "#/$defs/text"}
++        "text": {"$ref": "#/$defs/text"},
++        "link": {"$ref": "#/$defs/link"}
+       }
+     },
+ 
+@@ -129,7 +131,8 @@
+         "rotation": {"$ref": "#/$defs/rotation"},
+         "fill": {"$ref": "#/$defs/fill"},
+         "stroke": {"$ref": "#/$defs/stroke"},
+-        "text": {"$ref": "#/$defs/text"}
++        "text": {"$ref": "#/$defs/text"},
++        "link": {"$ref": "#/$defs/link"}
+       }
+     },
+ 
+@@ -148,7 +151,8 @@
+         "rotation": {"$ref": "#/$defs/rotation"},
+         "fill": {"$ref": "#/$defs/fill"},
+         "stroke": {"$ref": "#/$defs/stroke"},
+-        "text": {"$ref": "#/$defs/text"}
++        "text": {"$ref": "#/$defs/text"},
++        "link": {"$ref": "#/$defs/link"}
+       }
+     },
+ 
+@@ -280,6 +284,11 @@
+       "description": "Logical units (== pt). CAUTION: width 0 is a HAIRLINE in PowerPoint, not 'no line' -- a browser draws nothing for border-width:0 while PowerPoint draws the thinnest line it can. To get no line at all, use `\"stroke\": null`."
+     },
+ 
++    "link": {
++      "type": "string",
++      "description": "Phase 6 (HTML export): an optional hyperlink target for this shape, e.g. a URL or an in-deck anchor like '#slide-3'. NOT read by render_canvas.py -- the PPTX renderer never applies a hyperlink relationship, so this is informational-only for the .pptx path. The HTML exporter (editor.js exportHTML()) wraps an element carrying this in an <a href> so the exported deck is interactive."
++    },
++
+     "text": {
+       "description": "Null or absent means the shape carries no text. Connectors cannot carry text at all.",
+       "oneOf": [
+diff --git a/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js b/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js
+index 90450f2..c02ce99 100644
+--- a/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js
++++ b/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js
+@@ -82,9 +82,12 @@
+     // fillAlpha is a PERCENT (0-100), never serialized on its own -- toIR() folds it into the
+     // trailing hex byte of the fill colour string (Phase 6; schema.json's `color` def already
+     // accepts #RRGGBB + an optional AA byte). 100 == opaque == no byte emitted at all.
+-    shape: { fill: BRAND_RED, fillAlpha: 100, strokeColor: '', strokeWidth: 1, size: 14, color: '#FFFFFF', align: 'CENTER', valign: 'MIDDLE', bold: false, italic: false },
++    // link (Phase 6): schema.json's optional `link` on rect/ellipse/triangle/textbox -- an HTML
++    // export hyperlink target. Not read by render_canvas.py; empty string means "no link", same
++    // convention as strokeColor.
++    shape: { fill: BRAND_RED, fillAlpha: 100, strokeColor: '', strokeWidth: 1, size: 14, color: '#FFFFFF', align: 'CENTER', valign: 'MIDDLE', bold: false, italic: false, link: '' },
+     // A textbox is geometrically a rect; the split is authorial intent. No fill, black ink.
+-    textbox: { fill: '', fillAlpha: 100, strokeColor: '', strokeWidth: 1, size: 14, color: '#000000', align: 'CENTER', valign: 'MIDDLE', bold: false, italic: false },
++    textbox: { fill: '', fillAlpha: 100, strokeColor: '', strokeWidth: 1, size: 14, color: '#000000', align: 'CENTER', valign: 'MIDDLE', bold: false, italic: false, link: '' },
+     connector: { color: BRAND_RED, width: 1.5, arrow: 'end', kind: 'straight' },
+     // Media (Phase 6) is not a drawing TOOL -- it is inserted from a file picker, never dragged out
+     // -- so it carries no drag-out default box the way SHAPE_TYPES do; MEDIA_DEFAULT_SIZE (below)
+@@ -432,6 +435,7 @@
+       s.size = +d.size; s.color = d.color; s.align = d.align; s.valign = d.valign;
+       // A dataset value is a STRING, so '' and '0' and 'false' are all truthy traps. Compare.
+       s.bold = d.bold === '1'; s.italic = d.italic === '1';
++      s.link = d.link || '';
+     }
+     return s;
+   }
+@@ -452,6 +456,7 @@
+       d.size = s.size; d.color = s.color; d.align = s.align; d.valign = s.valign;
+       // '1' or '' -- style.css keys off [data-bold='1'], so "off" must not be the string 'false'.
+       d.bold = s.bold ? '1' : ''; d.italic = s.italic ? '1' : '';
++      d.link = s.link || '';
+     }
+   }
+ 
+@@ -1392,6 +1397,7 @@
+     };
+     if (s.rot) out.rotation = round6(s.rot);
+     if (s.strokeColor) out.stroke = { color: s.strokeColor, width: round6(s.strokeWidth) };
++    if (s.link) out.link = s.link;
+ 
+     var body = el.querySelector('.txt .body');
+     var paragraphs = body ? normalizeText(body, s.size, s.color, s.bold, s.italic) : null;
+@@ -1524,7 +1530,7 @@
+   }
+ 
+   ['p-fill', 'p-fill-alpha', 'p-stroke', 'p-stroke-w', 'p-color', 'p-size', 'p-align', 'p-valign',
+-   'p-kind', 'p-arrow', 'p-rot'].forEach(function (id) { txControl($(id)); });
++   'p-kind', 'p-arrow', 'p-rot', 'p-link'].forEach(function (id) { txControl($(id)); });
+ 
+   guardColor($('p-fill'), function (v) {
+     if (isConnector()) return; // a connector has no fill -- the schema does not give it one
+@@ -1587,6 +1593,13 @@
+     if (!isConnector()) patchSelected({ size: +this.value });
+   });
+ 
++  // Phase 6: HTML export hyperlink. A connector/media element has no `link` in the schema (this
++  // control is scoped away by data-for="shape" the same as fill/stroke/text already are), so the
++  // guard mirrors p-fill-alpha's.
++  $('p-link').addEventListener('input', function () {
++    if (!isConnector() && !isMedia()) patchSelected({ link: this.value });
++  });
++
+   /* ---------------------------------------------------------------------------- run.bold / run.italic
+    *
+    * The two IR properties the Phase 1B panel never exposed. They are ELEMENT-level controls over a
+@@ -1841,6 +1854,7 @@
+       $('p-valign').value = s.valign;
+       $('p-rot').value = Math.round(s.rot || 0);
+       $('p-rot-out').textContent = Math.round(s.rot || 0) + '°';
++      $('p-link').value = s.link || '';
+     }
+     setStatus(s.id + ' — ' + s.type);
+   }
+@@ -2071,6 +2085,92 @@
+     }
+   });
+ 
++  /* ----------------------------------------------------------------------- HTML export (Phase 6)
++   *
++   * Fully client-side, unlike Export PPT / Download JSON: it needs no /api/download round trip and
++   * no template_sha256 from /api/context, so it works even while CONTEXT is null (server offline).
++   * The exported file is a snapshot of exactly what the stage already renders -- each element's
++   * outerHTML (the same SVG shape markup and .txt contract renderEl() just built) is bundled
++   * verbatim, so the exported deck cannot visually drift from the preview the way a from-scratch
++   * re-implementation of shape drawing could. An element carrying `link` (schema.json's optional
++   * shape property -- rect/ellipse/triangle/textbox only) is wrapped in a real <a>, so e.g. a box
++   * can jump to a separate algorithm-explanation slide when the exported HTML is opened.
++   *
++   * `display: contents` on the wrapping <a> is what keeps this safe: it generates no box of its own
++   * (so it cannot disturb the wrapped element's absolute position or its z-order) while every click
++   * on any descendant -- including one that lands on the SVG or the pointer-events:none .txt
++   * bubbling through to it, same as the editor's own drag handler already relies on -- still fires
++   * the anchor's navigation, because that is DOM event bubbling and has nothing to do with layout.
++   */
++
++  var EXPORT_CSS = [
++    '* { box-sizing: border-box; }',
++    'html, body { margin: 0; background: #eceef1; }',
++    'body { display: flex; justify-content: center; padding: 24px; }',
++    // Same 960x540 @ 1 CSS px == 1 logical unit contract as #stage in style.css, minus the --zoom
++    // scale: an exported file has no zoom control, so it always renders at the native model size.
++    '#stage { position: relative; width: 960px; height: 540px; background: #fff; overflow: hidden; ' +
++      'box-shadow: 0 2px 12px rgba(0, 0, 0, .14); font-family: system-ui, "Segoe UI", "Malgun Gothic", sans-serif; }',
++    '#title-field { position: absolute; left: 45.55px; top: 26.75px; width: 725.29px; height: 37.25px; ' +
++      'display: flex; align-items: center; font-family: "Century Gothic", "Malgun Gothic", sans-serif; ' +
++      'font-size: 30px; line-height: 1.2; color: #000000; white-space: pre-wrap; overflow-wrap: break-word; ' +
++      'word-break: keep-all; }',
++    '.el { position: absolute; transform: rotate(var(--rot, 0deg)); transform-origin: 50% 50%; }',
++    '.el svg { overflow: visible; position: absolute; inset: 0; }',
++    '.el .txt { position: absolute; left: 7.2px; right: 7.2px; top: 3.6px; bottom: 3.6px; ' +
++      'box-sizing: border-box; padding: 0; margin: 0; border: 0; ' +
++      'font-family: "Century Gothic", "Malgun Gothic", sans-serif; font-size: 14px; line-height: 1.2; ' +
++      'white-space: pre-wrap; overflow-wrap: break-word; word-break: keep-all; ' +
++      'display: flex; align-items: center; justify-content: center; text-align: center; overflow: visible; ' +
++      'pointer-events: none; }',
++    '.el .txt > .body { width: 100%; }',
++    '.el[data-bold="1"] .txt { font-weight: 700; }',
++    '.el[data-italic="1"] .txt { font-style: italic; }',
++    '.el .txt[data-valign="TOP"]    { align-items: flex-start; }',
++    '.el .txt[data-valign="MIDDLE"] { align-items: center; }',
++    '.el .txt[data-valign="BOTTOM"] { align-items: flex-end; }',
++    '.el .txt[data-align="LEFT"]    { justify-content: flex-start; text-align: left; }',
++    '.el .txt[data-align="CENTER"]  { justify-content: center;     text-align: center; }',
++    '.el .txt[data-align="RIGHT"]   { justify-content: flex-end;   text-align: right; }',
++    '.el[data-type="connector"] { overflow: visible; }',
++    '.el .media { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; }',
++  ].join('\n');
++
++  // Drop everything an exported file must not carry: resize/rotate/connector-endpoint handles
++  // (editor-only affordances), selection/editing/blocked state, and the contenteditable attribute
++  // stopEditing() would otherwise have already cleared before export ever runs.
++  function stripEditorChrome(clone) {
++    clone.classList.remove('selected', 'editing', 'multi-selected', 'blocked');
++    if (clone.className === '') clone.removeAttribute('class');
++    var handles = clone.querySelectorAll('.handle');
++    for (var i = 0; i < handles.length; i++) handles[i].remove();
++    var body = clone.querySelector('.txt .body');
++    if (body) body.removeAttribute('contenteditable');
++    return clone;
++  }
++
++  function exportElementHTML(el) {
++    var html = stripEditorChrome(el.cloneNode(true)).outerHTML;
++    var link = read(el).link; // undefined for a connector/media -- both fall through unwrapped
++    if (link) html = '<a href="' + esc(link) + '" style="display:contents;cursor:pointer">' + html + '</a>';
++    return html;
++  }
++
++  function exportHTML() {
++    clearWarnings();
++    var els = [].slice.call(stage.querySelectorAll(':scope > .el'));
++    var doc =
++      '<!DOCTYPE html>\n<html lang="ko">\n<head>\n<meta charset="utf-8">\n' +
++      '<meta name="viewport" content="width=device-width, initial-scale=1">\n' +
++      '<title>' + esc(safeStem()) + '</title>\n<style>\n' + EXPORT_CSS + '\n</style>\n</head>\n<body>\n' +
++      '<div id="stage">\n<div id="title-field">' + titleField.innerHTML + '</div>\n' +
++      els.map(exportElementHTML).join('\n') + '\n</div>\n</body>\n</html>\n';
++    download(new Blob([doc], { type: 'text/html' }), safeStem() + '.html');
++    setStatus('Downloaded HTML (' + els.length + ' element(s)).');
++  }
++
++  $('b-export-html').addEventListener('click', exportHTML);
++
+   /* Load JSON — a stretch goal, and the other half of the Gate 4 round trip. */
+   $('b-load').addEventListener('click', function () { $('f-load').click(); });
+ 
+@@ -2618,6 +2718,7 @@
+       valign: text.valign || def.valign,
+       bold: nRuns > 0 && nBold === nRuns,
+       italic: nRuns > 0 && nItalic === nRuns,
++      link: typeof e.link === 'string' ? e.link : def.link,
+     };
+   }
+ 
+diff --git a/tasks/AI_Powered_PPT/src/aippt/canvas/static/index.html b/tasks/AI_Powered_PPT/src/aippt/canvas/static/index.html
+index e7abf6a..5a3cd9c 100644
+--- a/tasks/AI_Powered_PPT/src/aippt/canvas/static/index.html
++++ b/tasks/AI_Powered_PPT/src/aippt/canvas/static/index.html
+@@ -69,6 +69,10 @@
+       <button type="button" id="b-load">Load JSON</button>
+       <input type="file" id="f-load" accept="application/json,.json" hidden>
+       <button type="button" id="b-export" class="primary">Export PPT</button>
++      <!-- Phase 6: standalone HTML export. Bundles #stage into a single self-contained HTML file --
++           client-side only, no server round trip -- so an element carrying `link` (below) becomes an
++           actual clickable <a> in the exported file, same as it does on the stage. -->
++      <button type="button" id="b-export-html" class="primary">Download HTML</button>
+     </section>
+ 
+     <!-- AI_PPT_v2 Phase 4: server-side save/load. A design saved here goes through the SAME
+@@ -203,6 +207,15 @@
+       </label>
+     </section>
+ 
++    <!-- Phase 6: HTML export. schema.json's `link` (rect/ellipse/triangle/textbox only, same as the
++         rest of this section) is informational-only to the PPTX renderer -- it exists so the HTML
++         exporter (editor.js exportHTML()) can wrap the element in an <a href> for an interactive
++         exported deck, e.g. a link to a separate algorithm-explanation slide. -->
++    <section class="group" data-for="shape">
++      <h2>Link</h2>
++      <label>Link <input type="url" id="p-link" placeholder="https://…"></label>
++    </section>
++
+     <section class="group" data-for="connector">
+       <h2>Connector</h2>
+       <label>Kind

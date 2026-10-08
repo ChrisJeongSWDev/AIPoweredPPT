@@ -1,0 +1,193 @@
+diff --git a/tasks/AI_Powered_PPT/src/aippt/canvas/static/index.html b/tasks/AI_Powered_PPT/src/aippt/canvas/static/index.html
+index 6c41ac5..5e7f096 100644
+--- a/tasks/AI_Powered_PPT/src/aippt/canvas/static/index.html
++++ b/tasks/AI_Powered_PPT/src/aippt/canvas/static/index.html
+@@ -65,37 +65,39 @@
+ 
+     <section class="group">
+       <h2>JSON & Data</h2>
+-      <button type="button" id="b-view-json" class="primary mb-1" style="background: #2563eb; border-color: #2563eb; padding: 10px; font-weight: bold; font-size: 13px;">View & Copy JSON 📝</button>
+-      <div class="row">
+-        <button type="button" id="b-json">Download JSON</button>
+-        <button type="button" id="b-load">Load JSON</button>
++      <div class="action-stack">
++        <button type="button" id="b-view-json" class="sidebar-action sidebar-action--featured">View & Copy JSON 📝</button>
++        <div class="action-grid-2">
++          <button type="button" id="b-json" class="sidebar-action">Download JSON</button>
++          <button type="button" id="b-load" class="sidebar-action">Load JSON</button>
++        </div>
++        <button type="button" id="b-paste" class="sidebar-action">Paste Gem JSON</button>
+       </div>
+-      <button type="button" id="b-paste" style="width: 100%; margin-top: 4px;">Paste Gem JSON</button>
+       <input type="file" id="f-load" accept="application/json,.json" hidden>
+     </section>
+ 
+     <section class="group">
+       <h2>Export Deck</h2>
+-      <div class="row">
+-        <button type="button" id="b-export" class="primary">Export PPT</button>
+-        <button type="button" id="b-export-html" class="primary">Download HTML</button>
++      <div class="action-grid-2">
++        <button type="button" id="b-export" class="sidebar-action sidebar-action--primary">Export PPT</button>
++        <button type="button" id="b-export-html" class="sidebar-action sidebar-action--primary">Download HTML</button>
+       </div>
+     </section>
+ 
+     <section class="group" id="designs">
+       <h2>Server Templates</h2>
+-      <label class="stacked">Name
+-        <input type="text" id="p-design-name" placeholder="e.g. Q3 Deck" maxlength="80">
+-      </label>
+-      <label class="stacked">Templates
+-        <select id="p-designs">
+-          <option value="">(none saved)</option>
+-        </select>
+-      </label>
+-      <div class="row">
+-        <button type="button" id="b-save-design" class="primary">Save</button>
+-        <button type="button" id="b-load-design">Load</button>
+-        <button type="button" id="b-delete-design" style="background: #ef4444; border-color: #ef4444; color: white;">Delete</button>
++      <div class="action-stack">
++        <label class="stacked">Name
++          <input type="text" id="p-design-name" placeholder="e.g. Q3 Deck" maxlength="80">
++        </label>
++        <button type="button" id="b-save-design" class="sidebar-action sidebar-action--primary">Save</button>
++        <label class="stacked">Templates
++          <select id="p-designs">
++            <option value="">(none saved)</option>
++          </select>
++        </label>
++        <button type="button" id="b-load-design" class="sidebar-action">Load</button>
++        <button type="button" id="b-delete-design" class="sidebar-action sidebar-action--danger">Delete</button>
+       </div>
+     </section>
+   </aside>
+diff --git a/tasks/AI_Powered_PPT/src/aippt/canvas/static/style.css b/tasks/AI_Powered_PPT/src/aippt/canvas/static/style.css
+index a38cc2c..dc1dfe4 100644
+--- a/tasks/AI_Powered_PPT/src/aippt/canvas/static/style.css
++++ b/tasks/AI_Powered_PPT/src/aippt/canvas/static/style.css
+@@ -142,7 +142,7 @@ button, select, input[type='number'], input[type='text'] {
+   color: #1e293b;
+   cursor: pointer;
+   box-sizing: border-box;
+-  transition: all 0.15s ease;
++  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+ }
+ input[type='number'], input[type='text'] { cursor: text; }
+ button:hover { background: #f8fafc; border-color: #94a3b8; }
+@@ -150,7 +150,48 @@ button[aria-pressed='true'] { background: #FF0032; border-color: #FF0032; color:
+ button.primary { width: 100%; margin-bottom: 0; background: #1e293b; border-color: #1e293b; color: #fff; font-weight: 500; }
+ button.primary:hover { background: #334155; border-color: #334155; }
+ button:disabled, button.primary:disabled { opacity: .45; cursor: not-allowed; }
+-#b-load, #b-load-design { width: 100%; }
++
++/* Scoped layout containers for the sidebar action groups (JSON & Data / Export Deck / Server
++   Templates). Deliberately separate from `.row` (still used, unchanged, by History/Media/Arrange/
++   Align) so retuning one group's layout can never regress the others. */
++.action-stack { display: flex; flex-direction: column; gap: 6px; }
++.action-stack > label.stacked { margin-bottom: 0; }
++.action-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
++
++.sidebar-action {
++  width: 100%;
++  min-height: 34px;
++  padding: 8px 10px;
++  font-size: 12px;
++  font-weight: 500;
++  border-radius: 5px;
++  margin-bottom: 0;
++}
++.sidebar-action:focus-visible {
++  outline: 2px solid #1e88ff;
++  outline-offset: 2px;
++}
++/* The featured JSON action and the dark-primary actions (Export Deck, Save Template) share the
++   same coordinated slate treatment -- the featured control is visually distinguished by weight/
++   size, not by a separate off-system colour (the prior bright-blue inline style this replaces). */
++.sidebar-action--primary,
++.sidebar-action--featured {
++  background: #1e293b;
++  border-color: #1e293b;
++  color: #fff;
++}
++.sidebar-action--primary:hover,
++.sidebar-action--featured:hover {
++  background: #334155;
++  border-color: #334155;
++}
++.sidebar-action--featured { font-weight: 700; font-size: 13px; }
++.sidebar-action--danger {
++  background: #ef4444;
++  border-color: #ef4444;
++  color: #fff;
++}
++.sidebar-action--danger:hover { background: #dc2626; border-color: #dc2626; }
+ 
+ #stage-wrap {
+   grid-area: stage;
+@@ -183,14 +224,12 @@ button:disabled, button.primary:disabled { opacity: .45; cursor: not-allowed; }
+    instead of the fixed row above `#status`. Rounded, elevated card so it reads as a distinct
+    composer, not another toolbar section that happens to have moved. */
+ #ai {
+-  position: absolute;
+-  bottom: 24px;
+-  left: 50%;
+-  transform: translateX(-50%);
++  grid-area: composer;
++  justify-self: center;
++  margin: 12px 0 16px;
+   width: 720px;
+   max-width: calc(100% - 32px);
+   box-sizing: border-box;
+-  z-index: 1000;
+   display: flex;
+   flex-direction: column;
+   padding: 12px 16px;
+@@ -327,7 +366,7 @@ button:disabled, button.primary:disabled { opacity: .45; cursor: not-allowed; }
+   color: #6b727c;
+   border-radius: 50%;
+   cursor: pointer;
+-  transition: all 0.2s ease;
++  transition: background-color 0.2s ease, color 0.2s ease;
+ }
+ .icon-btn:hover { background: #f1f5f9; color: #1e293b; }
+ 
+@@ -359,17 +398,17 @@ button:disabled, button.primary:disabled { opacity: .45; cursor: not-allowed; }
+   display: flex;
+   align-items: center;
+   justify-content: center;
+-  width: 32px;
+-  height: 32px;
++  width: 34px;
++  height: 34px;
+   border: none;
+-  border-radius: 50%;
+-  background: #1a1a1a;
++  border-radius: 8px;
++  background: #1e293b;
+   color: #ffffff;
+   cursor: pointer;
+-  transition: all 0.2s ease;
++  transition: background-color 0.2s ease;
+   padding: 0;
+ }
+-.submit-btn:hover { background: #333333; }
++.submit-btn:hover { background: #334155; }
+ .submit-btn[aria-busy='true'] { animation: busy 1.1s ease-in-out infinite; }
+ 
+ #ai .hint { margin: 0; color: #6b727c; font-size: 11px; line-height: 1.45; }
+@@ -385,11 +424,9 @@ button:disabled, button.primary:disabled { opacity: .45; cursor: not-allowed; }
+    grid row -- it is still `grid-area: composer`, so it can never overlap `#status` or `#stage-wrap`
+    ("without covering the status bar or stage controls", brief item 8). */
+ @media (max-width: 720px) {
+-  .composer-head { flex-direction: column; align-items: stretch; }
+-  .composer-model { justify-content: space-between; }
+-  .composer-box { flex-direction: column; align-items: stretch; }
+-  .composer-actions { flex-direction: row; }
+-  .composer-actions button { flex: 1; }
++  .composer-toolbar { flex-direction: column; align-items: stretch; gap: 8px; }
++  .toolbar-left { justify-content: space-between; }
++  .toolbar-right { justify-content: flex-end; }
+ }
+ 
+ /* ------------------------------------------------------------------- CONTRACT: the stage (5.2) */

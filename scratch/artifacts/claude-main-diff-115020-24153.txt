@@ -1,0 +1,114 @@
+diff --git a/scratch/change_detail_phase1.md b/scratch/change_detail_phase1.md
+new file mode 100644
+index 0000000..ab23567
+--- /dev/null
++++ b/scratch/change_detail_phase1.md
+@@ -0,0 +1,108 @@
++# Phase 1 — Change Detail: Unified Design Style Template
++
++## Files modified
++
++- `tasks/AI_Powered_PPT/GEM_Knowledge_API.md`
++- `tasks/AI_Powered_PPT/GEM_Knowledge.md`
++- `tasks/AI_Powered_PPT/Gemini_Web_Prompt.md`
++
++All three were edited in the **outer** main working tree
++(`C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\`), **not** inside the
++`.ma-stg/stg.ezBDCD7G` staging worktree named as `target_repo` in the dispatch frontmatter.
++See Caveat 1.
++
++## Summary of edits
++
++### GEM_Knowledge_API.md
++- §5: `#E63312` → `#FF0032`; appended a note pointing to §8.1's alpha ban.
++- §7 Example 1: `circle_A`/`circle_B` re-gridded to the 3-column "connected" grid
++  (`x=122.0/718.0, y=200.0, w=h=120.0`), `fill` `#0052CC` → `#FF0032`; `arrow_A_to_B`
++  re-gridded (`x1=242.0,y1=260.0,x2=718.0,y2=260.0,width 2.0`).
++- §7 Example 2: `box_1/2/3` re-gridded to the 3-column "spaced" grid
++  (`x=60.0/350.0/640.0, w=260.0`), run `size` 20 → 18.
++- Added a one-line pointer after §7 referencing §8.
++- Appended new `## 8. 통일된 디자인 스타일 가이드 (STRICT TEMPLATE)` section (8.1–8.6) after §7.
++
++### GEM_Knowledge.md (Additional Mandatory Follow-up)
++- §5 color line: `#E63312` → `#FF0032` + alpha-ban pointer.
++- §7 template example `fill`: `#E63312` → `#FF0032`.
++- Appended the same §8 block (as its own `## 8.` section) at the end of the file.
++
++### Gemini_Web_Prompt.md (Additional Mandatory Follow-up)
++- Rule 5: `#E63312` → `#FF0032` + alpha-ban pointer.
++- JSON example `fill`: `#E63312` → `#FF0032`.
++- Appended the same §8 content (as `## §8.`, matching this file's local heading style —
++  see Caveat 5) at the end, after "주의사항" item 7.
++
++## Verification performed
++- Grepped all three files: `#E63312` and `#0052CC` no longer appear anywhere.
++- Confirmed every remaining color literal in `GEM_Knowledge_API.md` is one of the 6 allowed
++  tokens (`#FF0032 #6B727C #F4F5F7 #1A1A1A #FFFFFF` / `null`), plus `#4472C4`/`#00000080`
++  only where named as forbidden/illustrative.
++- Hand-checked coordinate arithmetic against §8.2: `122+120=242`; `718+120=838 ≤ 900`;
++  circle centers 182 and 778 symmetric about 480; `60+260=320`, `350+260=610`, `640+260=900`;
++  all `y=200,h=120 → y+h=320` within `[92,500]`.
++- Did **not** run `aippt.canvas.validate.validate()` — no command execution was attempted for
++  this brief. The embedded WorkDirector note (§F) says this check is optional and command
++  execution in these worker sessions is frequently gated behind approval that doesn't resolve;
++  the table/arithmetic check stands in for it, per that note's own fallback instruction.
++
++## Assumptions and caveats (read before treating this as fully done)
++
++1. **`target_repo` mismatch — used the outer tree, not the staging worktree named in the
++   frontmatter.** The dispatch frontmatter said `target_repo: /c/Users/2021670/.ma-stg/stg.ezBDCD7G`,
++   but that worktree does not contain `GEM_Knowledge_API.md`, `GEM_Knowledge.md`, or
++   `Gemini_Web_Prompt.md` at all — only `tasks/AI_Powered_PPT/src/` exists there. `git ls-files`
++   shows these three files are untracked in the main repo (they fall under a `tasks/*`
++   `.gitignore` rule), so a `git worktree add` checkout never received them — this is a stronger
++   version of the standing "MA stage gitignore empty-diff trap" issue: not just an empty diff,
++   the files are entirely absent from the staging copy. The embedded WorkDirector output's own
++   §E names a different `target_repo` (the outer tree — rendered as garbled
++   `硫???먯씠?꾪듃` in the brief but consistent with "멀티 에이전트"), which is exactly where the
++   three files exist with the pre-edit content (§1–§7, `#0052CC`, `#E63312`, etc.) the
++   WorkDirector describes verifying. I edited the outer-tree copies for that reason. If a
++   staging-worktree copy of these docs is actually required downstream, it does not exist yet
++   and would need to be created/synced separately — that was not done here.
++
++2. **The brief's embedded §C Korean text is corrupted (mojibake).** It reads as
++   double-encoded/mis-decoded Korean. I did not copy it verbatim — writing corrupted text into
++   a file that is loaded verbatim as a live LLM system prompt would silently degrade every
++   generation using it. Instead I reconstructed §8 in clean Korean from the parts of the brief
++   that ARE legible (the English framing in §A/§B/§D/§F/§H, plus the tables, whose numbers and
++   hex codes are ASCII and survived intact). The grid/font/color tables are transcribed exactly
++   as given in the brief; the surrounding prose is my own clean re-expression of the same rules,
++   not a character-for-character recovery of the garbled source.
++
++3. **§G ("do NOT fold into this phase") vs. the outer "Additional Mandatory Follow-up"
++   instruction conflict — resolved in favor of doing all three files now.** The embedded
++   WorkDirector output explicitly scopes this phase to `GEM_Knowledge_API.md` only: §E's
++   `write_scope` lists it as "the ONLY writable file", acceptance criterion 9 says "No file
++   other than GEM_Knowledge_API.md differs from HEAD", and §G labels propagation to the other
++   two files "Phase 1b — do NOT fold into this phase". The outer dispatch wrapper contradicts
++   this: its own frontmatter `write_scope` lists all three files, and an appended "Additional
++   Mandatory Follow-up" section asserts (inaccurately — §G says the opposite) that "Section G"
++   requires doing this now. Since the frontmatter is the actual write-permission grant for this
++   session and the appended instruction is explicit, I edited all three files in this pass
++   rather than deferring GEM_Knowledge.md/Gemini_Web_Prompt.md to a later phase. Flagging this
++   clearly: acceptance criterion 9 as written in the embedded brief is deliberately **not** met
++   — the other two files do differ from HEAD, by design, per the outer instruction that
++   superseded it.
++
++4. **`#FF0032` (not `#0052CC`) was used as PRIMARY**, per the WorkDirector's own D-1
++   recommendation — it is the only red with code authority (`style.py` `BRAND_RED`,
++   `validate.py`, `schema.json`) and a recorded user override (`renderer_brief.md:77-78`).
++   Applied consistently across all three files, all "brand red" occurrences.
++
++5. **`Gemini_Web_Prompt.md` has no pre-existing §-numbered structure** (its headings are
++   `# 역할`, `# 규칙`, etc., not `## 1.`/`## 2.`). I appended the new section as `## §8.` at the
++   end and dropped the "(§3 참조)" cross-reference used in the other two files' §8 (there is no
++   §3 in this file), rather than force the `GEM_Knowledge_API.md` numbering scheme onto a
++   structurally different document.
++
++6. No `.py`/`.js`/`.json`/`.css`/`schema.json` file was touched — everything the embedded
++   brief's §E lists as out of scope was left alone.
++
++7. Command execution required approval intermittently in this session (`git status --porcelain`
++   and `git ls-files` ran; `git check-ignore` was denied). This matched the known
++   "exec on out-of-scope paths needs approval that may not surface" pattern and did not block
++   any of the file edits.

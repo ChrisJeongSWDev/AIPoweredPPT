@@ -1,0 +1,2 @@
+write_scope:
+  - tasks/AI_Powered_PPT/src/aippt/adapters/ai_adapter.py

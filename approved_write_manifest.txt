@@ -1,0 +1,4 @@
+src/aippt/canvas/schema.json
+src/aippt/canvas/static/index.html
+src/aippt/canvas/static/editor.js
+src/aippt/canvas/static/style.css

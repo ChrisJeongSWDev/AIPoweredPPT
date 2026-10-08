@@ -1,0 +1,15 @@
+Work complete. Summary:
+
+**Applied to `stg.jefKC919/tasks/AI_Powered_PPT/src/aippt/canvas/static/{index.html,style.css}`** (the staging repo named by the brief's `target_repo`), implementing all 7 Work Order items from the Codex Critic:
+
+- **AI composer** (`#ai`): swapped absolute/viewport-centered positioning for `grid-area: composer; justify-self: center`, so it now genuinely occupies the reserved grid row above `#status`. Submit button became a 34px, 8px-radius rounded square in `#1e293b` (was a circular `#1a1a1a`). Fixed the dead mobile media query to target `.composer-toolbar`/`.toolbar-left`/`.toolbar-right`, which actually exist.
+- **New scoped classes** — `.action-stack`, `.action-grid-2`, `.sidebar-action` (+ `--primary`/`--featured`/`--danger` modifiers) — applied only to JSON & Data, Export Deck, and Server Templates; `.row` was left untouched everywhere else.
+- **JSON & Data / Export Deck**: rebuilt with the new classes, all three inline `style=` attributes removed.
+- **Server Templates**: reordered to Name → Save → Templates → Load → Delete, all full-width, per spec.
+- **Shared styling**: `transition: all` narrowed to targeted properties (button/select/input, `.icon-btn`, `.submit-btn`), added `:focus-visible` outlines.
+
+I cross-checked the temp brief against the canonical outer-tree copy (`update_ui_brief.md`) and the full Codex review (`artifacts/codex-director-stdout-2333388-13109.txt`) before trusting it — they matched, confirming this was the established "target_repo swapped to staging" dispatch pattern rather than a corrupted brief. That audit also had an item-8 validation checklist the brief itself omitted; I verified against it by hand (no execution available in this session).
+
+One judgment call, flagged in the doc: the "featured" JSON button's blue color was unified into the same `#1e293b` slate system rather than kept as a separate color, since the review explicitly called blue a "bypass" of the shared system.
+
+Full rationale and verification notes are in `tasks/AI_Powered_PPT/change_detail.md` (outer tree, per this task's established convention — staging worktrees here never land durably). Not verified in a real browser; flagged in the doc as the one gap.

@@ -1,0 +1,3 @@
+VERDICT: APPROVE
+
+`getBoundingClientRect` occurs exactly once inside `toModel()`, with no banned measurement APIs. Undo/Redo validates snapshots through `illegalReason()` before DOM mutation and only pops history after successful restoration. Stage z-order remains DOM/array order; the property panel is outside `#stage` and introduces no stage stacking index.

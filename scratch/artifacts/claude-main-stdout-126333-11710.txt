@@ -1,0 +1,11 @@
+All four write-scope files have been edited and the change-detail doc filed exactly where the brief specified. Summary of what was done:
+
+**`index.html`** — removed the `+` attachment button; added `#b-view-log` next to `#p-model`; added a `#log-modal` (reusing existing `.modal-overlay`/`.modal-box` CSS classes for mechanics, with inline styles for the terminal look since `style.css` is out of scope) containing `<pre id="log-modal-text">`.
+
+**`editor.js`** — wired `#b-view-log` to open the modal, poll `GET /api/log` every second while open (stopped via `clearInterval` on close), with a close button and click-outside-to-close handler. Verified against Gate 1's static banned-pattern checks — no conflicts.
+
+**`app.py`** — added `GET /api/log`, reading `LIVE_LOG_PATH` (`tasks/AI_Powered_PPT/artifacts/multiagent_live.log`) fresh each call, returning `{"log": ...}` or a "Waiting for logs..." placeholder if the file doesn't exist yet.
+
+**`ai_adapter.py`** — rewrote `_run_cli()` (shared by both `CliWorkerClient` call tracks) to redirect the subprocess's `stderr` to that same log file via a real file handle (true real-time OS-level redirection, not buffered), then reads the file back into `result.stderr` afterward so the existing `_run_track_b` error-handling path (`result.stderr[-2000:]`) keeps working unchanged.
+
+Execution tools (`python`, `node --check`) were gated behind approval that never surfaced in this session, so everything was hand-verified by rereading the edited regions rather than run — flagged in the change-detail doc, along with a recommendation to run `pytest tasks/AI_Powered_PPT/tests/canvas/` before merging.

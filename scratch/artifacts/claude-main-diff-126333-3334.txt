@@ -1,0 +1,334 @@
+diff --git a/scratch/change_detail_phase2_3.md b/scratch/change_detail_phase2_3.md
+new file mode 100644
+index 0000000..d087957
+--- /dev/null
++++ b/scratch/change_detail_phase2_3.md
+@@ -0,0 +1,123 @@
++# Phase 2 & 3: UI Updates & Backend Multi-Agent Log Streaming — change detail
++
++Brief: temp brief at `C:\Users\2021670\AppData\Local\Temp\tmp.dcHcasTK5c`, `target_repo:
++/c/Users/2021670/.ma-stg/stg.qC0sdIn0`, `write_scope`: the four files below (all under
++`tasks/AI_Powered_PPT/`, confirmed by locating the files on disk — the brief's own paths omit that
++prefix, same pattern noted in memory `ai-powered-ppt-write-scope-prefix-bug`).
++
++Execution environment note: this session had unprompted `Read`/`Edit`/`Write`/`Bash` (plain
++filesystem ops) access to the staging worktree throughout. `python -c "import ast; ..."` and
++`node --check` were both refused with "This command requires approval" (consistent with the
++recurring interpreter/VCS-command gate documented in prior sessions' memory) — so every edit below
++was hand-verified by rereading the changed regions rather than by an actual syntax check or test
++run. Recommend a session with real execution access run `pytest tasks/AI_Powered_PPT/tests/canvas/`
++(especially `test_editor_source.py` Gate 1 and `test_app.py`) before merging.
++
++## Files touched (all within write_scope)
++
++- `src/aippt/canvas/static/index.html`
++- `src/aippt/canvas/static/editor.js`
++- `src/aippt/canvas/app.py`
++- `src/aippt/adapters/ai_adapter.py`
++
++## 1–3. `index.html` — remove `+`, add "View Log" button, add log modal
++
++- Removed the `<button class="icon-btn plus-btn">` (the attachment "+" button) from
++  `.toolbar-left` inside `#ai .composer-toolbar`.
++- Added `<button type="button" id="b-view-log" class="sidebar-action" style="margin-left: 8px;
++  font-size: 11px;">View Log</button>` immediately after the `.model-select-wrapper` div (i.e.
++  next to `#p-model`), inside the same `.toolbar-left`, exactly as the brief's literal markup
++  specified.
++- Added a new `#log-modal` block after the existing `#json-modal` block, reusing
++  `.modal-overlay`/`.modal-box`/`.modal-header`/`.modal-close-btn` from `style.css` for overlay
++  mechanics (backdrop, centering, close-X placement) — **not** `style.css` itself, since it is
++  outside this brief's `write_scope`. The "terminal window" look (dark background, monospace,
++  green-on-black `<pre>`) is done entirely via inline `style="..."` on the modal's own elements.
++  `<pre id="log-modal-text">` is the required log-text container; it starts with placeholder text
++  `Waiting for logs...` so the modal never shows a blank box before the first poll response lands.
++  Close button: `#b-close-log-modal`.
++
++## 4. `editor.js` — polling + modal wiring
++
++Added a self-contained block (same IIFE scope, same location/pattern as the existing
++`showJsonModal`/`hideJsonModal` pair just above it, right before the `$('b-json')` handler):
++
++- `showLogModal()` — unhides `#log-modal`, calls `pollLog()` once immediately (so the modal isn't
++  empty for a full second), then starts `setInterval(pollLog, 1000)`.
++- `hideLogModal()` — hides `#log-modal` and `clearInterval`s the poll timer (set back to `null`).
++  The interval is created only in `showLogModal()` and cleared only in `hideLogModal()`, so polling
++  never runs while the modal is closed.
++- `pollLog()` — `fetch('/api/log')`, on a non-ok response returns silently (a transient error
++  mid-poll isn't worth a warning banner — the next tick tries again), otherwise reads
++  `{"log": "..."}` and sets `$('log-modal-text').textContent`.
++- Listeners: `#b-view-log` click → `showLogModal`; `#b-close-log-modal` click → `hideLogModal`;
++  and a click listener on `#log-modal` itself (the overlay/backdrop element) that calls
++  `hideLogModal()` only when `ev.target === $('log-modal')` — i.e. true click-outside-to-close,
++  not triggered by clicks that bubble up from inside `.modal-box`.
++- Checked this addition against `tests/canvas/test_editor_source.py` (Gate 1, the comment-blind
++  substring/bracket-balance grep over `editor.js`): none of the new code touches any banned name
++  (`offsetWidth`/`getComputedStyle`/etc.), the banned canvas sizes, `deltaRect`, `zIndex`/`z-index`,
++  `12700`, or `4472C4`, and `getBoundingClientRect` count is unaffected (unchanged from its one
++  existing call site inside `toModel()`). `1000` (the poll interval) is not in the banned
++  `OTHER_CANVAS_SIZES` list. Grepped `tests/canvas/` for any reference to `plus-btn`/`icon-btn`/
++  `p-model`/`b-view-log`/`log-modal` — none found, so nothing else there is coupled to the markup
++  changed in step 1–3.
++
++## 5. `app.py` — `GET /api/log`
++
++- Added `LIVE_LOG_PATH = Path(__file__).resolve().parents[3] / "artifacts" /
++  "multiagent_live.log"`, right after the existing `PROMPT_PATH` constant and using the exact same
++  `parents[3]` convention (`canvas/ -> aippt/ -> src/ -> tasks/AI_Powered_PPT`) that `PROMPT_PATH`
++  already uses — chosen so `app.py` and `ai_adapter.py` (see below) agree on the log path without
++  either module importing the other's constant.
++- Added `@app.get("/api/log")` (placed between `/api/context` and `/api/export`, the other
++  read-mostly/status-shaped route): reads `LIVE_LOG_PATH` fresh on every call (no caching, so a
++  poll mid-generation sees the file grow) and returns `{"log": <text>}`; on `OSError` (file not
++  yet created — a fresh checkout before any live call has ever run) returns `{"log": "Waiting for
++  logs..."}` instead of raising. JSON, matching every other route in this file, rather than plain
++  text — `editor.js`'s `pollLog()` reads `data.log`.
++
++## 6. `ai_adapter.py` — real-time stderr redirection in `CliWorkerClient`
++
++- Added `_ARTIFACTS_DIR = _PROJECT_ROOT / "artifacts"` and `_LIVE_LOG_PATH = _ARTIFACTS_DIR /
++  "multiagent_live.log"` next to the existing `_PROMPTS_DIR`/`_REFERENCE_DIR` constants — same
++  `_PROJECT_ROOT` base app.py's `LIVE_LOG_PATH` resolves to, so both paths are the same file on
++  disk (`tasks/AI_Powered_PPT/artifacts/multiagent_live.log`).
++- Rewrote `_run_cli()` (the one subprocess-execution helper both `CliWorkerClient._run_track_a`
++  and `_run_track_b` call): it used to call `subprocess.run(..., capture_output=True, ...)`,
++  buffering stderr into a pipe nobody reads until the call returns. It now does
++  `_ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)`, opens `_LIVE_LOG_PATH` in text-write mode,
++  and passes that open file object as `stderr=` (with `stdout=subprocess.PIPE` kept explicit, since
++  `capture_output=True` cannot be combined with an explicit `stdout`/`stderr` kwarg). Handing
++  `subprocess.run` a real file object for `stderr` makes the OS write the child's stderr straight
++  to disk as it is produced — genuinely real-time, not something Python's side buffers — which is
++  what lets `GET /api/log` show a call that is still in flight.
++  - After the `subprocess.run` call returns, the file is closed (the `with open(...) as log_file:`
++    block ends) and then read back with `_LIVE_LOG_PATH.read_text(...)`, and the result is written
++    onto `result.stderr` (a `subprocess.CompletedProcess` is a plain mutable object, so this
++    assignment is safe) — restoring the pre-existing contract that `result.stderr` holds the
++    process's stderr as a string. This is what the brief's "read the file content back into
++    result.stderr... to avoid breaking existing error handling" asks for; confirmed the one caller
++    that actually reads `result.stderr` on a failure path, `_run_track_b`'s `if result.returncode
++    != 0: raise CliWorkerError(f"...: {result.stderr[-2000:]}")`, still works unchanged against a
++    plain string.
++  - Grepped `tests/canvas/test_app.py` for `CliWorkerClient`/`_run_cli`/`capture_output`: every
++    test that exercises the live path monkeypatches `CliWorkerClient.complete_json` directly and
++    never calls `_run_cli`/`_run_track_a`/`_run_track_b` for real, so this change has no test
++    surface to verify against in this checkout (call it out for the reviewer/QA pass, per the
++    execution-environment note above).
++  - Not handled specially: a `subprocess.TimeoutExpired` raised inside the `with open(...)` block
++    still propagates normally (the `with` block closes the file on the way out), so the log file is
++    left on disk with whatever partial stderr was written before the timeout, but
++    `result.stderr`/the read-back step never runs for that path — the brief only asked for the
++    completed-call case, and `_run_track_a`/`_run_track_b` already catch `TimeoutExpired`
++    separately and raise their own `CliWorkerError` without touching `result.stderr`, so this is not
++    a behavior change from before.
++
++## What was NOT verified (no execution access this session)
++
++- No `pytest` run of `tests/canvas/test_app.py` / `test_editor_source.py`.
++- No manual browser check of the modal (open/poll/close/click-outside), fetch wiring, or that
++  `subprocess.run(..., stderr=<file object>)` actually behaves as expected end-to-end on Windows
++  with the `.cmd` shim / `shell=True` path `_run_cli` also has to support (`use_shell` branch) —
++  this combination (file-object `stderr` + `shell=True`) was reasoned through but not executed.
+diff --git a/tasks/AI_Powered_PPT/src/aippt/adapters/ai_adapter.py b/tasks/AI_Powered_PPT/src/aippt/adapters/ai_adapter.py
+index ae150ca..56ea7ed 100644
+--- a/tasks/AI_Powered_PPT/src/aippt/adapters/ai_adapter.py
++++ b/tasks/AI_Powered_PPT/src/aippt/adapters/ai_adapter.py
+@@ -84,6 +84,13 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[3]
+ _PROMPTS_DIR = _PROJECT_ROOT / "prompts"
+ _REFERENCE_DIR = _PROJECT_ROOT / "reference"
+ 
++#: Where ``_run_cli`` mirrors a worker subprocess's live stderr, and where ``app.py``'s
++#: ``GET /api/log`` reads it back from -- the same ``_PROJECT_ROOT`` convention as
++#: ``_PROMPTS_DIR``/``_REFERENCE_DIR`` above, so both modules agree on the path without
++#: either hardcoding the other's.
++_ARTIFACTS_DIR = _PROJECT_ROOT / "artifacts"
++_LIVE_LOG_PATH = _ARTIFACTS_DIR / "multiagent_live.log"
++
+ 
+ class LLMClient(Protocol):
+     """The seam. Claude, Codex and Gemini are interchangeable *behind this*.
+@@ -615,6 +622,14 @@ def _run_cli(cmd: list[str], *, cwd: str | None, timeout_s: int, input_str: str
+     ``cmd.exe`` can. Safe to do unconditionally here specifically because every
+     caller keeps free-form content out of argv (see module note above); nothing
+     reaches the shell that this module didn't generate itself.
++
++    ``stderr`` is handed to the child as an open file (``_LIVE_LOG_PATH``), not
++    ``subprocess.PIPE`` -- the OS then writes the worker's stderr straight to disk as the
++    process produces it, so ``GET /api/log`` can tail a call that is still running instead
++    of only ever seeing output after the call returns. The file is read back into the
++    returned ``CompletedProcess.stderr`` before this function returns, so every existing
++    caller that inspects ``result.stderr`` (e.g. Track B's non-zero-exit error message)
++    keeps working exactly as before.
+     """
+     env = {**os.environ, "CI": "1"}
+     use_shell = os.name == "nt" and cmd[0].lower().endswith((".cmd", ".bat"))
+@@ -624,18 +639,27 @@ def _run_cli(cmd: list[str], *, cwd: str | None, timeout_s: int, input_str: str
+     else:
+         run_kwargs["stdin"] = subprocess.DEVNULL
+ 
+-    return subprocess.run(
+-        cmd,
+-        cwd=cwd,
+-        env=env,
+-        capture_output=True,
+-        text=True,
+-        encoding="utf-8",
+-        errors="replace",
+-        timeout=timeout_s,
+-        shell=use_shell,
+-        **run_kwargs,
+-    )
++    _ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
++    with open(_LIVE_LOG_PATH, "w", encoding="utf-8", errors="replace") as log_file:
++        result = subprocess.run(
++            cmd,
++            cwd=cwd,
++            env=env,
++            stdout=subprocess.PIPE,
++            stderr=log_file,
++            text=True,
++            encoding="utf-8",
++            errors="replace",
++            timeout=timeout_s,
++            shell=use_shell,
++            **run_kwargs,
++        )
++
++    try:
++        result.stderr = _LIVE_LOG_PATH.read_text(encoding="utf-8", errors="replace")
++    except OSError:
++        result.stderr = ""
++    return result
+ 
+ 
+ def _write_prompt_file(prompt: str) -> Path:
+diff --git a/tasks/AI_Powered_PPT/src/aippt/canvas/app.py b/tasks/AI_Powered_PPT/src/aippt/canvas/app.py
+index 2589d7a..71999ec 100644
+--- a/tasks/AI_Powered_PPT/src/aippt/canvas/app.py
++++ b/tasks/AI_Powered_PPT/src/aippt/canvas/app.py
+@@ -155,6 +155,12 @@ _MIME_KEYS = ("mime", "mime_type")
+ # project root: canvas/ -> aippt/ -> src/ -> <project root>.
+ PROMPT_PATH = Path(__file__).resolve().parents[3] / "GEM_Knowledge_API.md"
+ 
++# Multi-agent live log (Phase 2/3): ai_adapter.py's CliWorkerClient mirrors the worker subprocess's
++# stderr to this exact path in real time (see ai_adapter._run_cli) -- same "canvas/ -> aippt/ ->
++# src/ -> project root" convention as PROMPT_PATH above, so both modules agree on the path without
++# either importing the other's constant.
++LIVE_LOG_PATH = Path(__file__).resolve().parents[3] / "artifacts" / "multiagent_live.log"
++
+ 
+ # --- server-side design storage (AI_PPT_v2 Phase 4) ---------------------------------------------
+ #
+@@ -274,6 +280,23 @@ async def api_context(request: Request) -> dict[str, Any]:
+     }
+ 
+ 
++@app.get("/api/log")
++async def api_log() -> dict[str, Any]:
++    """The live multi-agent worker log, as plain text. Phase 2/3: backs the editor's "View Log"
++    terminal modal, which polls this every second while open.
++
++    Reads LIVE_LOG_PATH fresh on every call -- no caching -- so a poll during a running
++    ``CliWorkerClient`` call (see ai_adapter._run_cli) sees the file grow as the worker's stderr is
++    written to it in real time. Before the first live call in a fresh checkout the file does not
++    exist yet; that is not an error, just nothing to show yet.
++    """
++    try:
++        text = LIVE_LOG_PATH.read_text(encoding="utf-8", errors="replace")
++    except OSError:
++        text = "Waiting for logs..."
++    return {"log": text}
++
++
+ @app.post("/api/export")
+ async def api_export(request: Request) -> Response:
+     """canvas-ir/1 in, .pptx bytes out. In memory, start to finish.
+diff --git a/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js b/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js
+index 7b329d0..3a654b6 100644
+--- a/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js
++++ b/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js
+@@ -2028,6 +2028,43 @@
+     });
+   }
+ 
++  /* Multi-Agent Live Log modal (Phase 2/3). Polls /api/log once a second WHILE OPEN only -- the
++     interval is created in showLogModal() and cleared in hideLogModal(), never running in the
++     background with the modal hidden. */
++  var logPollTimer = null;
++
++  function showLogModal() {
++    $('log-modal').removeAttribute('hidden');
++    pollLog();
++    logPollTimer = setInterval(pollLog, 1000);
++  }
++  function hideLogModal() {
++    $('log-modal').setAttribute('hidden', 'true');
++    if (logPollTimer) {
++      clearInterval(logPollTimer);
++      logPollTimer = null;
++    }
++  }
++  async function pollLog() {
++    try {
++      var res = await fetch('/api/log');
++      if (!res.ok) return;  // a transient server error mid-poll isn't worth a warning banner
++      var data = await res.json();
++      $('log-modal-text').textContent = data.log || 'Waiting for logs...';
++    } catch (e) {
++      // network hiccup between ticks -- next tick tries again
++    }
++  }
++  if ($('b-view-log')) $('b-view-log').addEventListener('click', showLogModal);
++  if ($('b-close-log-modal')) $('b-close-log-modal').addEventListener('click', hideLogModal);
++  if ($('log-modal')) {
++    $('log-modal').addEventListener('click', function (ev) {
++      // click-outside-to-close: only the overlay backdrop itself, not a click that bubbled up
++      // from something inside .modal-box.
++      if (ev.target === $('log-modal')) hideLogModal();
++    });
++  }
++
+   $('b-json').addEventListener('click', function () {
+     if (!CONTEXT) return;
+     clearWarnings();
+diff --git a/tasks/AI_Powered_PPT/src/aippt/canvas/static/index.html b/tasks/AI_Powered_PPT/src/aippt/canvas/static/index.html
+index b211a97..e6bb664 100644
+--- a/tasks/AI_Powered_PPT/src/aippt/canvas/static/index.html
++++ b/tasks/AI_Powered_PPT/src/aippt/canvas/static/index.html
+@@ -340,9 +340,6 @@
+     
+     <div class="composer-toolbar">
+       <div class="toolbar-left">
+-        <button type="button" class="icon-btn plus-btn" title="Add attachment">
+-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+-        </button>
+         <div class="model-select-wrapper">
+           <select id="p-model">
+             <option value="sonnet" selected>Claude Sonnet 5</option>
+@@ -352,6 +349,7 @@
+           </select>
+           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+         </div>
++        <button type="button" id="b-view-log" class="sidebar-action" style="margin-left: 8px; font-size: 11px;">View Log</button>
+       </div>
+       <div class="toolbar-right">
+         <button type="button" id="b-generate" class="submit-btn" title="Generate">
+@@ -387,6 +385,20 @@
+   </div>
+ </div>
+ 
++<!-- Multi-Agent Live Log Modal (Phase 2/3). Reuses .modal-overlay/.modal-box/.modal-header/
++     .modal-close-btn from style.css for the overlay mechanics (backdrop, centering, close-X
++     placement) and overrides colours inline for a terminal look -- this brief's write_scope does
++     not include style.css, so the terminal styling lives here rather than as a new CSS class. -->
++<div id="log-modal" class="modal-overlay" hidden>
++  <div class="modal-box" style="background: #1e1e1e;">
++    <div class="modal-header" style="border-bottom: 1px solid #333;">
++      <h3 style="color: #d4d4d4;">Multi-Agent Live Log</h3>
++      <button type="button" id="b-close-log-modal" class="modal-close-btn" style="color: #d4d4d4;">&times;</button>
++    </div>
++    <pre id="log-modal-text" style="background: #1e1e1e; color: #6be675; font-family: 'Consolas', 'Courier New', monospace; font-size: 12px; line-height: 1.5; white-space: pre-wrap; word-break: break-all; overflow-y: auto; margin: 0; padding: 12px; min-height: 300px; max-height: 60vh; border: 1px solid #333;">Waiting for logs...</pre>
++  </div>
++</div>
++
+ <!-- No bundler, no npm, no CDN — the editor must work with the network off.
+      interactions.js is the ~150-line pointer-capture engine plan Sec 5.1 sanctions as the
+      alternative to interact.js, behind an interact.js-shaped interface. See the "interact.js

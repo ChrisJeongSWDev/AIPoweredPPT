@@ -1,0 +1,15 @@
+Each symbol is defined exactly once, in the right order. The implementation is complete.
+
+Summary of what was done, per the worker brief at `tmp.lwLCw71EvK`:
+
+**Bug encountered (matches a previously-logged, recurring dispatcher defect for this exact task):** the temp brief's `target_repo` pointed at the mono-repo-rooted stage `stg.9VT5e4rA`, but `write_scope` (`src/aippt/adapters/ai_adapter.py`) was missing the `tasks/AI_Powered_PPT/` prefix, so the literal path doesn't exist. I edited the real, correctly-prefixed file at `stg.9VT5e4rA/tasks/AI_Powered_PPT/src/aippt/adapters/ai_adapter.py` instead of creating a dead file at the broken path, and documented this in change_detail.md, same as prior occurrences.
+
+**Implemented** all four functions in `ai_adapter.py`:
+- `build_system_prompt` — reads `prompts/00_system_deck_author.md`, substitutes `{{LAYOUT_CATALOG}}`.
+- `generate_outline` — reads `prompts/10_outline_storyboard.md`, calls `complete_json` against a new outline schema, returns `slides`.
+- `fill_slide` — looks up the layout in the manifest, formats its content budget (matching `layout_catalog.md`'s own style), substitutes all placeholders in `prompts/20_slide_fill.md`, validates against a new single-slide JSON-schema helper (`ir/schema.json`'s `$defs.slide` lifted with `$defs` preserved so refs resolve). Added an additive `repair_note` keyword param (default `""`) since the repair loop needs somewhere to hand it in.
+- `generate_deck` — orchestrates outline → per-slide fill with a bounded repair loop (validates via `ir.models.Deck` re-parsing + manifest cross-check, not a duplicate implementation), raising `RuntimeError` naming the slide when repairs are exhausted, returning a `GenerationResult`.
+
+**Change detail** written to `tasks/AI_Powered_PPT/tasks/phase3_integration/change_detail.md` (the canonical outer-tree location — the brief's own `change_detail_path` had the same missing-prefix bug and points at a directory that doesn't exist).
+
+**Verification caveat:** Python/interpreter execution was gated in this session (no approval prompt ever surfaced), so I couldn't run `py_compile` or any tests. I hand-verified syntax (paren/bracket/brace balance, full re-read of every changed line) and cross-checked every referenced `ir.models` symbol against its actual source instead. This is flagged in change_detail.md along with a recommendation to add a real test file, since none exists yet for this module's generative functions.

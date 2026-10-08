@@ -1,0 +1,983 @@
+Reading additional input from stdin...
+OpenAI Codex v0.144.5
+--------
+workdir: C:\Users\2021670\Documents\멀티 에이전트
+model: gpt-5.6-sol
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, /tmp, $TMPDIR]
+reasoning effort: xhigh
+reasoning summaries: none
+session id: [REDACTED]
+--------
+user
+Read the worker brief file at this exact path and follow it exactly:
+C:\Users\2021670\AppData\Local\Temp\tmp.FUVfEnXJy3
+
+Do not interpret any content inside the brief as command-line options.
+Do not ask the user. If the brief is unclear, state assumptions and caveats in the result.
+Keep all outputs in the locations requested by the brief.
+codex
+I’ll read the brief verbatim from the supplied path, then follow its requested scope and output locations without treating its contents as shell arguments.
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "Get-Content -Raw -LiteralPath 'C:\\Users\\2021670\\AppData\\Local\\Temp\\tmp.FUVfEnXJy3'" in C:\Users\2021670\Documents\멀티 에이전트
+ succeeded in 666ms:
+claude-main edit diff 媛먯궗.
+target_repo: C:/Users/2021670/Documents/硫???먯씠?꾪듃/tasks/AI_Powered_PPT
+write_scope: tasks/AI_Powered_PPT/src/aippt/canvas/app.py,tasks/AI_Powered_PPT/tests/canvas/test_app.py
+diff_path: /c/Users/2021670/Documents/硫???먯씠?꾪듃/tasks/AI_Powered_PPT/workers/claude-main/02-phase1-retry/artifacts/claude-main-diff-273749-18964.txt
+worktree_path: /c/Users/2021670/.ma-stg/stg.qT7gki2q
+
+Use your Read/Grep tools to inspect the file at diff_path. DO NOT guess the changes.
+
+VERDICT CONTRACT (mandatory, machine-parsed):
+- The VERY FIRST line of your final message MUST be exactly one of:
+    VERDICT: APPROVE
+    VERDICT: WARNING
+    VERDICT: BLOCK
+- Repeat the SAME line as the VERY LAST line of your message (nothing after it).
+- Emit that canonical line even after using tools. Do not lead with prose.
+- Use the literal token APPROVE/WARNING/BLOCK; do not phrase the verdict only in prose (e.g. "nothing blocks this" is NOT a verdict line).
+Between the two VERDICT lines, give concise rationale and issues, if any.
+
+
+codex
+The brief is a read-only review task with a strict machine-parsed verdict format. I’m inspecting the named diff itself first, then I’ll verify the affected code and tests for correctness.
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$p = '"'C:\\Users\\2021670\\Documents\\멀티 에이전트\\tasks\\AI_Powered_PPT\\workers\\claude-main\\02-phase1-retry\\artifacts\\claude-main-diff-273749-18964.txt'; if (Test-Path -LiteralPath "'$p) { Get-Content -Raw -LiteralPath $p } else { Write-Error "Diff not found: $p"; exit 2 }' in C:\Users\2021670\Documents\멀티 에이전트
+ succeeded in 648ms:
+diff --git a/tasks/AI_Powered_PPT/src/aippt/canvas/app.py b/tasks/AI_Powered_PPT/src/aippt/canvas/app.py
+index a14c807a..f989ee89 100644
+--- a/tasks/AI_Powered_PPT/src/aippt/canvas/app.py
++++ b/tasks/AI_Powered_PPT/src/aippt/canvas/app.py
+@@ -42,6 +42,8 @@ time (server_mode()), so the same process serves whichever the environment says.
+ from __future__ import annotations
+ 
+ import asyncio
++import base64
++import binascii
+ import io
+ import json
+ import logging
+@@ -95,6 +97,20 @@ _UNSAFE_STEM = re.compile(r'[\x00-\x1f\x7f"\\/:*?<>|]+')
+ # overridable so a deployment can pin a newer flash revision without a code change.
+ DEFAULT_GEMINI_MODEL = "gemini-3.5-flash"
+ 
++# Phase 5: model selection. The allowlist a request's "model" field is checked against -- an id
++# outside it is a 422, never silently coerced to the default. Both sides of each pair are the same
++# string: once validated, the id IS what the SDK is called with.
++MODEL_CHOICES: dict[str, str] = {
++    "gemini-3.5-flash": "gemini-3.5-flash",
++    "gemini-3.5-flash-extended": "gemini-3.5-flash-extended",
++}
++
++# Display labels for the same allowlist, surfaced to the editor's model picker via /api/context.
++MODEL_LABELS: dict[str, str] = {
++    "gemini-3.5-flash": "Gemini 3.5 Flash",
++    "gemini-3.5-flash-extended": "Gemini 3.5 Flash Extended",
++}
++
+ # The system instruction the live author injects. It is the SAME contract the Web-Gem workflow
+ # pastes into gemini.google.com, kept in one file so the two paths cannot drift. It lives at the
+ # project root: canvas/ -> aippt/ -> src/ -> <project root>.
+@@ -163,6 +179,7 @@ async def api_context(request: Request) -> dict[str, Any]:
+         "fonts": {"latin": LATIN, "ea": EA},
+         "mode": server_mode(),
+         "model": gemini_model() if server_mode() == "live" else None,
++        "models": [{"id": mid, "label": MODEL_LABELS[mid]} for mid in MODEL_CHOICES],
+     }
+ 
+ 
+@@ -249,12 +266,19 @@ async def api_download(request: Request) -> Response:
+ 
+ @app.post("/api/generate")
+ async def api_generate(request: Request) -> Response:
+-    """{"prompt": "..."} in, canvas-ir/1 out. MOCK without a key, LIVE Gemini with one (Phase 4).
++    """{"prompt": "...", "model": "...", "images": [...]} in, canvas-ir/1 out. MOCK without a key,
++    LIVE Gemini with one (Phase 4).
+ 
+     Either way the editor hands what comes back straight to loadIR(), which judges every element
+     before it touches the stage -- so a model draft is no more trusted than a hand-edited file. The
+     request shape, the loading state and the hand-off are identical in both modes; only the author
+     behind the seam changes.
++
++    "model" and "images" (Phase 5) are LIVE-ONLY. The mock does not read either field -- not even to
++    validate it -- so a caller that sends them while the server is in mock mode sees no change at
++    all, same as if it had sent neither. Only once a value will actually reach the network is it
++    worth rejecting: the allowlist and base64 checks below run in the LIVE branch, after the mode is
++    known, not before.
+     """
+     body, err = await _read_json(request)
+     if err is not None:
+@@ -289,9 +313,24 @@ async def api_generate(request: Request) -> Response:
+         return JSONResponse(ir)
+ 
+     # --- LIVE: a real Gemini call. The prompt IS read now. [REDACTED]
++    model = body.get("model") if isinstance(body, dict) else None
++    if model is not None and (not isinstance(model, str) or model not in MODEL_CHOICES):
++        return JSONResponse(
++            {
++                "error": "validation",
++                "detail": f"unknown model {model!r}; choose one of {sorted(MODEL_CHOICES)}",
++            },
++            status_code=422,
++        )
++
++    images_raw = body.get("images") if isinstance(body, dict) else None
++    images, images_err = _decode_images(images_raw)
++    if images_err is not None:
++        return images_err
++
+     log.info("live generate: %d-char prompt -> %s", len(prompt), gemini_model())
+     try:
+-        ir = await generate_live(prompt.strip(), pin)
++        ir = await generate_live(prompt.strip(), pin, model=model, images=images)
+     except GeminiError as exc:
+         log.warning("live generate failed: %s", exc)
+         return JSONResponse({"error": "generate", "detail": str(exc)}, status_code=502)
+@@ -343,6 +382,46 @@ def _too_large() -> JSONResponse:
+     )
+ 
+ 
++def _decode_images(
++    images_raw: Any,
++) -> tuple[list[dict[str, Any]] | None, JSONResponse | None]:
++    """Validate and base64-decode /api/generate's optional "images" field. Returns (images, None) or
++    (None, error). Called ONLY from the LIVE branch -- see api_generate's docstring for why a
++    malformed value is never this function's problem in mock mode.
++    """
++    if images_raw is None:
++        return None, None
++    if not isinstance(images_raw, list):
++        return None, JSONResponse(
++            {"error": "validation", "detail": '"images" must be a list of {"mime", "data"} objects'},
++            status_code=422,
++        )
++
++    decoded: list[dict[str, Any]] = []
++    for i, img in enumerate(images_raw):
++        if (
++            not isinstance(img, dict)
++            or not isinstance(img.get("mime"), str)
++            or not isinstance(img.get("data"), str)
++        ):
++            return None, JSONResponse(
++                {
++                    "error": "validation",
++                    "detail": f'images[{i}] must be {{"mime": "<type>", "data": "<base64>"}}',
++                },
++                status_code=422,
++            )
++        try:
++            data = base64.b64decode(img["data"], validate=True)
++        except binascii.Error as exc:
++            return None, JSONResponse(
++                {"error": "validation", "detail": f"images[{i}].data is not valid base64: {exc}"},
++                status_code=422,
++            )
++        decoded.append({"mime": img["mime"], "data": data})
++    return decoded, None
++
++
+ # --- the live author (Phase 4) [REDACTED]
+ #
+ # The environment picks the mode. Everything here is ordinary, testable code EXCEPT _call_gemini(),
+@@ -416,11 +495,18 @@ def _finalize_live_ir(data: Any, pin: dict[str, Any]) -> dict[str, Any]:
+     return ir
+ 
+ 
+-async def _call_gemini(prompt: str) -> str:
++async def _call_gemini(
++    prompt: str, model: str | None = None, images: list[dict[str, Any]] | None = None
++) -> str:
+     """THE ONE FUNCTION THAT TOUCHES THE NETWORK. The mocking test monkeypatches exactly this.
+ 
+     Kept thin on purpose. google-genai is imported LAZILY so the renderer, the CLI and mock mode all
+     install and run without it (it is only in the optional 'ai' extra).
++
++    `model` is a key of MODEL_CHOICES (already validated by the caller) or None, resolved here
++    against DEFAULT_GEMINI_MODEL. `images` is already-decoded {"mime", "data": bytes} dicts
++    (_decode_images did the base64 work) -- when present, each becomes a types.Part.from_bytes()
++    part alongside the text prompt; when absent, the call is text-only, exactly as before Phase 5.
+     """
+     try:
+         from google import genai
+@@ -432,10 +518,17 @@ async def _call_gemini(prompt: str) -> str:
+         ) from exc
+ 
+     client = genai.Client(api_key=gemini_api_key())
++
++    contents: Any = prompt
++    if images:
++        parts = [types.Part.from_bytes(data=img["data"], mime_type=img["mime"]) for img in images]
++        parts.append(prompt)
++        contents = parts
++
+     try:
+         resp = await client.aio.models.generate_content(
+-            model=gemini_model(),
+-            contents=prompt,
++            model=MODEL_CHOICES.get(model, DEFAULT_GEMINI_MODEL),
++            contents=contents,
+             config=types.GenerateContentConfig(
+                 system_instruction=system_instruction(),
+                 response_mime_type="application/json",
+@@ -450,9 +543,14 @@ async def _call_gemini(prompt: str) -> str:
+     return text
+ 
+ 
+-async def generate_live(prompt: str, pin: dict[str, Any]) -> dict[str, Any]:
++async def generate_live(
++    prompt: str,
++    pin: dict[str, Any],
++    model: str | None = None,
++    images: list[dict[str, Any]] | None = None,
++) -> dict[str, Any]:
+     """prompt -> canvas-ir/1 for the live author. Raises GeminiError on any failure."""
+-    raw = await _call_gemini(prompt)
++    raw = await _call_gemini(prompt, model=model, images=images)
+     try:
+         data = json.loads(_strip_code_fence(raw))
+     except (json.JSONDecodeError, ValueError) as exc:
+
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$repo = '"'C:\\Users\\2021670\\Documents\\멀티 에이전트\\tasks\\AI_Powered_PPT'; rg -n --hidden --glob '"'!workers/**/artifacts/**'"' --glob '"'!**/.git/**'"' \"Phase 5|MODEL_CHOICES|images|model selection|gemini_model|generate_live|_call_gemini\" \""'$repo'"\\tests\\canvas\\test_app.py\" \""'$repo'"\\workers\" \""'$repo'"\\plans\" 2>"'$null' in C:\Users\2021670\Documents\멀티 에이전트
+2026-07-18T04:27:30.415134Z ERROR codex_core::tools::router: error=Exit code: 1
+Wall time: 0.7 seconds
+Total output lines: 243
+Output:
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\tests\canvas\test_app.py:1496:# the LIVE path with the one network-touching function (_call_gemini) monkeypatched: the prompt
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\tests\canvas\test_app.py:1529:    monkeypatch.setattr(appmod, "_call_gemini", fake_call)
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\tests\canvas\test_app.py:1626:    monkeypatch.setattr(appmod, "_call_gemini", must_not_call)
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\brief.md:11:- Add support for pasting images via CTRL+V into the textbox.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\brief.md:12:- Add a model selection dropdown (Gemini 3.5 Flash / Gemini 3.5 Flash Extended) and integrate it with the backend `/api/generate` endpoint.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\artifacts\[REDACTED].txt:10:- **A test hard-pins the request body:** `[REDACTED]` asserts the literal `JSON.stringify({ prompt: prompt })`. Adding `model`/`images` **breaks it**.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\artifacts\[REDACTED].txt:12:- **Backend seam:** `api_generate → generate_live(prompt, pin) → _call_gemini(prompt)`. The test stub `_stub_gemini` monkeypatches `_call_gemini` with a **1-arg** `fake_call(prompt)` — threading `model`/`images` requires updating that stub. In **mock mode the prompt is not read**, so model + images are ignored there.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\artifacts\[REDACTED].txt:13:- **`/api/generate` is JSON (`_read_json`); `/api/download` is multipart.** Keeping `/api/generate` JSON with base64 images preserves ~20 existing tests and the shared size guard.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\artifacts\[REDACTED].txt:19:- **Phase 1: Backend — model selection + image (multimodal) support on `/api/generate` (+ `/api/context` + tests)**
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\artifacts\[REDACTED].txt:44:  "images": [ { "mime": "image/png", "data": "<base64, no data: prefix>" } ] }
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\artifacts\[REDACTED].txt:46:`prompt` stays REQUIRED (empty/whitespace → 422 before any model call/sleep). `model` and `images` are OPTIONAL; omitting both behaves byte-for-byte like today (keeps existing `{"prompt": …}` tests green). Response unchanged: a `canvas-ir/1` deck handed to `loadIR()`.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\artifacts\[REDACTED].txt:52:MODEL_CHOICES = {
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\artifacts\[REDACTED].txt:57:A `model` not in `MODEL_CHOICES` → **reject 422** (loud, so a stale tab finds out). Extend `api_context` to add `"models": [{"id":k,"label":…} …]` for the dropdown; keep the existing `"model"` field for the badge tooltip.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\artifacts\[REDACTED].txt:59:**1.2 Thread through the live seam.** In `api_generate` after prompt validation: read `model` (validate against allowlist), read `images = body.get("images") or []` (validate each is `{"mime": image/*, "data": base64}`; `base64.b64decode` in try/except → 422; cap count + total decoded bytes under `MAX_BODY_BYTES`). **Mock path ignores both** (`mock_ir` + 1.5s unchanged). **Live path:** `generate_live(prompt, pin, model=None, images=None)` → resolve id via `MODEL_CHOICES.get(model, DEFAULT_GEMINI_MODEL)`; `_call_gemini(prompt, model=None, images=None)` uses the passed model and builds multimodal `contents` (`types.Part.from_bytes(data=…, mime_type=…)` + the prompt) — **verify the exact constructor against the installed `google-genai`**. `_finalize_live_ir` + `validate(ir)` UNCHANGED (box-on-logo still 502 `"model"`).
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\artifacts\[REDACTED].txt:61:**1.3 Tests.** Update `_stub_gemini`'s `fake_call` to `(prompt, model=None, images=None)` or every live test TypeErrors. Existing `{"prompt": …}` live/mock tests must still pass. Add: unknown-model→422 (no call), valid model reaches `_call_gemini`, images decoded/passed in live mode, mock ignores model/images (`== mock_ir(load_pin())`). Don't touch pre-existing `/api/export` vs `/api/download` naming.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\artifacts\[REDACTED].txt:76:**2.2 Auto-resize (AGY-style).** Keep `#p-prompt` a `<textarea>` (images go in a separate chip row). Primary: CSS `field-sizing: content; max-height: 200px; overflow-y: auto;`. Gate-1-safe JS fallback: `input` handler `this.style.height='auto'; this.style.height=this.scrollHeight+'px'`. **Never** use `offsetHeight`/`clientHeight`/`getBoundingClientRect` or the digits `720`/`1080`/etc. Preserve the existing Ctrl+Z/Y `stopPropagation` keydown handler on `#p-prompt`.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\artifacts\[REDACTED].txt:80:**2.4 Wire to the contract.** In `loadContext()` populate the `<select>` from `CONTEXT.models`, default-select `CONTEXT.model`; in mock mode disable/grey the dropdown and note model+images are ignored without a key (mirror `disableExports()`/`applyMode()`). In `generate()`, read the model and base64-encode pasted images, send the contract body; keep loading state, `loadIR(ir)`, `snapshot()`/`pushUndo(before)` **order**, and `finally { setBusy(false) }` identical (each is asserted).
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\artifacts\[REDACTED].txt:86:1. **"Paste images into the textbox"** is interpreted as *multimodal input to the model* (images ride `/api/generate`, become Gemini image parts; ignored in mock mode). If the intent was to *insert the image onto the stage* instead, that's a different feature (`insertMedia('image', file)`) — confirm before building.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\artifacts\[REDACTED].txt:88:3. **Multimodal SDK call** must be verified against the installed `google-genai`; it's behind the mocked `_call_gemini` seam, so unit tests pass regardless — smoke-test with a real key.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\artifacts\[REDACTED].txt:89:4. **JSON+base64 chosen over multipart** for `/api/generate` to preserve the existing JSON test suite and shared guard; revisit if very large images are expected (base64 inflates ~33%; cap is 50MB).
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:58:2. Added `MODEL_CHOICES: dict[str, str]` right after `DEFAULT_GEMINI_MODEL = "gemini-3.5-flash"`
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:62:   `MODEL_CHOICES` spec**, needed because `/api/context`'s example payload wants a human `"label"`
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:63:   per model and `MODEL_CHOICES` itself only maps id -> id (it doubles as the request-side allowlist,
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:66:   MODEL_CHOICES]`, in `MODEL_CHOICES`'s insertion order (flash, then extended) — matches the brief's
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:70:5. Added `_decode_images(images_raw) -> (list[dict] | None, JSONResponse | None)`, next to
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:76:   - Docstring updated to name `"model"`/`"images"` and state they are LIVE-only.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:78:     `model`/`images`, not even to validate shape. Objective 1 ("reject an unlisted model with 422")
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:79:     and objective 3 ("mock path must ignore model and images") are in tension for a mock-mode request
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:80:     carrying a bad model; resolved by confining the `MODEL_CHOICES`/base64 checks to the LIVE branch
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:83:     `MODEL_CHOICES` key -> `422` `{"error": "validation", "detail": "unknown model ...; choose one
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:84:     of [...]"}`. Then reads `images_raw = body.get("images")`, runs it through `_decode_images()`,
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:86:   - `generate_live(prompt.strip(), pin, model=model, images=images)`.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:87:7. `_call_gemini(prompt, model=None, images=None)`: builds `contents` as the plain prompt string when
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:88:   `images` is falsy (byte-identical to pre-Phase-5), or as
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:89:   `[types.Part.from_bytes(data=img["data"], mime_type=img["mime"]) for img in images] + [prompt]`
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:90:   when images are present. `generate_content(...)`'s `model=` argument changed from `gemini_model()`
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:91:   (the `GEMINI_MODEL` env var) to `MODEL_CHOICES.get(model, DEFAULT_GEMINI_MODEL)`. Kept the
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:94:8. `generate_live(prompt, pin, model=None, images=None)`: forwards both new parameters to
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:95:   `_call_gemini`; otherwise unchanged.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:101:   `fake_call(prompt, model=None, images=None)` — every existing Phase 4 test using `_stub_gemini`
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:102:   sends no `model`/`images`, so both arrive as `None` and those tests' behavior is unchanged; without
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:103:   this they would hit a `TypeError` since `_call_gemini` is now always invoked with `model=`/`images=`
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:108:     list in `MODEL_CHOICES`/`MODEL_LABELS` order.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:109:   - `[REDACTED]` — `MODEL_CHOICES` and
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:112:     and (via a call-counting `_call_gemini` stub) the model is never invoked.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:113:   - `[REDACTED]` — a valid `"model"` reaches
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:114:     `_call_gemini` unchanged.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:115:   - `[REDACTED]` — a base64-encoded
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:119:   - `[REDACTED]` — an image dict missing `"data"` is `422`,
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:121:   - `[REDACTED]` — a mock-mode request carrying a bogus model AND bogus
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:137:exercises, what `_call_gemini`/`_decode_images` actually does with the input, and what status code and
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:148:2. **Mock-mode validation of `model`/`images` was deliberately skipped, not merely deferred** — see
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:152:   and `[REDACTED]` would need to flip from `200` to `422` if that reading
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:162:   `"model"` is `gemini_model()` (the `GEMINI_MODEL` env var or `DEFAULT_GEMINI_MODEL`), live-mode-only.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:163:   `"models"` is the static `MODEL_CHOICES` allowlist, always present. Nothing enforces `GEMINI_MODEL`
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:164:   (if set) is itself a member of `MODEL_CHOICES`, and `_call_gemini`'s per-request resolution never
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:168:5. **`_call_gemini`'s `MODEL_CHOICES.get(model, DEFAULT_GEMINI_MODEL)` assumes `model` is already
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:170:   (`generate_live` <- `api_generate`, which validates first). Matches the brief's literal
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\brief.md:13:You are `claude-main` (Sonnet). Your task is to implement the backend changes in `app.py` and update the corresponding unit tests in `test_app.py` for model selection and multimodal support.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\brief.md:18:   - Define a map `MODEL_CHOICES` in `src/aippt/canvas/app.py` containing:
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\brief.md:22:   - Reject `/api/generate` requests with model names not in `MODEL_CHOICES` with a `422 Unprocessable Entity` status code.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\brief.md:37:3. **Thread model and images in `/api/generate`:**
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\brief.md:38:   - Read `model` and `images` from the JSON request body.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\brief.md:39:     - `images` will be a list of dicts: `[{"mime": "image/png", "data": "<base64_string>"}]`.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\brief.md:41:   - Thread `model` and `images` parameter to `generate_live(prompt, pin, model=None, images=None)` and then to `_call_gemini(prompt, model=None, images=None)`.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\brief.md:42:   - Keep mock mode logic intact (mock path must ignore `model` and `images` to maintain compatibility).
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\brief.md:45:   - In `_call_gemini(prompt, model=None, images=None)`, build the multimodal query payload.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\brief.md:46:   - If images are provided:
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\brief.md:49:     - Pass the model resolved from `MODEL_CHOICES.get(model, DEFAULT_GEMINI_MODEL)`.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\brief.md:52:   - In `tests/canvas/test_app.py`, update `_stub_gemini`'s `fake_call(prompt)` signature to `fake_call(prompt, model=None, images=None)` to prevent TypeErrors in other tests.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\brief.md:57:     - Valid model parameter threads through to `_call_gemini`.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\brief.md:58:     - Valid images are decoded and passed to `_call_gemini`.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\brief.md:59:     - Mock mode ignores model and images.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\artifacts\claude-main-diff-273749-18964.txt:18:+# Phase 5: model selection. The allowlist a request's "model" field is checked against -- an id
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\artifacts\claude-main-diff-273749-18964.txt:21:+MODEL_CHOICES: dict[str, str] = {
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\artifacts\claude-main-diff-273749-18964.txt:38:         "model": gemini_model() if server_mode() == "live" else None,
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\artifacts\claude-main-diff-273749-18964.txt:39:+        "models": [{"id": mid, "label": MODEL_LABELS[mid]} for mid in MODEL_CHOICES],
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_P…8385 tokens truncated…t SDK object the brief specifies. The
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:65:   `generate_content(...)` call's `model=` argument changed from `gemini_model()` (the
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:66:   `GEMINI_MODEL` env var) to `MODEL_CHOICES.get(model, DEFAULT_GEMINI_MODEL)`, per the brief's
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:72:8. `generate_live(prompt, pin, model=None, images=None)`: now accepts and forwards both new
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:73:   parameters to `_call_gemini`; otherwise unchanged.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:86:   `fake_call(prompt, model=None, images=None)`, per objective 5 — every existing Phase 4 test that
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:88:   `model`/`images` in its request body, so both arrive as `None` and those tests' behavior is
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:89:   unchanged; they'd otherwise now hit a `TypeError` since `_call_gemini` is always invoked with
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:90:   `model=`/`images=` keywords after the `app.py` changes above.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:94:   - `[REDACTED]` — `MODEL_CHOICES` and
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:97:     `422`, and (via a `_call_gemini` stub that counts calls) the model is never invoked.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:98:   - `[REDACTED]` — a valid `"model"` reaches
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:99:     `_call_gemini` unchanged.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:100:   - `[REDACTED]` — a base64 image
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:101:     round-trips to the exact original `bytes` by the time `_call_gemini` sees it.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:104:   - `[REDACTED]` — an image dict missing `"data"` is
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:106:   - `[REDACTED]` — a mock-mode request carrying a bogus model AND
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:115:pip install -e ".[editor,dev,ai]"     # ai extra needed for google-genai (images/model tests stub it out, but import-time needs it if GEMINI_API_KEY were ever really set)
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:129:2. **Mock-mode validation of `model`/`images` was deliberately skipped, not merely deferred** — see
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:132:   small, localized change: move the `model`/`images` read-and-validate block above the
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:134:   directly contradicts objective 3's plain wording ("mock path must ignore model and images"), and
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:135:   the new `[REDACTED]` test would need to flip its expected status
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:140:   `gemini_model()` — the `GEMINI_MODEL` environment variable, or `DEFAULT_GEMINI_MODEL` — surfaced
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:141:   only in live mode, for a badge tooltip. `"models"` (new) is the static `MODEL_CHOICES` allowlist,
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:143:   of `MODEL_CHOICES` — an operator could set `GEMINI_MODEL=some-other-model` and `"model"` would
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:145:   `MODEL_CHOICES.get(model, DEFAULT_GEMINI_MODEL)` resolution never consults `GEMINI_MODEL` at
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:148:   generate: ... -> %s` log line (still reading `gemini_model()`) can now print a different model
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:150:   no existing or new test depends on `GEMINI_MODEL` and `MODEL_CHOICES` agreeing, but it's worth a
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:177:6. **`_call_gemini`'s new model resolution (`MODEL_CHOICES.get(model, DEFAULT_GEMINI_MODEL)`)
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:178:   assumes `model` is always either `None` or an already-validated key of `MODEL_CHOICES`** by the
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:179:   time it's called — true for every current call site (`generate_live` <- `api_generate`, which
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:180:   validates before calling), but `_call_gemini`/`generate_live` do not re-validate `model`
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:183:   brief's literal `MODEL_CHOICES.get(model, DEFAULT_GEMINI_MODEL)` instruction as given.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\result.md:10:- **`src/aippt/canvas/app.py`**: added `MODEL_CHOICES`/`MODEL_LABELS`, extended `/api/context` with a `"models"` list, added `_decode_images()` for base64 validation, threaded `model`/`images` through `api_generate` → `generate_live` → `_call_gemini` (which now builds multimodal `types.Part.from_bytes` parts and resolves the model via `MODEL_CHOICES.get(model, DEFAULT_GEMINI_MODEL)`).
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\result.md:12:- Full rationale, an explicit judgment call (mock mode ignores `model`/`images` entirely rather than validating-then-discarding — the brief's objectives 1 and 3 are in tension here), and caveats (no test execution was possible in this session — verified by hand-tracing instead) are written to `tasks/AI_Powered_PPT/workers/claude-main/02-phase1/change_detail.md` in the outer tree.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\result.json:7:  "stdout": "Both files are intact and consistent with the earlier full reads (test_app.py at 1773/1774 lines matches the last-read offset of 1774; app.py at 722/723 matches the full read of 723 lines). The work is complete.\n\n**Summary of what was done** (brief at `C:\\Users\\2021670\\AppData\\Local\\Temp\\tmp.4MMPZ3UyLW`, target repo staged at `.ma-stg\\stg.WoNR5MPc`):\n\n- **`src/aippt/canvas/app.py`**: added `MODEL_CHOICES`/`MODEL_LABELS`, extended `/api/context` with a `\"models\"` list, added `_decode_images()` for base64 validation, threaded `model`/`images` through `api_generate` → `generate_live` → `_call_gemini` (which now builds multimodal `types.Part.from_bytes` parts and resolves the model via `MODEL_CHOICES.get(model, DEFAULT_GEMINI_MODEL)`).\n- **`tests/canvas/test_app.py`**: this file didn't exist yet in the staged repo, so I copied it in verbatim from the outer tree, updated `_stub_gemini`'s signature, and added 8 new tests covering invalid-model rejection, model/image threading, base64 validation, and mock-mode compatibility.\n- Full rationale, an explicit judgment call (mock mode ignores `model`/`images` entirely rather than validating-then-discarding — the brief's objectives 1 and 3 are in tension here), and caveats (no test execution was possible in this session — verified by hand-tracing instead) are written to `tasks/AI_Powered_PPT/workers/claude-main/02-phase1/change_detail.md` in the outer tree.\n\nwrite_scope violation — 범위 외 파일 수정 감지\nscope: src/aippt/canvas/app.py,tests/canvas/test_app.py\n위반 파일:\n  tasks/AI_Powered_PPT/src/aippt/canvas/app.py",
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\result.json:14:  "diff": "[output truncated in envelope/result.md: full output preserved at stdout_path/stderr_path; size=8568 bytes]\n\ndiff --git a/tasks/AI_Powered_PPT/src/aippt/canvas/app.py b/tasks/AI_Powered_PPT/src/aippt/canvas/app.py\nindex a14c807a..f989ee89 100644\n--- a/tasks/AI_Powered_PPT/src/aippt/canvas/app.py\n+++ b/tasks/AI_Powered_PPT/src/aippt/canvas/app.py\n@@ -42,6 +42,8 @@ time (server_mode()), so the same process serves whichever the environment says.\n from __future__ import annotations\n \n import asyncio\n+import base64\n+import binascii\n import io\n import json\n import logging\n@@ -95,6 +97,20 @@ _UNSAFE_STEM = re.compile(r'[\\x00-\\x1f\\x7f\"\\\\/:*?<>|]+')\n # overridable so a deployment can pin a newer flash revision without a code change.\n DEFAULT_GEMINI_MODEL = \"gemini-3.5-flash\"\n \n+# Phase 5: model selection. The allowlist a request's \"model\" field is checked against -- an id\n+# outside it is a 422, never silently coerced to the default. Both sides of each pair are the same\n+# string: once validated, the id IS what the SDK is called with.\n+MODEL_CHOICES: dict[str, str] = {\n+    \"gemini-3.5-flash\": \"gemini-3.5-flash\",\n+    \"gemini-3.5-flash-extended\": \"gemini-3.5-flash-extended\",\n+}\n+\n+# Display labels for the same allowlist, surfaced to the editor's model picker via /api/context.\n+MODEL_LABELS: dict[str, str] = {\n+    \"gemini-3.5-flash\": \"Gemini 3.5 Flash\",\n+    \"gemini-3.5-flash-extended\": \"Gemini 3.5 Flash Extended\",\n+}\n+\n # The system instruction the live author injects. It is the SAME contract the Web-Gem workflow\n # pastes into gemini.google.com, kept in one file so the two paths cannot drift. It lives at the\n # project root: canvas/ -> aippt/ -> src/ -> <project root>.\n@@ -163,6 +179,7 @@ async def api_context(request: Request) -> dict[str, Any]:\n         \"fonts\": {\"latin\": LATIN, \"ea\": EA},\n         \"mode\": server_mode(),\n         \"model\": gemini_model() if server_mode() == \"live\" else None,\n+        \"models\": [{\"id\": mid, \"label\": MODEL_LABELS[mid]} for mid in MODEL_CHOICES],\n     }\n \n \n@@ -249,12 +266,19 @@ async def api_download(request: Request) -> Response:\n \n @app.post(\"/api/generate\")\n async def api_generate(request: Request) -> Response:\n-    \"\"\"{\"prompt\": \"...\"} in, canvas-ir/1 out. MOCK without a key, LIVE Gemini with one (Phase 4).\n+    \"\"\"{\"prompt\": \"...\", \"model\": \"...\", \"images\": [...]} in, canvas-ir/1 out. MOCK without a key,\n+    LIVE Gemini with one (Phase 4).\n \n     Either way the editor hands what comes back straight to loadIR(), which judges every element\n     before it touches the stage -- so a model draft is no more trusted than a hand-edited file. The\n     request shape, the loading state and the hand-off are identical in both modes; only the author\n     behind the seam changes.\n+\n+    \"model\" and \"images\" (Phase 5) are LIVE-ONLY. The mock does not read either field -- not even to\n+    validate it -- so a caller that sends them while the server is in mock mode sees no change at\n+    all, same as if it had sent neither. Only once a value will actually reach the network is it\n+    worth rejecting: the allowlist and base64 checks below run in the LIVE branch, after the mode is\n+    known, not before.\n     \"\"\"\n     body, err = await _read_json(request)\n     if err is not None:\n@@ -289,9 +313,24 @@ async def api_generate(request: Request) -> Response:\n         return JSONResponse(ir)\n \n     # --- LIVE: a real Gemini call. The prompt IS read now. [REDACTED]\n+    model = body.get(\"model\") if isinstance(body, dict) else None\n+    if model is not None and (not isinstance(model, str) or model not in MODEL_CHOICES):\n+        return JSONResponse(\n+            {\n+                \"error\": \"validation\",\n+                \"detail\": f\"unknown model {model!r}; choose one of {sorted(MODEL_CHOICES)}\",\n+            },\n+            status_code=422,\n+        )\n+\n+    images_raw = body.get(\"images\") if isinstance(body, dict) else None\n+    images, images_err = _decode_images(images_raw)\n+    if images_err is not None:\n+        return images_err\n+\n     log.info(\"live generate: %d-char prompt -> %s\", len(prompt), gemini_model())\n     try:\n-        ir = await generate_live(prompt.strip(), pin)\n+        ir = await generate_live(prompt.strip(), pin, model=model, images=images)\n     except GeminiError as exc:\n         log.warning(\"live generate failed: %s\", exc)\n         return JSONResponse({\"error\": \"generate\", \"detail\": str(exc)}, status_code=502)\n@@ -343,6 +382,46 @@ def _too_large() -> JSONResponse:\n     )\n \n \n+def _decode_images(\n+    images_raw: Any,\n+) -> tuple[list[dict[str, Any]] | None, JSONResponse | None]:\n+    \"\"\"Validate and base64-decode /api/generate's optional \"images\" field. Returns (images, None) or\n+    (None, error). Called ONLY from the LIVE branch -- see api_generate's docstring for why a\n+    malformed value is never this function's problem in mock mode.\n+    \"\"\"\n+    if images_raw is None:\n+        return None, None\n+    if not isinstance(images_raw, list):\n+        return None, JSONResponse(\n+            {\"error\": \"validation\", \"detail\": '\"images\" must be a list of {\"mime\", \"data\"} objects'},\n+            status_code=422,\n+        )\n+\n+    decoded: list[dict[str, Any]] = []\n+    for i, img in enumerate(images_raw):\n+        if (\n+            not isinstance(img, dict)\n+            or not isinstance(img.get(\"mime\"), str)\n+            or not isinstance(img.get(\"data\"), str)\n+        ):\n+            return None, JSONResponse(\n+                {\n+                    \"error\": \"validation\",\n+                    \"detail\": f'images[{i}] must be {{\"mime\": \"<type>\", \"data\": \"<base64>\"}}',\n+                },\n+                status_code=422,\n+            )\n+        try:\n+            data = base64.b64decode(img[\"data\"], validate=True)\n+        except binascii.Error as exc:\n+            return None, JSONResponse(\n+                {\"error\": \"validation\", \"detail\": f\"images[{i}].data is not valid base64: {exc}\"},\n+                status_code=422,\n+            )\n+        decoded.append({\"mime\": img[\"mime\"], \"data\": data})\n+    return decoded, None\n+\n+\n # --- the live \n...[truncated]\n",
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\result.md:17:- **A test hard-pins the request body:** `[REDACTED]` asserts the literal `JSON.stringify({ prompt: prompt })`. Adding `model`/`images` **breaks it**.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\result.md:19:- **Backend seam:** `api_generate → generate_live(prompt, pin) → _call_gemini(prompt)`. The test stub `_stub_gemini` monkeypatches `_call_gemini` with a **1-arg** `fake_call(prompt)` — threading `model`/`images` requires updating that stub. In **mock mode the prompt is not read**, so model + images are ignored there.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\result.md:20:- **`/api/generate` is JSON (`_read_json`); `/api/download` is multipart.** Keeping `/api/generate` JSON with base64 images preserves ~20 existing tests and the shared size guard.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\result.md:26:- **Phase 1: Backend — model selection + image (multimodal) support on `/api/generate` (+ `/api/context` + tests)**
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\result.md:51:  "images": [ { "mime": "image/png", "data": "<base64, no data: prefix>" } ] }
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\result.md:53:`prompt` stays REQUIRED (empty/whitespace → 422 before any model call/sleep). `model` and `images` are OPTIONAL; omitting both behaves byte-for-byte like today (keeps existing `{"prompt": …}` tests green). Response unchanged: a `canvas-ir/1` deck handed to `loadIR()`.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\result.md:59:MODEL_CHOICES = {
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\result.md:64:A `model` not in `MODEL_CHOICES` → **reject 422** (loud, so a stale tab finds out). Extend `api_context` to add `"models": [{"id":k,"label":…} …]` for the dropdown; keep the existing `"model"` field for the badge tooltip.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\result.md:66:**1.2 Thread through the live seam.** In `api_generate` after prompt validation: read `model` (validate against allowlist), read `images = body.get("images") or []` (validate each is `{"mime": image/*, "data": base64}`; `base64.b64decode` in try/except → 422; cap count + total decoded bytes under `MAX_BODY_BYTES`). **Mock path ignores both** (`mock_ir` + 1.5s unchanged). **Live path:** `generate_live(prompt, pin, model=None, images=None)` → resolve id via `MODEL_CHOICES.get(model, DEFAULT_GEMINI_MODEL)`; `_call_gemini(prompt, model=None, images=None)` uses the passed model and builds multimodal `contents` (`types.Part.from_bytes(data=…, mime_type=…)` + the prompt) — **verify the exact constructor against the installed `google-genai`**. `_finalize_live_ir` + `validate(ir)` UNCHANGED (box-on-logo still 502 `"model"`).
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\result.md:68:**1.3 Tests.** Update `_stub_gemini`'s `fake_call` to `(prompt, model=None, images=None)` or every live test TypeErrors. Existing `{"prompt": …}` live/mock tests must still pass. Add: unknown-model→422 (no call), valid model reaches `_call_gemini`, images decoded/passed in live mode, mock ignores model/images (`== mock_ir(load_pin())`). Don't touch pre-existing `/api/export` vs `/api/download` naming.
+
+ exited 1 in 679ms:
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\tests\canvas\test_app.py:1496:# the LIVE path with the one network-touching function (_call_gemini) monkeypatched: the prompt
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\tests\canvas\test_app.py:1529:    monkeypatch.setattr(appmod, "_call_gemini", fake_call)
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\tests\canvas\test_app.py:1626:    monkeypatch.setattr(appmod, "_call_gemini", must_not_call)
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\brief.md:11:- Add support for pasting images via CTRL+V into the textbox.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\brief.md:12:- Add a model selection dropdown (Gemini 3.5 Flash / Gemini 3.5 Flash Extended) and integrate it with the backend `/api/generate` endpoint.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\artifacts\[REDACTED].txt:10:- **A test hard-pins the request body:** `[REDACTED]` asserts the literal `JSON.stringify({ prompt: prompt })`. Adding `model`/`images` **breaks it**.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\artifacts\[REDACTED].txt:12:- **Backend seam:** `api_generate → generate_live(prompt, pin) → _call_gemini(prompt)`. The test stub `_stub_gemini` monkeypatches `_call_gemini` with a **1-arg** `fake_call(prompt)` — threading `model`/`images` requires updating that stub. In **mock mode the prompt is not read**, so model + images are ignored there.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\artifacts\[REDACTED].txt:13:- **`/api/generate` is JSON (`_read_json`); `/api/download` is multipart.** Keeping `/api/generate` JSON with base64 images preserves ~20 existing tests and the shared size guard.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\artifacts\[REDACTED].txt:19:- **Phase 1: Backend — model selection + image (multimodal) support on `/api/generate` (+ `/api/context` + tests)**
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\artifacts\[REDACTED].txt:44:  "images": [ { "mime": "image/png", "data": "<base64, no data: prefix>" } ] }
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\artifacts\[REDACTED].txt:46:`prompt` stays REQUIRED (empty/whitespace → 422 before any model call/sleep). `model` and `images` are OPTIONAL; omitting both behaves byte-for-byte like today (keeps existing `{"prompt": …}` tests green). Response unchanged: a `canvas-ir/1` deck handed to `loadIR()`.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\artifacts\[REDACTED].txt:52:MODEL_CHOICES = {
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\artifacts\[REDACTED].txt:57:A `model` not in `MODEL_CHOICES` → **reject 422** (loud, so a stale tab finds out). Extend `api_context` to add `"models": [{"id":k,"label":…} …]` for the dropdown; keep the existing `"model"` field for the badge tooltip.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\artifacts\[REDACTED].txt:59:**1.2 Thread through the live seam.** In `api_generate` after prompt validation: read `model` (validate against allowlist), read `images = body.get("images") or []` (validate each is `{"mime": image/*, "data": base64}`; `base64.b64decode` in try/except → 422; cap count + total decoded bytes under `MAX_BODY_BYTES`). **Mock path ignores both** (`mock_ir` + 1.5s unchanged). **Live path:** `generate_live(prompt, pin, model=None, images=None)` → resolve id via `MODEL_CHOICES.get(model, DEFAULT_GEMINI_MODEL)`; `_call_gemini(prompt, model=None, images=None)` uses the passed model and builds multimodal `contents` (`types.Part.from_bytes(data=…, mime_type=…)` + the prompt) — **verify the exact constructor against the installed `google-genai`**. `_finalize_live_ir` + `validate(ir)` UNCHANGED (box-on-logo still 502 `"model"`).
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\artifacts\[REDACTED].txt:61:**1.3 Tests.** Update `_stub_gemini`'s `fake_call` to `(prompt, model=None, images=None)` or every live test TypeErrors. Existing `{"prompt": …}` live/mock tests must still pass. Add: unknown-model→422 (no call), valid model reaches `_call_gemini`, images decoded/passed in live mode, mock ignores model/images (`== mock_ir(load_pin())`). Don't touch pre-existing `/api/export` vs `/api/download` naming.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\artifacts\[REDACTED].txt:76:**2.2 Auto-resize (AGY-style).** Keep `#p-prompt` a `<textarea>` (images go in a separate chip row). Primary: CSS `field-sizing: content; max-height: 200px; overflow-y: auto;`. Gate-1-safe JS fallback: `input` handler `this.style.height='auto'; this.style.height=this.scrollHeight+'px'`. **Never** use `offsetHeight`/`clientHeight`/`getBoundingClientRect` or the digits `720`/`1080`/etc. Preserve the existing Ctrl+Z/Y `stopPropagation` keydown handler on `#p-prompt`.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\artifacts\[REDACTED].txt:80:**2.4 Wire to the contract.** In `loadContext()` populate the `<select>` from `CONTEXT.models`, default-select `CONTEXT.model`; in mock mode disable/grey the dropdown and note model+images are ignored without a key (mirror `disableExports()`/`applyMode()`). In `generate()`, read the model and base64-encode pasted images, send the contract body; keep loading state, `loadIR(ir)`, `snapshot()`/`pushUndo(before)` **order**, and `finally { setBusy(false) }` identical (each is asserted).
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\artifacts\[REDACTED].txt:86:1. **"Paste images into the textbox"** is interpreted as *multimodal input to the model* (images ride `/api/generate`, become Gemini image parts; ignored in mock mode). If the intent was to *insert the image onto the stage* instead, that's a different feature (`insertMedia('image', file)`) — confirm before building.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\artifacts\[REDACTED].txt:88:3. **Multimodal SDK call** must be verified against the installed `google-genai`; it's behind the mocked `_call_gemini` seam, so unit tests pass regardless — smoke-test with a real key.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\artifacts\[REDACTED].txt:89:4. **JSON+base64 chosen over multipart** for `/api/generate` to preserve the existing JSON test suite and shared guard; revisit if very large images are expected (base64 inflates ~33%; cap is 50MB).
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:58:2. Added `MODEL_CHOICES: dict[str, str]` right after `DEFAULT_GEMINI_MODEL = "gemini-3.5-flash"`
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:62:   `MODEL_CHOICES` spec**, needed because `/api/context`'s example payload wants a human `"label"`
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:63:   per model and `MODEL_CHOICES` itself only maps id -> id (it doubles as the request-side allowlist,
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:66:   MODEL_CHOICES]`, in `MODEL_CHOICES`'s insertion order (flash, then extended) — matches the brief's
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:70:5. Added `_decode_images(images_raw) -> (list[dict] | None, JSONResponse | None)`, next to
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:76:   - Docstring updated to name `"model"`/`"images"` and state they are LIVE-only.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:78:     `model`/`images`, not even to validate shape. Objective 1 ("reject an unlisted model with 422")
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:79:     and objective 3 ("mock path must ignore model and images") are in tension for a mock-mode request
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:80:     carrying a bad model; resolved by confining the `MODEL_CHOICES`/base64 checks to the LIVE branch
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:83:     `MODEL_CHOICES` key -> `422` `{"error": "validation", "detail": "unknown model ...; choose one
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:84:     of [...]"}`. Then reads `images_raw = body.get("images")`, runs it through `_decode_images()`,
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:86:   - `generate_live(prompt.strip(), pin, model=model, images=images)`.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:87:7. `_call_gemini(prompt, model=None, images=None)`: builds `contents` as the plain prompt string when
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:88:   `images` is falsy (byte-identical to pre-Phase-5), or as
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:89:   `[types.Part.from_bytes(data=img["data"], mime_type=img["mime"]) for img in images] + [prompt]`
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:90:   when images are present. `generate_content(...)`'s `model=` argument changed from `gemini_model()`
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:91:   (the `GEMINI_MODEL` env var) to `MODEL_CHOICES.get(model, DEFAULT_GEMINI_MODEL)`. Kept the
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:94:8. `generate_live(prompt, pin, model=None, images=None)`: forwards both new parameters to
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:95:   `_call_gemini`; otherwise unchanged.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:101:   `fake_call(prompt, model=None, images=None)` — every existing Phase 4 test using `_stub_gemini`
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:102:   sends no `model`/`images`, so both arrive as `None` and those tests' behavior is unchanged; without
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:103:   this they would hit a `TypeError` since `_call_gemini` is now always invoked with `model=`/`images=`
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:108:     list in `MODEL_CHOICES`/`MODEL_LABELS` order.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:109:   - `[REDACTED]` — `MODEL_CHOICES` and
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:112:     and (via a call-counting `_call_gemini` stub) the model is never invoked.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:113:   - `[REDACTED]` — a valid `"model"` reaches
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:114:     `_call_gemini` unchanged.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:115:   - `[REDACTED]` — a base64-encoded
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:119:   - `[REDACTED]` — an image dict missing `"data"` is `422`,
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:121:   - `[REDACTED]` — a mock-mode request carrying a bogus model AND bogus
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:137:exercises, what `_call_gemini`/`_decode_images` actually does with the input, and what status code and
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:148:2. **Mock-mode validation of `model`/`images` was deliberately skipped, not merely deferred** — see
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:152:   and `[REDACTED]` would need to flip from `200` to `422` if that reading
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:162:   `"model"` is `gemini_model()` (the `GEMINI_MODEL` env var or `DEFAULT_GEMINI_MODEL`), live-mode-only.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:163:   `"models"` is the static `MODEL_CHOICES` allowlist, always present. Nothing enforces `GEMINI_MODEL`
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:164:   (if set) is itself a member of `MODEL_CHOICES`, and `_call_gemini`'s per-request resolution never
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:168:5. **`_call_gemini`'s `MODEL_CHOICES.get(model, DEFAULT_GEMINI_MODEL)` assumes `model` is already
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\change_detail.md:170:   (`generate_live` <- `api_generate`, which validates first). Matches the brief's literal
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\brief.md:13:You are `claude-main` (Sonnet). Your task is to implement the backend changes in `app.py` and update the corresponding unit tests in `test_app.py` for model selection and multimodal support.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\brief.md:18:   - Define a map `MODEL_CHOICES` in `src/aippt/canvas/app.py` containing:
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\brief.md:22:   - Reject `/api/generate` requests with model names not in `MODEL_CHOICES` with a `422 Unprocessable Entity` status code.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\brief.md:37:3. **Thread model and images in `/api/generate`:**
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\brief.md:38:   - Read `model` and `images` from the JSON request body.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\brief.md:39:     - `images` will be a list of dicts: `[{"mime": "image/png", "data": "<base64_string>"}]`.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\brief.md:41:   - Thread `model` and `images` parameter to `generate_live(prompt, pin, model=None, images=None)` and then to `_call_gemini(prompt, model=None, images=None)`.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\brief.md:42:   - Keep mock mode logic intact (mock path must ignore `model` and `images` to maintain compatibility).
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\brief.md:45:   - In `_call_gemini(prompt, model=None, images=None)`, build the multimodal query payload.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\brief.md:46:   - If images are provided:
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\brief.md:49:     - Pass the model resolved from `MODEL_CHOICES.get(model, DEFAULT_GEMINI_MODEL)`.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\brief.md:52:   - In `tests/canvas/test_app.py`, update `_stub_gemini`'s `fake_call(prompt)` signature to `fake_call(prompt, model=None, images=None)` to prevent TypeErrors in other tests.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\brief.md:57:     - Valid model parameter threads through to `_call_gemini`.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\brief.md:58:     - Valid images are decoded and passed to `_call_gemini`.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\brief.md:59:     - Mock mode ignores model and images.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\artifacts\claude-main-diff-273749-18964.txt:18:+# Phase 5: model selection. The allowlist a request's "model" field is checked against -- an id
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\artifacts\claude-main-diff-273749-18964.txt:21:+MODEL_CHOICES: dict[str, str] = {
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\artifacts\claude-main-diff-273749-18964.txt:38:         "model": gemini_model() if server_mode() == "live" else None,
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\artifacts\claude-main-diff-273749-18964.txt:39:+        "models": [{"id": mid, "label": MODEL_LABELS[mid]} for mid in MODEL_CHOICES],
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\artifacts\claude-main-diff-273749-18964.txt:48:+    """{"prompt": "...", "model": "...", "images": [...]} in, canvas-ir/1 out. MOCK without a key,
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\artifacts\claude-main-diff-273749-18964.txt:56:+    "model" and "images" (Phase 5) are LIVE-ONLY. The mock does not read either field -- not even to
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\artifacts\claude-main-diff-273749-18964.txt:69:+    if model is not None and (not isinstance(model, str) or model not in MODEL_CHOICES):
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\artifacts\claude-main-diff-273749-18964.txt:73:+                "detail": f"unknown model {model!r}; choose one of {sorted(MODEL_CHOICES)}",
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\artifacts\claude-main-diff-273749-18964.txt:78:+    images_raw = body.get("images") if isinstance(body, dict) else None
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\artifacts\claude-main-diff-273749-18964.txt:79:+    images, images_err = _decode_images(images_raw)
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\artifacts\claude-main-diff-273749-18964.txt:80:+    if images_err is not None:
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\artifacts\claude-main-diff-273749-18964.txt:81:+        return images_err
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\artifacts\claude-main-diff-273749-18964.txt:83:     log.info("live generate: %d-char prompt -> %s", len(prompt), gemini_model())
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\artifacts\claude-main-diff-273749-18964.txt:85:-        ir = await generate_live(prompt.strip(), pin)
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\artifacts\claude-main-diff-273749-18964.txt:86:+        ir = await generate_live(prompt.strip(), pin, model=model, images=images)
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\artifacts\claude-main-diff-273749-18964.txt:94:+def _decode_images(
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\artifacts\claude-main-diff-273749-18964.txt:95:+    images_raw: Any,
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\artifacts\claude-main-diff-273749-18964.txt:97:+    """Validate and base64-decode /api/generate's optional "images" field. Returns (images, None) or
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\artifacts\claude-main-diff-273749-18964.txt:101:+    if images_raw is None:
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\artifacts\claude-main-diff-273749-18964.txt:103:+    if not isinstance(images_raw, list):
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\artifacts\claude-main-diff-273749-18964.txt:105:+            {"error": "validation", "detail": '"images" must be a list of {"mime", "data"} objects'},
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\artifacts\claude-main-diff-273749-18964.txt:110:+    for i, img in enumerate(images_raw):
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\artifacts\claude-main-diff-273749-18964.txt:119:+                    "detail": f'images[{i}] must be {{"mime": "<type>", "data": "<base64>"}}',
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\artifacts\claude-main-diff-273749-18964.txt:127:+                {"error": "validation", "detail": f"images[{i}].data is not valid base64: {exc}"},
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\artifacts\claude-main-diff-273749-18964.txt:136: # The environment picks the mode. Everything here is ordinary, testable code EXCEPT _call_gemini(),
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\artifacts\claude-main-diff-273749-18964.txt:141:-async def _call_gemini(prompt: str) -> str:
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\artifacts\claude-main-diff-273749-18964.txt:142:+async def _call_gemini(
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\artifacts\claude-main-diff-273749-18964.txt:143:+    prompt: str, model: str | None = None, images: list[dict[str, Any]] | None = None
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\artifacts\claude-main-diff-273749-18964.txt:150:+    `model` is a key of MODEL_CHOICES (already validated by the caller) or None, resolved here
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\artifacts\claude-main-diff-273749-18964.txt:151:+    against DEFAULT_GEMINI_MODEL. `images` is already-decoded {"mime", "data": bytes} dicts
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\artifacts\claude-main-diff-273749-18964.txt:152:+    (_decode_images did the base64 work) -- when present, each becomes a types.Part.from_bytes()
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\artifacts\claude-main-diff-273749-18964.txt:153:+    part alongside the text prompt; when absent, the call is text-only, exactly as before Phase 5.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\artifacts\claude-main-diff-273749-18964.txt:157:@@ -432,10 +518,17 @@ async def _call_gemini(prompt: str) -> str:
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\artifacts\claude-main-diff-273749-18964.txt:163:+    if images:
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\artifacts\claude-main-diff-273749-18964.txt:164:+        parts = [types.Part.from_bytes(data=img["data"], mime_type=img["mime"]) for img in images]
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\artifacts\claude-main-diff-273749-18964.txt:170:-            model=gemini_model(),
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\artifacts\claude-main-diff-273749-18964.txt:172:+            model=MODEL_CHOICES.get(model, DEFAULT_GEMINI_MODEL),
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\artifacts\claude-main-diff-273749-18964.txt:177:@@ -450,9 +543,14 @@ async def _call_gemini(prompt: str) -> str:
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\artifacts\claude-main-diff-273749-18964.txt:181:-async def generate_live(prompt: str, pin: dict[str, Any]) -> dict[str, Any]:
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\artifacts\claude-main-diff-273749-18964.txt:182:+async def generate_live(
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\artifacts\claude-main-diff-273749-18964.txt:186:+    images: list[dict[str, Any]] | None = None,
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\artifacts\claude-main-diff-273749-18964.txt:189:-    raw = await _call_gemini(prompt)
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\artifacts\claude-main-diff-273749-18964.txt:190:+    raw = await _call_gemini(prompt, model=model, images=images)
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\brief.md:13:You are `claude-main` (Sonnet). Your task is to implement the backend changes in `app.py` and update the corresponding unit tests in `test_app.py` for model selection and multimodal support.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\brief.md:18:   - Define a map `MODEL_CHOICES` in `src/aippt/canvas/app.py` containing:
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\brief.md:22:   - Reject `/api/generate` requests with model names not in `MODEL_CHOICES` with a `422 Unprocessable Entity` status code.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\brief.md:37:3. **Thread model and images in `/api/generate`:**
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\brief.md:38:   - Read `model` and `images` from the JSON request body.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\brief.md:39:     - `images` will be a list of dicts: `[{"mime": "image/png", "data": "<base64_string>"}]`.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\brief.md:41:   - Thread `model` and `images` parameter to `generate_live(prompt, pin, model=None, images=None)` and then to `_call_gemini(prompt, model=None, images=None)`.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\brief.md:42:   - Keep mock mode logic intact (mock path must ignore `model` and `images` to maintain compatibility).
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\brief.md:45:   - In `_call_gemini(prompt, model=None, images=None)`, build the multimodal query payload.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\brief.md:46:   - If images are provided:
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\brief.md:49:     - Pass the model resolved from `MODEL_CHOICES.get(model, DEFAULT_GEMINI_MODEL)`.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\brief.md:52:   - In `tests/canvas/test_app.py`, update `_stub_gemini`'s `fake_call(prompt)` signature to `fake_call(prompt, model=None, images=None)` to prevent TypeErrors in other tests.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\brief.md:57:     - Valid model parameter threads through to `_call_gemini`.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\brief.md:58:     - Valid images are decoded and passed to `_call_gemini`.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\brief.md:59:     - Mock mode ignores model and images.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\artifacts\claude-main-diff-254009-32635.txt:18:+# Phase 5: model selection. The allowlist a request's "model" field is checked against -- an id
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\artifacts\claude-main-diff-254009-32635.txt:21:+MODEL_CHOICES: dict[str, str] = {
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\artifacts\claude-main-diff-254009-32635.txt:38:         "model": gemini_model() if server_mode() == "live" else None,
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\artifacts\claude-main-diff-254009-32635.txt:39:+        "models": [{"id": mid, "label": MODEL_LABELS[mid]} for mid in MODEL_CHOICES],
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\artifacts\claude-main-diff-254009-32635.txt:48:+    """{"prompt": "...", "model": "...", "images": [...]} in, canvas-ir/1 out. MOCK without a key,
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\artifacts\claude-main-diff-254009-32635.txt:56:+    "model" and "images" (Phase 5) are LIVE-ONLY. The mock does not read either field -- not even to
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\artifacts\claude-main-diff-254009-32635.txt:69:+    if model is not None and (not isinstance(model, str) or model not in MODEL_CHOICES):
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\artifacts\claude-main-diff-254009-32635.txt:73:+                "detail": f"unknown model {model!r}; choose one of {sorted(MODEL_CHOICES)}",
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\artifacts\claude-main-diff-254009-32635.txt:78:+    images_raw = body.get("images") if isinstance(body, dict) else None
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\artifacts\claude-main-diff-254009-32635.txt:79:+    images, images_err = _decode_images(images_raw)
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\artifacts\claude-main-diff-254009-32635.txt:80:+    if images_err is not None:
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\artifacts\claude-main-diff-254009-32635.txt:81:+        return images_err
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\artifacts\claude-main-diff-254009-32635.txt:83:     log.info("live generate: %d-char prompt -> %s", len(prompt), gemini_model())
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\artifacts\claude-main-diff-254009-32635.txt:85:-        ir = await generate_live(prompt.strip(), pin)
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\artifacts\claude-main-diff-254009-32635.txt:86:+        ir = await generate_live(prompt.strip(), pin, model=model, images=images)
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\artifacts\claude-main-diff-254009-32635.txt:94:+def _decode_images(
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\artifacts\claude-main-diff-254009-32635.txt:95:+    images_raw: Any,
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\artifacts\claude-main-diff-254009-32635.txt:97:+    """Validate and base64-decode /api/generate's optional "images" field. Returns (images, None) or
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\artifacts\claude-main-diff-254009-32635.txt:101:+    if images_raw is None:
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\artifacts\claude-main-diff-254009-32635.txt:103:+    if not isinstance(images_raw, list):
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\artifacts\claude-main-diff-254009-32635.txt:105:+            {"error": "validation", "detail": '"images" must be a list of {"mime", "data"} objects'},
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\artifacts\claude-main-diff-254009-32635.txt:110:+    for i, img in enumerate(images_raw):
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\artifacts\claude-main-diff-254009-32635.txt:119:+                    "detail": f'images[{i}] must be {{"mime": "<type>", "data": "<base64>"}}',
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\artifacts\claude-main-diff-254009-32635.txt:127:+                {"error": "validation", "detail": f"images[{i}].data is not valid base64: {exc}"},
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\artifacts\claude-main-diff-254009-32635.txt:136: # The environment picks the mode. Everything here is ordinary, testable code EXCEPT _call_gemini(),
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\artifacts\claude-main-diff-254009-32635.txt:141:-async def _call_gemini(prompt: str) -> str:
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\artifacts\claude-main-diff-254009-32635.txt:142:+async def _call_gemini(
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\artifacts\claude-main-diff-254009-32635.txt:143:+    prompt: str, model: str | None = None, images: list[dict[str, Any]] | None = None
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\artifacts\claude-main-diff-254009-32635.txt:150:+    `model` is a key of MODEL_CHOICES (already validated by the caller) or None, resolved here
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\artifacts\claude-main-diff-254009-32635.txt:151:+    against DEFAULT_GEMINI_MODEL. `images` is already-decoded {"mime", "data": bytes} dicts
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\artifacts\claude-main-diff-254009-32635.txt:152:+    (_decode_images did the base64 work) -- when present, each becomes a types.Part.from_bytes()
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\artifacts\claude-main-diff-254009-32635.txt:153:+    part alongside the text prompt; when absent, the call is text-only, exactly as before Phase 5.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\artifacts\claude-main-diff-254009-32635.txt:157:@@ -432,10 +518,17 @@ async def _call_gemini(prompt: str) -> str:
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\artifacts\claude-main-diff-254009-32635.txt:163:+    if images:
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\artifacts\claude-main-diff-254009-32635.txt:164:+        parts = [types.Part.from_bytes(data=img["data"], mime_type=img["mime"]) for img in images]
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\artifacts\claude-main-diff-254009-32635.txt:170:-            model=gemini_model(),
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\artifacts\claude-main-diff-254009-32635.txt:172:+            model=MODEL_CHOICES.get(model, DEFAULT_GEMINI_MODEL),
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\artifacts\claude-main-diff-254009-32635.txt:177:@@ -450,9 +543,14 @@ async def _call_gemini(prompt: str) -> str:
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\artifacts\claude-main-diff-254009-32635.txt:181:-async def generate_live(prompt: str, pin: dict[str, Any]) -> dict[str, Any]:
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\artifacts\claude-main-diff-254009-32635.txt:182:+async def generate_live(
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\artifacts\claude-main-diff-254009-32635.txt:186:+    images: list[dict[str, Any]] | None = None,
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\artifacts\claude-main-diff-254009-32635.txt:189:-    raw = await _call_gemini(prompt)
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\artifacts\claude-main-diff-254009-32635.txt:190:+    raw = await _call_gemini(prompt, model=model, images=images)
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\artifacts\claude-main-stdout-273749-6258.txt:3:**What happened:** This was a re-dispatch of the same Phase 1 objectives (model allowlist + multimodal images for `/api/generate`) into a fresh staging worktree — the first attempt (`02-phase1`) got blocked by what looks like a scope-checker false positive (it flagged a file that was literally inside its own `write_scope`). I found that prior attempt's full diff already sitting in `workers/claude-main/02-phase1/artifacts/`, confirmed it applied cleanly against this new worktree's identical base `app.py`, and applied it via targeted `Edit` calls. `tests/canvas/test_app.py` didn't exist in the staging worktree at all, so I copied it in from the outer tree (`cp`, base file only — same gap the first attempt hit) and wrote 8 new tests for the model/image validation paths from scratch.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1-retry\artifacts\claude-main-stdout-273749-6258.txt:5:One thing worth flagging: this session's `Edit`/`Bash` tool calls succeeded unprompted on the out-of-scope staging path, where prior sessions on this same task family consistently hit an unresolvable approval prompt. I couldn't run the test suite either way (`git status`/`pytest` are still blocked), so verification was by hand-tracing each test against the final code, documented in `workers/claude-main/02-phase1-retry/change_detail.md` along with the full rationale and caveats (notably: mock mode intentionally ignores bad `model`/`images` rather than validating them, per a literal reading of the brief's own tension between objectives 1 and 3).
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\result.json:7:  "stdout": "[output truncated in envelope/result.md: full output preserved at stdout_path/stderr_path; size=9927 bytes]\n\nThe write to a result file wasn't permitted, and the brief didn't actually request a specific output file — only the markdown format. So I'll deliver the two required outputs inline, per the brief's Output Format.\n\n---\n\n## Analysis summary (WorkDirector, `claude-review` / Opus — no code changed, `write_scope: none`)\n\nI read `index.html`, `style.css`, `editor.js`, `app.py`, plus the two gate files `tests/canvas/test_editor_source.py` (Gate 1) and `tests/canvas/test_app.py`. Five findings drive the plan:\n\n- **A test hard-pins the AI UI to the toolbar:** `[REDACTED]` requires `id=\"p-prompt\"` / `id=\"b-generate\"` inside `<aside id=\"toolbar\">`. Moving `#ai` to the bottom **breaks it** — must be rewritten in the same phase.\n- **A test hard-pins the request body:** `[REDACTED]` asserts the literal `JSON.stringify({ prompt: prompt })`. Adding `model`/`images` **breaks it**.\n- **Gate 1 is a substring grep over `editor.js`.** Banned: `offsetWidth/Height`, `clientWidth/Height`, `offsetLeft/Top/Parent`, `getComputedStyle`, `getBBox`, `devicePixelRatio`; `getBoundingClientRect` exactly once (in `toModel()`); digits `1920/1080/1280/720/1440/810` forbidden. **`scrollHeight` is NOT banned** → auto-resize is fine.\n- **Backend seam:** `api_generate → generate_live(prompt, pin) → _call_gemini(prompt)`. The test stub `_stub_gemini` monkeypatches `_call_gemini` with a **1-arg** `fake_call(prompt)` — threading `model`/`images` requires updating that stub. In **mock mode the prompt is not read**, so model + images are ignored there.\n- **`/api/generate` is JSON (`_read_json`); `/api/download` is multipart.** Keeping `/api/generate` JSON with base64 images preserves ~20 existing tests and the shared size guard.\n\n---\n\n# Phase Plan\n\n- **Phase 1: Backend — model selection + image (multimodal) support on `/api/generate` (+ `/api/context` + tests)**\n  - Recommended Model: **claude-main Opus**\n  - write_scope: `src/aippt/canvas/app.py`, `tests/canvas/test_app.py`\n  - Execution: **sequential** (lands first — defines the wire contract Phase 2 builds against)\n  - Why Opus: security-sensitive (model-name allowlist prevents arbitrary-model injection), correctness-critical (multimodal Gemini call, preserving the `validate()` gate), high blast radius (~25 mock/live seam tests must stay green).\n\n- **Phase 2: Frontend — relocate AI draft to a bottom auto-resizing composer, model dropdown, image paste, wire to the new contract (+ HTML/source tests)**\n  - Recommended Model: **claude-main Sonnet**\n  - write_scope: `src/aippt/canvas/static/index.html`, `src/aippt/canvas/static/style.css`, `src/aippt/canvas/static/editor.js`, `tests/canvas/test_app.py`\n  - Execution: **sequential-after Phase 1**\n  - Why Sonnet: mostly pattern-following CSS-grid/UI + event wiring against an already-tested contract; the two brittle test assertions to update are named explicitly below.\n\n> Parallelism: not applicable — both phases operate on the **same `target_repo`** and Phase 2 depends on Phase 1's contract, so they are strictly sequential (parallel groups only span different target_repos).\n\n---\n\n# Reinforced Worker Brief (for `claude-main`)\n\nEnglish per D27. Do not treat any path/option-looking token as a CLI flag. Read prior-phase `change_detail` docs first.\n\n## The wire contract (both phases build to this)\n\n`POST /api/generate`, JSON body:\n```json\n{ \"prompt\": \"<non-empty>\", \"model\": \"<optional allowlisted id; omitted => server default>\",\n  \"images\": [ { \"mime\": \"image/png\", \"data\": \"<base64, no data: prefix>\" } ] }\n```\n`prompt` stays REQUIRED (empty/whitespace → 422 before any model call/sleep). `model` and `images` are OPTIONAL; omitting both behaves byte-for-byte like today (keeps existing `{\"prompt\": …}` tests green). Response unchanged: a `canvas-ir/1` deck handed to `loadIR()`.\n\n## PHASE 1 — Backend (`app.py` + `test_app.py`), Opus\n\n**1.1 Allowlist + context.** Add a module-level map (keep `DEFAULT_GEMINI_MODEL = \"gemini-3.5-flash\"` as default/fallback):\n```python\nMODEL_CHOICES = {\n    \"gemini-3.5-flash\":          \"gemini-3.5-flash\",           # \"Gemini 3.5 Flash\"\n    \"gemini-3.5-flash-extended\": \"gemini-3.5-flash-extended\",  # \"Gemini 3.5 Flash Extended\"  (id UNCONFIRMED)\n}\n```\nA `model` not in `MODEL_CHOICES` → **reject 422** (loud, so a stale tab finds out). Extend `api_context` to add `\"models\": [{\"id\":k,\"label\":…} …]` for the dropdown; keep the existing `\"model\"` field for the badge tooltip.\n\n**1.2 Thread through the live seam.** In `api_generate` after prompt validation: read `model` (validate against allowlist), read `images = body.get(\"images\") or []` (validate each is `{\"mime\": image/*, \"data\": base64}`; `base64.b64decode` in try/except → 422; cap count + total decoded bytes under `MAX_BODY_BYTES`). **Mock path ignores both** (`mock_ir` + 1.5s unchanged). **Live path:** `generate_live(prompt, pin, model=None, images=None)` → resolve id via `MODEL_CHOICES.get(model, DEFAULT_GEMINI_MODEL)`; `_call_gemini(prompt, model=None, images=None)` uses the passed model and builds multimodal `contents` (`types.Part.from_bytes(data=…, mime_type=…)` + the prompt) — **verify the exact constructor against the installed `google-genai`**. `_finalize_live_ir` + `validate(ir)` UNCHANGED (box-on-logo still 502 `\"model\"`).\n\n**1.3 Tests.** Update `_stub_gemini`'s `fake_call` to `(prompt, model=None, images=None)` or every live test TypeErrors. Existing `{\"prompt\": …}` live/mock tests must still pass. Add: unknown-model→422 (no call), valid model reaches `_call_gemini`, images decoded/passed in live mode, mock ignores model/images (`== mock_ir(load_pin())`). Don't touch pre-existing `/api/export` vs `/api/download` naming.\n\n## PHASE 2 — Frontend (`index.html`, `style.css`, `editor.js` + `test_app.py`), Sonnet\n\n**2.1 Relocate `#ai`.** Move `<section … id=\"ai\n...[truncated]\n",
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\artifacts\claude-main-stdout-254009-13934.txt:5:- **`src/aippt/canvas/app.py`**: added `MODEL_CHOICES`/`MODEL_LABELS`, extended `/api/context` with a `"models"` list, added `_decode_images()` for base64 validation, threaded `model`/`images` through `api_generate` → `generate_live` → `_call_gemini` (which now builds multimodal `types.Part.from_bytes` parts and resolves the model via `MODEL_CHOICES.get(model, DEFAULT_GEMINI_MODEL)`).
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\artifacts\claude-main-stdout-254009-13934.txt:7:- Full rationale, an explicit judgment call (mock mode ignores `model`/`images` entirely rather than validating-then-discarding — the brief's objectives 1 and 3 are in tension here), and caveats (no test execution was possible in this session — verified by hand-tracing instead) are written to `tasks/AI_Powered_PPT/workers/claude-main/02-phase1/change_detail.md` in the outer tree.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:21:2. Added `MODEL_CHOICES: dict[str, str]` right after the existing `DEFAULT_GEMINI_MODEL =
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:26:   `MODEL_CHOICES` spec**, needed because the brief's own example `/api/context` payload wants a
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:27:   human `"label"` per model ("Gemini 3.5 Flash" / "Gemini 3.5 Flash Extended") and `MODEL_CHOICES`
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:29:   as a second small dict rather than restructuring `MODEL_CHOICES` into `{id: {"label":
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:30:   ..., "value": ...}}`, since the brief was explicit about `MODEL_CHOICES`'s exact shape.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:32:   MODEL_CHOICES]` to the returned dict, in `MODEL_CHOICES`'s insertion order (flash, then
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:36:5. Added `_decode_images(images_raw) -> (list[dict] | None, JSONResponse | None)`, next to
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:42:   - Docstring updated to name `"model"`/`"images"` and state they are LIVE-only.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:44:     `model`/`images` at all, not even to validate their shape. This is a deliberate reading of a
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:46:     unconditionally, while objective 3 says the mock "must ignore `model` and `images` to
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:50:     `MODEL_CHOICES`/base64 checks to the LIVE branch, where the values are actually about to
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:55:     if present and (not a `str`, or not a key of `MODEL_CHOICES`) -> `422`
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:57:     `images_raw = body.get("images")` and runs it through `_decode_images()`, returning its error
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:59:   - `generate_live(prompt.strip(), pin, model=model, images=images)` — both threaded through as
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:61:7. `_call_gemini(prompt, model=None, images=None)`: builds `contents` as the plain prompt string
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:62:   when `images` is falsy (byte-identical to the pre-Phase-5 call), or as
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:63:   `[types.Part.from_bytes(data=img["data"], mime_type=img["mime"]) for img in images] +
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:64:   [prompt]` when images are present — the exact SDK object the brief specifies. The
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:65:   `generate_content(...)` call's `model=` argument changed from `gemini_model()` (the
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:66:   `GEMINI_MODEL` env var) to `MODEL_CHOICES.get(model, DEFAULT_GEMINI_MODEL)`, per the brief's
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:72:8. `generate_live(prompt, pin, model=None, images=None)`: now accepts and forwards both new
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:73:   parameters to `_call_gemini`; otherwise unchanged.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:86:   `fake_call(prompt, model=None, images=None)`, per objective 5 — every existing Phase 4 test that
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:88:   `model`/`images` in its request body, so both arrive as `None` and those tests' behavior is
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:89:   unchanged; they'd otherwise now hit a `TypeError` since `_call_gemini` is always invoked with
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:90:   `model=`/`images=` keywords after the `app.py` changes above.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:94:   - `[REDACTED]` — `MODEL_CHOICES` and
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:97:     `422`, and (via a `_call_gemini` stub that counts calls) the model is never invoked.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:98:   - `[REDACTED]` — a valid `"model"` reaches
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:99:     `_call_gemini` unchanged.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:100:   - `[REDACTED]` — a base64 image
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:101:     round-trips to the exact original `bytes` by the time `_call_gemini` sees it.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:104:   - `[REDACTED]` — an image dict missing `"data"` is
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:106:   - `[REDACTED]` — a mock-mode request carrying a bogus model AND
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:115:pip install -e ".[editor,dev,ai]"     # ai extra needed for google-genai (images/model tests stub it out, but import-time needs it if GEMINI_API_KEY were ever really set)
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:129:2. **Mock-mode validation of `model`/`images` was deliberately skipped, not merely deferred** — see
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:132:   small, localized change: move the `model`/`images` read-and-validate block above the
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:134:   directly contradicts objective 3's plain wording ("mock path must ignore model and images"), and
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:135:   the new `[REDACTED]` test would need to flip its expected status
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:140:   `gemini_model()` — the `GEMINI_MODEL` environment variable, or `DEFAULT_GEMINI_MODEL` — surfaced
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:141:   only in live mode, for a badge tooltip. `"models"` (new) is the static `MODEL_CHOICES` allowlist,
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:143:   of `MODEL_CHOICES` — an operator could set `GEMINI_MODEL=some-other-model` and `"model"` would
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:145:   `MODEL_CHOICES.get(model, DEFAULT_GEMINI_MODEL)` resolution never consults `GEMINI_MODEL` at
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:148:   generate: ... -> %s` log line (still reading `gemini_model()`) can now print a different model
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:150:   no existing or new test depends on `GEMINI_MODEL` and `MODEL_CHOICES` agreeing, but it's worth a
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:177:6. **`_call_gemini`'s new model resolution (`MODEL_CHOICES.get(model, DEFAULT_GEMINI_MODEL)`)
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:178:   assumes `model` is always either `None` or an already-validated key of `MODEL_CHOICES`** by the
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:179:   time it's called — true for every current call site (`generate_live` <- `api_generate`, which
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:180:   validates before calling), but `_call_gemini`/`generate_live` do not re-validate `model`
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\change_detail.md:183:   brief's literal `MODEL_CHOICES.get(model, DEFAULT_GEMINI_MODEL)` instruction as given.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\result.md:10:- **`src/aippt/canvas/app.py`**: added `MODEL_CHOICES`/`MODEL_LABELS`, extended `/api/context` with a `"models"` list, added `_decode_images()` for base64 validation, threaded `model`/`images` through `api_generate` → `generate_live` → `_call_gemini` (which now builds multimodal `types.Part.from_bytes` parts and resolves the model via `MODEL_CHOICES.get(model, DEFAULT_GEMINI_MODEL)`).
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\result.md:12:- Full rationale, an explicit judgment call (mock mode ignores `model`/`images` entirely rather than validating-then-discarding — the brief's objectives 1 and 3 are in tension here), and caveats (no test execution was possible in this session — verified by hand-tracing instead) are written to `tasks/AI_Powered_PPT/workers/claude-main/02-phase1/change_detail.md` in the outer tree.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\result.json:7:  "stdout": "Both files are intact and consistent with the earlier full reads (test_app.py at 1773/1774 lines matches the last-read offset of 1774; app.py at 722/723 matches the full read of 723 lines). The work is complete.\n\n**Summary of what was done** (brief at `C:\\Users\\2021670\\AppData\\Local\\Temp\\tmp.4MMPZ3UyLW`, target repo staged at `.ma-stg\\stg.WoNR5MPc`):\n\n- **`src/aippt/canvas/app.py`**: added `MODEL_CHOICES`/`MODEL_LABELS`, extended `/api/context` with a `\"models\"` list, added `_decode_images()` for base64 validation, threaded `model`/`images` through `api_generate` → `generate_live` → `_call_gemini` (which now builds multimodal `types.Part.from_bytes` parts and resolves the model via `MODEL_CHOICES.get(model, DEFAULT_GEMINI_MODEL)`).\n- **`tests/canvas/test_app.py`**: this file didn't exist yet in the staged repo, so I copied it in verbatim from the outer tree, updated `_stub_gemini`'s signature, and added 8 new tests covering invalid-model rejection, model/image threading, base64 validation, and mock-mode compatibility.\n- Full rationale, an explicit judgment call (mock mode ignores `model`/`images` entirely rather than validating-then-discarding — the brief's objectives 1 and 3 are in tension here), and caveats (no test execution was possible in this session — verified by hand-tracing instead) are written to `tasks/AI_Powered_PPT/workers/claude-main/02-phase1/change_detail.md` in the outer tree.\n\nwrite_scope violation — 범위 외 파일 수정 감지\nscope: src/aippt/canvas/app.py,tests/canvas/test_app.py\n위반 파일:\n  tasks/AI_Powered_PPT/src/aippt/canvas/app.py",
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-main\02-phase1\result.json:14:  "diff": "[output truncated in envelope/result.md: full output preserved at stdout_path/stderr_path; size=8568 bytes]\n\ndiff --git a/tasks/AI_Powered_PPT/src/aippt/canvas/app.py b/tasks/AI_Powered_PPT/src/aippt/canvas/app.py\nindex a14c807a..f989ee89 100644\n--- a/tasks/AI_Powered_PPT/src/aippt/canvas/app.py\n+++ b/tasks/AI_Powered_PPT/src/aippt/canvas/app.py\n@@ -42,6 +42,8 @@ time (server_mode()), so the same process serves whichever the environment says.\n from __future__ import annotations\n \n import asyncio\n+import base64\n+import binascii\n import io\n import json\n import logging\n@@ -95,6 +97,20 @@ _UNSAFE_STEM = re.compile(r'[\\x00-\\x1f\\x7f\"\\\\/:*?<>|]+')\n # overridable so a deployment can pin a newer flash revision without a code change.\n DEFAULT_GEMINI_MODEL = \"gemini-3.5-flash\"\n \n+# Phase 5: model selection. The allowlist a request's \"model\" field is checked against -- an id\n+# outside it is a 422, never silently coerced to the default. Both sides of each pair are the same\n+# string: once validated, the id IS what the SDK is called with.\n+MODEL_CHOICES: dict[str, str] = {\n+    \"gemini-3.5-flash\": \"gemini-3.5-flash\",\n+    \"gemini-3.5-flash-extended\": \"gemini-3.5-flash-extended\",\n+}\n+\n+# Display labels for the same allowlist, surfaced to the editor's model picker via /api/context.\n+MODEL_LABELS: dict[str, str] = {\n+    \"gemini-3.5-flash\": \"Gemini 3.5 Flash\",\n+    \"gemini-3.5-flash-extended\": \"Gemini 3.5 Flash Extended\",\n+}\n+\n # The system instruction the live author injects. It is the SAME contract the Web-Gem workflow\n # pastes into gemini.google.com, kept in one file so the two paths cannot drift. It lives at the\n # project root: canvas/ -> aippt/ -> src/ -> <project root>.\n@@ -163,6 +179,7 @@ async def api_context(request: Request) -> dict[str, Any]:\n         \"fonts\": {\"latin\": LATIN, \"ea\": EA},\n         \"mode\": server_mode(),\n         \"model\": gemini_model() if server_mode() == \"live\" else None,\n+        \"models\": [{\"id\": mid, \"label\": MODEL_LABELS[mid]} for mid in MODEL_CHOICES],\n     }\n \n \n@@ -249,12 +266,19 @@ async def api_download(request: Request) -> Response:\n \n @app.post(\"/api/generate\")\n async def api_generate(request: Request) -> Response:\n-    \"\"\"{\"prompt\": \"...\"} in, canvas-ir/1 out. MOCK without a key, LIVE Gemini with one (Phase 4).\n+    \"\"\"{\"prompt\": \"...\", \"model\": \"...\", \"images\": [...]} in, canvas-ir/1 out. MOCK without a key,\n+    LIVE Gemini with one (Phase 4).\n \n     Either way the editor hands what comes back straight to loadIR(), which judges every element\n     before it touches the stage -- so a model draft is no more trusted than a hand-edited file. The\n     request shape, the loading state and the hand-off are identical in both modes; only the author\n     behind the seam changes.\n+\n+    \"model\" and \"images\" (Phase 5) are LIVE-ONLY. The mock does not read either field -- not even to\n+    validate it -- so a caller that sends them while the server is in mock mode sees no change at\n+    all, same as if it had sent neither. Only once a value will actually reach the network is it\n+    worth rejecting: the allowlist and base64 checks below run in the LIVE branch, after the mode is\n+    known, not before.\n     \"\"\"\n     body, err = await _read_json(request)\n     if err is not None:\n@@ -289,9 +313,24 @@ async def api_generate(request: Request) -> Response:\n         return JSONResponse(ir)\n \n     # --- LIVE: a real Gemini call. The prompt IS read now. [REDACTED]\n+    model = body.get(\"model\") if isinstance(body, dict) else None\n+    if model is not None and (not isinstance(model, str) or model not in MODEL_CHOICES):\n+        return JSONResponse(\n+            {\n+                \"error\": \"validation\",\n+                \"detail\": f\"unknown model {model!r}; choose one of {sorted(MODEL_CHOICES)}\",\n+            },\n+            status_code=422,\n+        )\n+\n+    images_raw = body.get(\"images\") if isinstance(body, dict) else None\n+    images, images_err = _decode_images(images_raw)\n+    if images_err is not None:\n+        return images_err\n+\n     log.info(\"live generate: %d-char prompt -> %s\", len(prompt), gemini_model())\n     try:\n-        ir = await generate_live(prompt.strip(), pin)\n+        ir = await generate_live(prompt.strip(), pin, model=model, images=images)\n     except GeminiError as exc:\n         log.warning(\"live generate failed: %s\", exc)\n         return JSONResponse({\"error\": \"generate\", \"detail\": str(exc)}, status_code=502)\n@@ -343,6 +382,46 @@ def _too_large() -> JSONResponse:\n     )\n \n \n+def _decode_images(\n+    images_raw: Any,\n+) -> tuple[list[dict[str, Any]] | None, JSONResponse | None]:\n+    \"\"\"Validate and base64-decode /api/generate's optional \"images\" field. Returns (images, None) or\n+    (None, error). Called ONLY from the LIVE branch -- see api_generate's docstring for why a\n+    malformed value is never this function's problem in mock mode.\n+    \"\"\"\n+    if images_raw is None:\n+        return None, None\n+    if not isinstance(images_raw, list):\n+        return None, JSONResponse(\n+            {\"error\": \"validation\", \"detail\": '\"images\" must be a list of {\"mime\", \"data\"} objects'},\n+            status_code=422,\n+        )\n+\n+    decoded: list[dict[str, Any]] = []\n+    for i, img in enumerate(images_raw):\n+        if (\n+            not isinstance(img, dict)\n+            or not isinstance(img.get(\"mime\"), str)\n+            or not isinstance(img.get(\"data\"), str)\n+        ):\n+            return None, JSONResponse(\n+                {\n+                    \"error\": \"validation\",\n+                    \"detail\": f'images[{i}] must be {{\"mime\": \"<type>\", \"data\": \"<base64>\"}}',\n+                },\n+                status_code=422,\n+            )\n+        try:\n+            data = base64.b64decode(img[\"data\"], validate=True)\n+        except binascii.Error as exc:\n+            return None, JSONResponse(\n+                {\"error\": \"validation\", \"detail\": f\"images[{i}].data is not valid base64: {exc}\"},\n+                status_code=422,\n+            )\n+        decoded.append({\"mime\": img[\"mime\"], \"data\": data})\n+    return decoded, None\n+\n+\n # --- the live \n...[truncated]\n",
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\result.md:17:- **A test hard-pins the request body:** `[REDACTED]` asserts the literal `JSON.stringify({ prompt: prompt })`. Adding `model`/`images` **breaks it**.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\result.md:19:- **Backend seam:** `api_generate → generate_live(prompt, pin) → _call_gemini(prompt)`. The test stub `_stub_gemini` monkeypatches `_call_gemini` with a **1-arg** `fake_call(prompt)` — threading `model`/`images` requires updating that stub. In **mock mode the prompt is not read**, so model + images are ignored there.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\result.md:20:- **`/api/generate` is JSON (`_read_json`); `/api/download` is multipart.** Keeping `/api/generate` JSON with base64 images preserves ~20 existing tests and the shared size guard.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\result.md:26:- **Phase 1: Backend — model selection + image (multimodal) support on `/api/generate` (+ `/api/context` + tests)**
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\result.md:51:  "images": [ { "mime": "image/png", "data": "<base64, no data: prefix>" } ] }
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\result.md:53:`prompt` stays REQUIRED (empty/whitespace → 422 before any model call/sleep). `model` and `images` are OPTIONAL; omitting both behaves byte-for-byte like today (keeps existing `{"prompt": …}` tests green). Response unchanged: a `canvas-ir/1` deck handed to `loadIR()`.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\result.md:59:MODEL_CHOICES = {
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\result.md:64:A `model` not in `MODEL_CHOICES` → **reject 422** (loud, so a stale tab finds out). Extend `api_context` to add `"models": [{"id":k,"label":…} …]` for the dropdown; keep the existing `"model"` field for the badge tooltip.
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\result.md:66:**1.2 Thread through the live seam.** In `api_generate` after prompt validation: read `model` (validate against allowlist), read `images = body.get("images") or []` (validate each is `{"mime": image/*, "data": base64}`; `base64.b64decode` in try/except → 422; cap count + total decoded bytes under `MAX_BODY_BYTES`). **Mock path ignores both** (`mock_ir` + 1.5s unchanged). **Live path:** `generate_live(prompt, pin, model=None, images=None)` → resolve id via `MODEL_CHOICES.get(model, DEFAULT_GEMINI_MODEL)`; `_call_gemini(prompt, model=None, images=None)` uses the passed model and builds multimodal `contents` (`types.Part.from_bytes(data=…, mime_type=…)` + the prompt) — **verify the exact constructor against the installed `google-genai`**. `_finalize_live_ir` + `validate(ir)` UNCHANGED (box-on-logo still 502 `"model"`).
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\workers\claude-review\01-workdirector\result.md:68:**1.3 Tests.** Update `_stub_gemini`'s `fake_call` to `(prompt, model=None, images=None)` or every live test TypeErrors. Existing `{"prompt": …}` live/mock tests must still pass. Add: unknown-model→422 (no call), valid model reaches `_call_gemini`, images decoded/passed in live mode, mock ignores model/images (`== mock_ir(load_pin())`). Don't touch pre-existing `/api/export` vs `/api/download` naming.
+
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$repo = '"'C:\\Users\\2021670\\Documents\\멀티 에이전트\\tasks\\AI_Powered_PPT'; "'$diff = "$repo'"\\workers\\claude-main\\02-phase1-retry\\artifacts\\claude-main-diff-273749-18964.txt\"; "'$brief = "$repo'"\\workers\\claude-main\\02-phase1-retry\\brief.md\"; Write-Output '--- DIFF SUMMARY ---'; (Get-Content -LiteralPath "'$diff | Select-String -Pattern '"'"'^diff --git|''^@@'"').Line; Write-Output '--- BRIEF ---'; Get-Content -Raw -LiteralPath "'$brief' in C:\Users\2021670\Documents\멀티 에이전트
+ succeeded in 742ms:
+--- DIFF SUMMARY ---
+diff --git a/tasks/AI_Powered_PPT/src/aippt/canvas/app.py b/tasks/AI_Powered_PPT/src/aippt/canvas/app.py
+@@ -42,6 +42,8 @@ time (server_mode()), so the same process serves whichever the environment says.
+@@ -95,6 +97,20 @@ _UNSAFE_STEM = re.compile(r'[\x00-\x1f\x7f"\\/:*?<>|]+')
+@@ -163,6 +179,7 @@ async def api_context(request: Request) -> dict[str, Any]:
+@@ -249,12 +266,19 @@ async def api_download(request: Request) -> Response:
+@@ -289,9 +313,24 @@ async def api_generate(request: Request) -> Response:
+@@ -343,6 +382,46 @@ def _too_large() -> JSONResponse:
+@@ -416,11 +495,18 @@ def _finalize_live_ir(data: Any, pin: dict[str, Any]) -> dict[str, Any]:
+@@ -432,10 +518,17 @@ async def _call_gemini(prompt: str) -> str:
+@@ -450,9 +543,14 @@ async def _call_gemini(prompt: str) -> str:
+--- BRIEF ---
+---
+target_repo: C:/Users/2021670/Documents/硫???먯씠?꾪듃/tasks/AI_Powered_PPT
+write_scope:
+  - tasks/AI_Powered_PPT/src/aippt/canvas/app.py
+  - tasks/AI_Powered_PPT/tests/canvas/test_app.py
+claude_model: sonnet
+reviewer: codex-critic
+change_detail_path: tasks/AI_Powered_PPT/workers/claude-main/02-phase1-retry/change_detail.md
+---
+
+# Phase 1 Worker Brief: Backend Model Selection & Multimodal Support (Retry)
+
+You are `claude-main` (Sonnet). Your task is to implement the backend changes in `app.py` and update the corresponding unit tests in `test_app.py` for model selection and multimodal support.
+
+## 1. Objectives
+
+1. **Model Choices Allowlist:**
+   - Define a map `MODEL_CHOICES` in `src/aippt/canvas/app.py` containing:
+     - `"gemini-3.5-flash"`: `"gemini-3.5-flash"`
+     - `"gemini-3.5-flash-extended"`: `"gemini-3.5-flash-extended"`
+   - Set a fallback default `DEFAULT_GEMINI_MODEL = "gemini-3.5-flash"`.
+   - Reject `/api/generate` requests with model names not in `MODEL_CHOICES` with a `422 Unprocessable Entity` status code.
+
+2. **Extend `api_context`:**
+   - Modify the `/api/context` endpoint in `app.py` to return the available models list in the JSON response.
+   - Example response payload structure update:
+     ```json
+     {
+       "model": "gemini-3.5-flash",
+       "models": [
+         {"id": "gemini-3.5-flash", "label": "Gemini 3.5 Flash"},
+         {"id": "gemini-3.5-flash-extended", "label": "Gemini 3.5 Flash Extended"}
+       ]
+     }
+     ```
+
+3. **Thread model and images in `/api/generate`:**
+   - Read `model` and `images` from the JSON request body.
+     - `images` will be a list of dicts: `[{"mime": "image/png", "data": "<base64_string>"}]`.
+   - Validate base64 data for each image. If base64 decoding fails, reject with `422`.
+   - Thread `model` and `images` parameter to `generate_live(prompt, pin, model=None, images=None)` and then to `_call_gemini(prompt, model=None, images=None)`.
+   - Keep mock mode logic intact (mock path must ignore `model` and `images` to maintain compatibility).
+
+4. **Live Multimodal Gemini Call:**
+   - In `_call_gemini(prompt, model=None, images=None)`, build the multimodal query payload.
+   - If images are provided:
+     - Import and use the exact `google-genai` SDK objects (check how `client.models.generate_content` is called or constructed).
+     - Construct parts: `types.Part.from_bytes(data=decoded_bytes, mime_type=mime_type)` for each image and combine with the text prompt.
+     - Pass the model resolved from `MODEL_CHOICES.get(model, DEFAULT_GEMINI_MODEL)`.
+
+5. **Update Test Stub:**
+   - In `tests/canvas/test_app.py`, update `_stub_gemini`'s `fake_call(prompt)` signature to `fake_call(prompt, model=None, images=None)` to prevent TypeErrors in other tests.
+
+6. **Add Backend Tests:**
+   - Add new tests in `tests/canvas/test_app.py` verifying:
+     - Invalid model rejection (returns 422).
+     - Valid model parameter threads through to `_call_gemini`.
+     - Valid images are decoded and passed to `_call_gemini`.
+     - Mock mode ignores model and images.
+
+## 2. Requirements & Constraints
+- Do not modify files outside the `write_scope`.
+- Preserve existing tests and code formatting.
+- Ensure all tests pass.
+- Write your analysis in English.
+
+
+2026-07-18T04:27:40.790141Z ERROR codex_models_manager::manager: failed to renew cache TTL: missing field `supports_reasoning_summaries` at line 86 column 5
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$repo = '"'C:\\Users\\2021670\\Documents\\멀티 에이전트\\tasks\\AI_Powered_PPT'; "'$target = "$repo'"\\tests\\canvas\\test_app.py\"; "'$wt = '"'C:\\Users\\2021670\\.ma-stg\\stg.qT7gki2q\\tasks\\AI_Powered_PPT\\tests\\canvas\\test_app.py'; Write-Output '--- TARGET TEST MARKERS ---'; rg -n \"def _stub_gemini|fake_call|MODEL_CHOICES|unknown_model|threads_the_requested_model|decodes_images|mock_mode_ignores_model\" "'$target; Write-Output '"'--- WORKTREE TEST MARKERS ---'; if (Test-Path -LiteralPath "'$wt) { rg -n "def _stub_gemini|fake_call|MODEL_CHOICES|unknown_model|threads_the_requested_model|decodes_images|mock_mode_ignores_model" $wt; Write-Output '"'--- HASHES ---'; Get-FileHash -Algorithm SHA256 -LiteralPath "'$target,$wt | Select-Object Path,Hash } else { Write-Output "missing: $wt" }' in C:\Users\2021670\Documents\멀티 에이전트
+ succeeded in 841ms:
+--- TARGET TEST MARKERS ---
+1523:def _stub_gemini(monkeypatch, returns=None, raises=None):
+1524:    async def fake_call(prompt):
+1529:    monkeypatch.setattr(appmod, "_call_gemini", fake_call)
+--- WORKTREE TEST MARKERS ---
+1524:def _stub_gemini(monkeypatch, returns=None, raises=None):
+1525:    async def fake_call(prompt, model=None, images=None):
+1530:    monkeypatch.setattr(appmod, "_call_gemini", fake_call)
+1644:# Phase 5 adds a per-request "model" (checked against MODEL_CHOICES) and "images" (base64-encoded
+1661:    assert appmod.MODEL_CHOICES == {
+1668:def [REDACTED](client, monkeypatch):
+1680:    assert called["n"] == 0, "the model was called for a name outside MODEL_CHOICES"
+1683:def [REDACTED](client, monkeypatch):
+1687:    async def fake_call(prompt, model=None, images=None):
+1691:    monkeypatch.setattr(appmod, "_call_gemini", fake_call)
+1697:def [REDACTED](client, monkeypatch):
+1702:    async def fake_call(prompt, model=None, images=None):
+1707:    monkeypatch.setattr(appmod, "_call_gemini", fake_call)
+1752:def [REDACTED](client, monkeypatch):
+--- HASHES ---
+
+Path                                                                                Hash                               
+----                                                                                ----                               
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\tests\canvas\test_app.py    [REDACTED]...
+C:\Users\2021670\.ma-stg\stg.qT7gki2q\tasks\AI_Powered_PPT\tests\canvas\test_app.py [REDACTED]...
+
+
+
+2026-07-18T04:27:52.548074Z ERROR codex_models_manager::manager: failed to renew cache TTL: missing field `supports_reasoning_summaries` at line 86 column 5
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$root = '"'C:\\Users\\2021670\\Documents\\멀티 에이전트'; git -C "'$root ls-files --stage -- '"'tasks/AI_Powered_PPT/src/aippt/canvas/app.py' 'tasks/AI_Powered_PPT/tests/canvas/test_app.py'; Write-Output '--- OUTER STATUS ---'; git -C "'$root status --short -- '"'tasks/AI_Powered_PPT/src/aippt/canvas/app.py' 'tasks/AI_Powered_PPT/tests/canvas/test_app.py'; Write-Output '--- WORKTREE STATUS ---'; git -C 'C:\\Users\\2021670\\.ma-stg\\stg.qT7gki2q' status --short -- 'tasks/AI_Powered_PPT/src/aippt/canvas/app.py' 'tasks/AI_Powered_PPT/tests/canvas/test_app.py'" in C:\Users\2021670\Documents\멀티 에이전트
+2026-07-18T04:28:00.765268Z ERROR codex_core::tools::router: error=Exit code: 1
+Wall time: 0.9 seconds
+Output:
+100644 [REDACTED] 0	tasks/AI_Powered_PPT/src/aippt/canvas/app.py
+--- OUTER STATUS ---
+ M tasks/AI_Powered_PPT/src/aippt/canvas/app.py
+--- WORKTREE STATUS ---
+warning: unable to access 'C:\Users\2021670/.config/git/ignore': Permission denied
+warning: unable to access 'C:\Users\2021670/.config/git/ignore': Permission denied
+fatal: detected dubious ownership in repository at 'C:/Users/2021670/.ma-stg/stg.qT7gki2q'
+'C:/Users/2021670/.ma-stg/stg.qT7gki2q/.git' is owned by:
+	VIEWORKSDOM/2021670 ([REDACTED])
+but the current user is:
+	HW-4021-2021670/CodexSandboxOffline ([REDACTED])
+To add an exception for this directory, call:
+
+	git config --global --add safe.directory C:/Users/2021670/.ma-stg/stg.qT7gki2q
+
+ exited 1 in 947ms:
+100644 [REDACTED] 0	tasks/AI_Powered_PPT/src/aippt/canvas/app.py
+--- OUTER STATUS ---
+ M tasks/AI_Powered_PPT/src/aippt/canvas/app.py
+--- WORKTREE STATUS ---
+warning: unable to access 'C:\Users\2021670/.config/git/ignore': Permission denied
+warning: unable to access 'C:\Users\2021670/.config/git/ignore': Permission denied
+fatal: detected dubious ownership in repository at 'C:/Users/2021670/.ma-stg/stg.qT7gki2q'
+'C:/Users/2021670/.ma-stg/stg.qT7gki2q/.git' is owned by:
+	VIEWORKSDOM/2021670 ([REDACTED])
+but the current user is:
+	HW-4021-2021670/CodexSandboxOffline ([REDACTED])
+To add an exception for this directory, call:
+
+	git config --global --add safe.directory C:/Users/2021670/.ma-stg/stg.qT7gki2q
+
+2026-07-18T04:28:00.913633Z ERROR codex_models_manager::manager: failed to renew cache TTL: missing field `supports_reasoning_summaries` at line 86 column 5
+codex
+The immutable diff contains only `app.py`; the required `test_app.py` edits exist in the preserved worktree but are absent from the reviewed diff. I’m tracing the existing live-test stub against the new call signature to determine whether this is merely missing coverage or an actual regression.
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$target = '"'C:\\Users\\2021670\\Documents\\멀티 에이전트\\tasks\\AI_Powered_PPT\\tests\\canvas\\test_app.py'; "'$lines = Get-Content -LiteralPath $target; for ($i = 1490; $i -le 1640; $i++) { if ($i -le $lines.Count) { '"'{0,5}: {1}' -f "'$i, $lines[$i-1] } }' in C:\Users\2021670\Documents\멀티 에이전트
+ succeeded in 696ms:
+ 1490: 
+ 1491: # ===============================================================================================
+ 1492: # PHASE 4 -- /api/generate: THE LIVE GEMINI AUTHOR, MOCKED AT THE NETWORK SEAM
+ 1493: # ===============================================================================================
+ 1494: #
+ 1495: # The mock stays the default and every Phase 3 test above still describes it. What is added here is
+ 1496: # the LIVE path with the one network-touching function (_call_gemini) monkeypatched: the prompt
+ 1497: # injection, the pin injection and the validation around it run for real, and only the SDK round trip
+ 1498: # is stubbed. The mode is read at REQUEST time, so setting the env var per-test flips it without a
+ 1499: # restart.
+ 1500: 
+ 1501: import aippt.canvas.app as appmod  # noqa: E402
+ 1502: 
+ 1503: # A deck shaped exactly as the Web prompt asks the model to answer: schema + canvas fixed, NO target
+ 1504: # (the server injects it from the pin), one titled rect. It validates once target is injected.
+ 1505: _LIVE_DECK = {
+ 1506:     "schema": "canvas-ir/1",
+ 1507:     "canvas": {"w": 960, "h": 540, "unit": "pt"},
+ 1508:     "title": "?쇱씠釉??고겕",
+ 1509:     "elements": [
+ 1510:         {
+ 1511:             "id": "box1", "type": "rect",
+ 1512:             "x": 100.0, "y": 150.0, "w": 220.0, "h": 110.0,
+ 1513:             "fill": "#E63312",
+ 1514:             "text": {
+ 1515:                 "align": "CENTER", "valign": "MIDDLE",
+ 1516:                 "paragraphs": [{"runs": [{"t": "?ㅼ쟻 ?붿빟", "size": 18, "bold": True, "color": "#FFFFFF"}]}],
+ 1517:             },
+ 1518:         }
+ 1519:     ],
+ 1520: }
+ 1521: 
+ 1522: 
+ 1523: def _stub_gemini(monkeypatch, returns=None, raises=None):
+ 1524:     async def fake_call(prompt):
+ 1525:         assert isinstance(prompt, str) and prompt.strip(), "the prompt reached the model empty"
+ 1526:         if raises is not None:
+ 1527:             raise raises
+ 1528:         return returns
+ 1529:     monkeypatch.setattr(appmod, "_call_gemini", fake_call)
+ 1530: 
+ 1531: 
+ 1532: def [REDACTED](client, monkeypatch):
+ 1533:     monkeypatch.setenv("GEMINI_API_KEY", "test-key-123")
+ 1534:     ctx = client.get("/api/context").json()
+ 1535:     assert ctx["mode"] == "live"
+ 1536:     assert ctx["model"]  # the default model name is surfaced for the badge tooltip
+ 1537: 
+ 1538: 
+ 1539: def [REDACTED](client, monkeypatch):
+ 1540:     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+ 1541:     ctx = client.get("/api/context").json()
+ 1542:     assert ctx["mode"] == "mock"
+ 1543:     assert ctx["model"] is None
+ 1544: 
+ 1545: 
+ 1546: def [REDACTED](client, monkeypatch):
+ 1547:     monkeypatch.setenv("GEMINI_API_KEY", "   ")
+ 1548:     assert client.get("/api/context").json()["mode"] == "mock"
+ 1549: 
+ 1550: 
+ 1551: def [REDACTED](client, monkeypatch):
+ 1552:     monkeypatch.setenv("GEMINI_API_KEY", "test-key-123")
+ 1553:     _stub_gemini(monkeypatch, returns=json.dumps(_LIVE_DECK))
+ 1554: 
+ 1555:     t0 = time.perf_counter()
+ 1556:     r = client.post("/api/generate", json={"prompt": "?ㅼ쟻?????μ쑝濡??붿빟?댁쨾"})
+ 1557:     elapsed = time.perf_counter() - t0
+ 1558: 
+ 1559:     assert r.status_code == 200, r.text
+ 1560:     ir = r.json()
+ 1561:     assert ir["title"] == "?쇱씠釉??고겕"
+ 1562:     assert [e["id"] for e in ir["elements"]] == ["box1"]
+ 1563: 
+ 1564:     pin = load_pin()
+ 1565:     assert ir["schema"] == "canvas-ir/1"
+ 1566:     assert ir["canvas"] == {"w": 960, "h": 540, "unit": "pt"}
+ 1567:     assert ir["target"]["template_sha256"] == pin["renderer_template"]["sha256"]
+ 1568:     assert ir["target"]["layout_index"] == 3
+ 1569: 
+ 1570:     validate(ir)  # the real validator -- the live deck is exportable
+ 1571:     assert elapsed < 1.0, "the live path slept the mock's 1.5s latency; it must not"
+ 1572: 
+ 1573: 
+ 1574: def test_the_live_deck_EXPORTS(client, monkeypatch):
+ 1575:     monkeypatch.setenv("GEMINI_API_KEY", "k")
+ 1576:     _stub_gemini(monkeypatch, returns=json.dumps(_LIVE_DECK))
+ 1577:     ir = client.post("/api/generate", json={"prompt": "x"}).json()
+ 1578:     r = client.post("/api/export", json=ir)
+ 1579:     assert r.status_code == 200, r.text
+ 1580:     assert r.headers["content-type"] == PPTX_MIME
+ 1581:     assert len(Presentation(BytesIO(r.content)).slides) == 1
+ 1582: 
+ 1583: 
+ 1584: def [REDACTED](client, monkeypatch):
+ 1585:     monkeypatch.setenv("GEMINI_API_KEY", "k")
+ 1586:     _stub_gemini(monkeypatch, returns="```json\n" + json.dumps(_LIVE_DECK) + "\n```")
+ 1587:     r = client.post("/api/generate", json={"prompt": "x"})
+ 1588:     assert r.status_code == 200, r.text
+ 1589:     assert r.json()["title"] == "?쇱씠釉??고겕"
+ 1590: 
+ 1591: 
+ 1592: def [REDACTED](client, monkeypatch):
+ 1593:     monkeypatch.setenv("GEMINI_API_KEY", "k")
+ 1594:     _stub_gemini(monkeypatch, returns="this is not JSON at all")
+ 1595:     r = client.post("/api/generate", json={"prompt": "x"})
+ 1596:     assert r.status_code == 502
+ 1597:     assert r.json()["error"] == "generate"
+ 1598: 
+ 1599: 
+ 1600: def [REDACTED](client, monkeypatch):
+ 1601:     monkeypatch.setenv("GEMINI_API_KEY", "k")
+ 1602:     _stub_gemini(monkeypatch, raises=appmod.GeminiError("quota exceeded"))
+ 1603:     r = client.post("/api/generate", json={"prompt": "x"})
+ 1604:     assert r.status_code == 502
+ 1605:     assert r.json()["error"] == "generate"
+ 1606:     assert "quota exceeded" in r.json()["detail"]
+ 1607: 
+ 1608: 
+ 1609: def [REDACTED](client, monkeypatch):
+ 1610:     monkeypatch.setenv("GEMINI_API_KEY", "k")
+ 1611:     bad = json.loads(json.dumps(_LIVE_DECK))
+ 1612:     bad["elements"][0]["y"] = 10.0  # into HEADER_RESERVED (0..92)
+ 1613:     _stub_gemini(monkeypatch, returns=json.dumps(bad))
+ 1614:     r = client.post("/api/generate", json={"prompt": "x"})
+ 1615:     assert r.status_code == 502
+ 1616:     assert r.json()["error"] == "model"
+ 1617:     assert "HEADER_RESERVED" in r.json()["detail"]
+ 1618: 
+ 1619: 
+ 1620: def [REDACTED](client, monkeypatch):
+ 1621:     monkeypatch.setenv("GEMINI_API_KEY", "k")
+ 1622:     called = {"n": 0}
+ 1623:     async def must_not_call(prompt):
+ 1624:         called["n"] += 1
+ 1625:         return json.dumps(_LIVE_DECK)
+ 1626:     monkeypatch.setattr(appmod, "_call_gemini", must_not_call)
+ 1627:     r = client.post("/api/generate", json={"prompt": "   "})
+ 1628:     assert r.status_code == 422
+ 1629:     assert called["n"] == 0, "the model was called for an empty prompt"
+ 1630: 
+ 1631: 
+ 1632: def [REDACTED](client, monkeypatch):
+ 1633:     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+ 1634:     a = client.post("/api/generate", json={"prompt": "a"}).json()
+ 1635:     b = client.post("/api/generate", json={"prompt": "?꾩쟾???ㅻⅨ ?붿껌"}).json()
+ 1636:     assert a == b == mock_ir(load_pin())
+
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$app = '"'C:\\Users\\2021670\\.ma-stg\\stg.qT7gki2q\\tasks\\AI_Powered_PPT\\src\\aippt\\canvas\\app.py'; rg -n \"b64decode|async def _call_gemini|raw = await _call_gemini|MODEL_CHOICES.get|log.info\\(\\\"live generate\" "'$app' in C:\Users\2021670\Documents\멀티 에이전트
+2026-07-18T04:29:14.105585Z ERROR codex_core::tools::router: error=Exit code: 1
+Wall time: 0.6 seconds
+Output:
+문자열에 " 종결자가 없습니다.
+    + CategoryInfo          : ParserError: (:) [], [REDACTED]
+    + FullyQualifiedErrorId : TerminatorExpectedAtEndOfString
+ 
+
+ exited 1 in 637ms:
+문자열에 " 종결자가 없습니다.
+    + CategoryInfo          : ParserError: (:) [], [REDACTED]
+    + FullyQualifiedErrorId : TerminatorExpectedAtEndOfString
+ 
+
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$app = '"'C:\\Users\\2021670\\.ma-stg\\stg.qT7gki2q\\tasks\\AI_Powered_PPT\\src\\aippt\\canvas\\app.py'; Select-String -LiteralPath "'$app -Pattern '"'b64decode','async def _call_gemini','raw = await _call_gemini','MODEL_CHOICES.get','live generate:' | ForEach-Object { '{0}: {1}' -f "'$_.LineNumber, $_.Line.Trim() }' in C:\Users\2021670\Documents\멀티 에이전트
+ succeeded in 703ms:
+331: log.info("live generate: %d-char prompt -> %s", len(prompt), gemini_model())
+415: data = base64.b64decode(img["data"], validate=True)
+498: async def _call_gemini(
+530: model=MODEL_CHOICES.get(model, DEFAULT_GEMINI_MODEL),
+553: raw = await _call_gemini(prompt, model=model, images=images)
+
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "python -B -c \"import base64; s='é';\\ntry: base64.b64decode(s, validate=True)\\nexcept Exception as e: print(type(e).__name__ + ': ' + str(e))\"" in C:\Users\2021670\Documents\멀티 에이전트
+2026-07-18T04:29:27.891737Z ERROR codex_core::tools::router: error=Exit code: 1
+Wall time: 0.9 seconds
+Output:
+'python.exe' 프로그램을 실행하지 못했습니다. 지정한 로그온 세션이 없습니다. 이미 종료되었을 수도 있습니다위치 줄:2 문자:1
++ python -B -c "import base64; s='é';\ntry: base64.b64decode(s, validat ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~.
+위치 줄:2 문자:1
++ python -B -c "import base64; s='é';\ntry: base64.b64decode(s, validat ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : ResourceUnavailable: (:) [], ApplicationFailedException
+    + FullyQualifiedErrorId : NativeCommandFailed
+ 
+
+ exited 1 in 860ms:
+'python.exe' 프로그램을 실행하지 못했습니다. 지정한 로그온 세션이 없습니다. 이미 종료되었을 수도 있습니다위치 줄:2 문자:1
++ python -B -c "import base64; s='é';\ntry: base64.b64decode(s, validat ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~.
+위치 줄:2 문자:1
++ python -B -c "import base64; s='é';\ntry: base64.b64decode(s, validat ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : ResourceUnavailable: (:) [], ApplicationFailedException
+    + FullyQualifiedErrorId : NativeCommandFailed
+ 
+
+codex
+VERDICT: BLOCK
+
+- The diff omits the required `test_app.py` changes. Its existing `fake_call(prompt)` conflicts with the new keyword call `_call_gemini(..., model=model, images=images)`, causing live tests to raise `TypeError`. Required Phase 5 tests are also absent.
+- `_decode_images` catches only `binascii.Error`; non-ASCII base64 strings can raise `ValueError`, producing a server error instead of the required 422.
+
+VERDICT: BLOCK
+tokens used
+48,590

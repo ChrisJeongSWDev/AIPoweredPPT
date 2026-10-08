@@ -1,0 +1,14 @@
+Each appears exactly once, as expected. All three write-scope files in the staging repo are now updated, and the change_detail doc is filed in the outer tree.
+
+## Summary
+
+The temp brief file was corrupted — every literal `.` had been replaced with the brief's own `target_repo` path string (a templating bug). I reversed the substitution and confirmed the reconstruction matched the canonical `brief_phase6_repair4.md` in the outer tree byte-for-byte, so I proceeded on that basis rather than guessing.
+
+Applied the previously-approved patch (`artifacts/claude-main-diff-1989583-17592.txt`, from the `phase6_repair3`/`phase6_repair2` rounds) to the three write-scope files under `C:\Users\2021670\.ma-stg\stg.a59Iv6bp\tasks\AI_Powered_PPT\src\aippt\canvas\`:
+- `schema.json` — added `$defs.link` + `link` property on the four shape branches
+- `static/index.html` — added the "Download HTML" button and Link property panel
+- `static/editor.js` — added the full HTML-export feature (`exportHTML()`, `sanitizeLink()`, data-URL media embedding, contentEditable-safe serialization)
+
+Also applied both optional reviewer-warning fixes: the download now uses the literal filename `presentation.html` (per `brief_phase6.md`'s requirement) instead of a title-derived name, and `EXPORT_CSS` now includes the `#stage::after` red divider rule copied from `style.css`.
+
+Verified `schema.json` parses as valid JSON (PowerShell `ConvertFrom-Json`); `node --check` for `editor.js` was blocked by the session's execution sandbox (consistent with this task's known constraint), so I hand-verified every edit anchor and cross-checked structural correctness by re-reading each modified region instead. Full detail, including the brief-corruption analysis and a recommendation to fix the templating bug, is in `tasks/AI_Powered_PPT/workers/phase6_repair4/change_detail.md` in the outer tree.

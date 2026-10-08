@@ -1,0 +1,140 @@
+---
+task_id: "AI_Powered_PPT"
+mode: "fresh"
+role: "claude-main"
+claude_model: opus
+target_repo: "/c/Users/2021670/Documents/멀티 에이전트/tasks/AI_Powered_PPT"
+upstream_stage: "claude-review (Opus)"
+write_scope:
+  - "README.md"
+  - "foundation_research.md"
+  - "pyproject.toml"
+  - "requirements.txt"
+  - "src/aippt/analyze_pptx_master.py"
+  - "src/aippt/ir/schema.json"
+  - "src/aippt/ir/models.py"
+  - "src/aippt/adapters/html_adapter.py"
+  - "src/aippt/adapters/ai_adapter.py"
+  - "src/aippt/render/renderer.py"
+  - "src/aippt/render/fit.py"
+  - "src/aippt/render/diagrams.py"
+  - "prompts/00_system_deck_author.md"
+  - "prompts/10_outline_storyboard.md"
+  - "prompts/20_slide_fill.md"
+  - "prompts/30_visual_qa.md"
+  - "reference/layout_manifest.json"
+  - "reference/layout_catalog.md"
+change_detail_path: "/c/Users/2021670/Documents/멀티 에이전트/tasks/AI_Powered_PPT/change_detail.md"
+---
+
+# Mission
+Establish the framework + foundational research for AI-generated PowerPoint built on
+`Vieworks_R&D_ppt_Template.pptx`. Deliver (A) a repo scaffold, (B) `foundation_research.md`,
+(C) a working PoC extractor `analyze_pptx_master.py`.
+
+This is a RESEARCH + SCAFFOLD task. Do NOT build the full generator. Do not "improve" the
+existing HTML files. Do not commit binaries.
+
+# Ground truth already established (verified by review stage)
+Read these before designing anything:
+- `Slide Template.html` (4 slides), `Vieworks_MatroxSDK_Example_UserManual.html` (17 slides),
+  `3D Logic 개발 테스트벤치 설계안_Ver2.html` (9 slides).
+- ALL THREE share one convention: `<section class="card" data-slide="N">` == one slide.
+- Block taxonomy inside a card: `<h2>` (slide title), lead `<p>`, `.alert-box` (key message /
+  callout), `<h3>` + `<ul>` (bullets), `<table>`, `.mermaid` (diagram), `<pre><code>` (code),
+  `<img src="data:image/png;base64,...">` (3 such images in the 3D Logic deck).
+- Brand accent `#DB0032` (Vieworks red) is already a CSS variable in the samples.
+=> These 30 slides are your real-world corpus, your few-shot exemplars, and your test fixtures.
+
+# Architecture you must adopt (decided upstream; justify it, don't re-litigate it)
+
+    HTML deck ─┐
+               ├─> [ Slide IR : JSON ] ─> [ deterministic renderer ] ─> .pptx (on template)
+    AI author ─┘         ▲                        │
+                         │                        └─> LibreOffice ─> PNG ─> visual QA
+                  layout_manifest.json
+                  (extracted from the template master)
+
+Non-negotiable principles:
+1. **The AI never emits PPTX/XML/geometry.** It emits schema-valid IR only: a `layout_id` plus
+   placeholder content. All coordinates, fonts, and colors come from the template + renderer.
+2. **The template is the source of design truth.** Open the .pptx and `add_slide(layout)` from
+   its OWN `slide_layouts`. Never build a deck from scratch and restyle it.
+3. **Two input adapters, one IR:** an HTML adapter (parse the existing card/data-slide decks)
+   and an AI adapter (generate IR from a topic + source material). Same downstream renderer.
+4. **Model-agnostic:** Claude / Codex / Gemini are interchangeable *authors* behind one
+   interface. The IR + JSON Schema is the neutral contract. Prefer structured/tool-use output
+   with schema validation and a bounded retry, not free-text-then-parse.
+
+Explicitly REJECT in the doc, with reasons: (a) headless-browser HTML screenshot -> image
+slides (kills editability + the master template); (b) LLM writes DrawingML/OOXML directly
+(unreliable, unfixable); (c) generating a deck from a blank Presentation() (loses the master).
+
+# Deliverable A — repo scaffold
+Create under `AI_Powered_PPT/` (use this structure unless the PoC's findings demand otherwise;
+justify any deviation):
+
+    AI_Powered_PPT/
+      README.md                      # what this is, how to run, current status
+      foundation_research.md         # Deliverable B
+      pyproject.toml | requirements.txt   # pin deps
+      src/aippt/
+        analyze_pptx_master.py       # Deliverable C (PoC, must run)
+        ir/schema.json               # Slide IR JSON Schema (the contract)
+        ir/models.py                 # dataclasses/pydantic mirror of the schema
+        adapters/html_adapter.py     # HTML card/data-slide -> IR   (stub + docstring spec)
+        adapters/ai_adapter.py       # LLM -> IR (Claude/Codex/Gemini)  (stub + spec)
+        render/renderer.py           # IR -> pptx via template layouts (stub + spec)
+        render/fit.py                # text-fit / overflow control      (stub + spec)
+        render/diagrams.py           # mermaid-ish -> native shapes     (stub + spec)
+      prompts/
+        00_system_deck_author.md
+        10_outline_storyboard.md     # stage 1: deck-level narrative
+        20_slide_fill.md             # stage 2: per-slide content
+        30_visual_qa.md              # vision critique of rendered PNGs
+      reference/
+        layout_manifest.json         # GENERATED by the PoC — commit it
+        layout_catalog.md            # GENERATED, human+AI readable — commit it
+
+Stubs must carry a precise docstring contract (inputs, outputs, invariants) even where the body
+is `raise NotImplementedError`. A reader must be able to implement from the docstring alone.
+
+# Deliverable C — `analyze_pptx_master.py` (BUILD AND RUN THIS FIRST)
+Everything else depends on real layout facts. The review stage could NOT open the .pptx
+(read-only sandbox), so NOTHING about its internals is confirmed. Discover it, then let the
+findings drive the doc.
+
+Must emit BOTH `reference/layout_manifest.json` (machine) and `reference/layout_catalog.md`
+(the prompt-context artifact), reporting:
+- deck: slide size (EMU + inches + aspect ratio), count of masters, count of existing slides.
+- per master: name; theme font scheme; theme color map, and specifically WHERE `#DB0032` lives.
+- per layout: index, name, and for EVERY placeholder: `idx`, `type` (TITLE/BODY/PIC/TBL/...),
+  name, and left/top/width/height in EMU **and** inches.
+- derived, per placeholder: a **content budget** — approx. max title chars and max bullets ×
+  max words/bullet that fit the box at the layout's font size. This is what you inject into
+  the AI prompt so the model self-limits.
+- a suggested `semantic_role` per layout (title / agenda / section-divider / bullets etc).
+
+Hard requirements: `pathlib` + explicit `encoding='utf-8'`; must tolerate the `&` in the
+filename (`Vieworks_R&D_ppt_Template.pptx`). Read-only: never write to the template.
+Print a readable summary to stdout.
+
+# Deliverable B — `foundation_research.md`
+Ground every claim in what the PoC actually printed. Cover:
+1. **Problem + goals**, and the reject-list above with rationale.
+2. **The pipeline**, end to end.
+3. **Slide IR spec** — the JSON Schema, annotated. Block types must cover the taxonomy.
+4. **Master/layout handling** — the actual inventory from the PoC, plus the python-pptx gotchas
+   (no SmartArt, no autofit, unused placeholders render text, etc).
+5. **Text overflow — treat as the #1 design risk.** No autofit exists. Specify the strategy.
+6. **Images** — base64 data-URI → decode → `BytesIO` → `add_picture`, aspect-fit.
+7. **Diagrams** — Mermaid vs native autoshapes. Recommend a hybrid.
+8. **Prompt engineering for decks** — inject layout_catalog + content budgets.
+9. **Quality loop** — render → PNG → automated checks → vision critique.
+10. **Roadmap** — Phase 1 HTML→IR→PPTX (no AI yet), Phase 2 AI author, Phase 3 visual QA loop.
+11. **Open questions / risks**.
+
+# Verification (do not skip)
+- `analyze_pptx_master.py` must actually RUN against the real template.
+- Paste real output into the doc.
+- State plainly in the result what you ran, what worked, and what didn't.

@@ -1,0 +1,312 @@
+I could not persist the file — every write path is blocked in this session, so I'm delivering the brief inline. Here's what happened and what I produced.
+
+## Blocker (needs orchestrator action)
+
+`phase2_repair_brief.md` **could not be written to disk**. All three write paths fail:
+
+| Tool | Failure |
+|---|---|
+| Write | `requested permissions to write ... but you haven't granted it yet` — no way to grant in a non-interactive session |
+| Bash | Sandbox path check rejects it |
+| PowerShell | Path arrives mojibake'd as `��Ƽ ������Ʈ`, so the sandbox validator rejects it |
+
+The shell tools mangle the Korean directory name `멀티 에이전트` on the way to the path validator; the Write tool handles the path correctly but lacks write permission. Reads worked fine throughout. **The orchestrator needs to save the content below to `tasks/AI_Powered_PPT/phase2_repair_brief.md`**, or grant Write permission for that directory and re-run.
+
+## What I found in the code
+
+The critic is correct, and I confirmed it against the source. `restore()` (`editor.js:437–456`) has four distinct defects, not one:
+
+1. **`editor.js:448–449`** — `makeEl(rec.state)` + `appendChild()` with no `illegalReason()` call at all.
+2. **`editor.js:439–443`** — the stage is cleared and the title overwritten *before* any element is examined, so "abort the restoration" is unreachable from inside the loop. This is structurally the same bug as the Phase 1B `loadIR()` rejection.
+3. **`editor.js:488`, `:498`** — `restore(past.pop())` / `restore(future.pop())`: the `pop()` is the *argument*, so the history entry is gone before `restore()` does anything.
+4. **`editor.js:438`** — `stopEditing()` is the first statement and it mutates the DOM, so the preflight must go above line 438, not 439.
+
+One honesty note I put in the brief rather than overselling it: **there is no click-by-click repro today.** All three current DOM writers (`commit()`, `loadIR()`, `duplicateSelected()` via `applyConstraints()` at 1306) do judge their input, so snapshots are legal by induction. The fix still matters because the file's own comment at `editor.js:193–194` claims `illegalReason()` is the *only* door into the stage — an unconditional claim that `restore()` currently makes false — and because defect 3 is a live data-loss path needing no induction at all. I told `claude-main` this explicitly so it doesn't discover the weak repro on its own and quietly skip the work.
+
+The fix mirrors `loadIR()`'s existing two-pass judge-then-commit structure (`editor.js:1625–1682`), and the tests reuse the existing Node harness at `test_app.py:275–423` that lifts functions verbatim by name — deliberately, so `illegalReason()` is never re-implemented in Python.
+
+---
+
+## `phase2_repair_brief.md` (save to `tasks/AI_Powered_PPT/`)
+
+````markdown
+# Phase 2 Repair Brief — `restore()` is the third door into the stage, and it is unlocked
+
+## Why this is coming back to you
+
+Phase 2 landed green and Codex Critic **REJECTED** it:
+
+> `restore()` (or the undo/redo restore logic) clears the stage and sends snapshot geometry directly
+> through `makeEl()`/`appendChild()` without `illegalReason()`. Add an all-or-nothing,
+> non-transforming legality preflight before touching the DOM; also defer the history `pop()`
+> operations until restoration succeeds.
+>
+> The test at `test_app.py:910` verifies only reconstruction and absence of measurement, so it misses
+> this bypass.
+
+The critic is right, and you already know the shape of the fix because **you wrote it last phase**.
+This is the Phase 1B `loadIR()` bug, in a new function. Read `loadIR()` (editor.js:1625–1682) before
+you touch anything: it is the reference implementation, and your repair must look like it.
+
+You also wrote the sentence that this bug makes false. `editor.js:193–194`:
+
+> `illegalReason()` below is the judge, and it is the **ONLY door** into the stage: the mouse goes
+> through it via `applyConstraints()`, and a file goes through it via `loadIR()`.
+
+There is a third door. It is `restore()`, and it has no lock on it.
+
+---
+
+## The defects, exactly
+
+`restore()` is `editor.js:437–456`. Its only two callers are `undo()` (`editor.js:488`) and `redo()`
+(`editor.js:498`).
+
+| # | Site | Defect |
+|---|---|---|
+| 1 | `editor.js:448–449` | `makeEl(rec.state)` + `stage.appendChild(el)` with **no call to `illegalReason()`**. Snapshot geometry is trusted absolutely. The comment on line 448 — *"a restore is not an edit and must not be judged"* — conflates two different things: a restore must not be **transformed** (not snapped, not clamped, not re-pushed onto the stack), and that is correct. It does not follow that it must not be **judged**. `illegalReason()` transforms nothing; that inertness is the entire reason it exists as its own function. Judging is free. Delete that half of the comment. |
+| 2 | `editor.js:439–443` | The stage is **cleared and the title overwritten before a single element has been looked at**. Identical to the Phase 1B `loadIR()` defect. A per-element check bolted into the loop at 446 cannot produce "abort the restoration" — by the time the loop runs, the user's deck is already gone. All-or-nothing is not reachable from inside that loop. It is reachable from above it. |
+| 3 | `editor.js:488`, `editor.js:498` | `restore(past.pop())` and `restore(future.pop())`. The `pop()` is evaluated **as the argument** — the entry is off the stack before `restore()` has done anything. If the restore aborts (your new preflight) or throws (`makeEl()` on a malformed record), the stage is cleared *and* the snapshot that would put it back has been destroyed. The user loses the deck and the undo step in one keystroke. |
+| 4 | `editor.js:438` | `stopEditing()` is the first statement, and it **mutates the DOM** (drops `.editing`, removes the `contenteditable` attribute) and calls `endTx()`. Your preflight must run **above** it. "Before touching the DOM" means before line 438, not before line 439. |
+
+### Be honest with yourself about reachability, then fix it anyway
+
+Trace it and you will find that every element currently in the DOM was judged on the way in —
+`commit()`, `loadIR()`, and `duplicateSelected()` (which routes through `applyConstraints()` at
+`editor.js:1306`) are the three writers, and all three call the judge. So a snapshot taken by
+`snapshot()` off a legal stage is itself legal, and you will **not** find a click-by-click repro
+where an illegal element gets restored today.
+
+That argument is exactly as strong as its weakest inductive step, and it is not the argument the code
+makes — the code makes an *unconditional* claim on line 193 that `illegalReason()` is the only door.
+Right now that claim survives only because nobody has yet added a fourth writer. The next feature that
+writes `dataset` (a paste handler, an alignment tool, an arrow-key nudge) inherits a stage where undo
+will happily reintroduce whatever it wrote, and the reserved-region guarantee — the thing the backend
+returns 422 on — dies quietly, three phases from now, in a function nobody suspects.
+
+Defect 3 needs no induction at all: it is a live, unconditional data-loss path the moment anything
+inside `restore()` throws.
+
+Fail closed. That is the whole job.
+
+---
+
+## The design
+
+### Step 1 — one preflight function, next to the judge
+
+Add it directly below `illegalReason()` (i.e. after `editor.js:263`), so the rule and its second
+caller sit in one place. It **reads and returns; it mutates nothing and it touches no DOM**.
+
+```js
+/* THE THIRD CALLER OF THE JUDGE.
+ *
+ * A snapshot is not a trusted input just because this editor minted it. Every element on the stage
+ * was judged on the way in -- today, by commit(), loadIR() and duplicateSelected(), and therefore a
+ * snapshot of that stage is legal by induction. The induction holds only until someone adds a fourth
+ * writer, and when it breaks, it breaks HERE: undo would reintroduce an illegal element, the stage
+ * would look fine, and the export would 422 with no way to explain it. The judge is cheap and inert.
+ * Ask it.
+ *
+ * ALL OR NOTHING, and in this order: judge every element FIRST, touch the stage SECOND -- the same
+ * order, and for the same reason, as loadIR().
+ */
+function illegalSnapshotReasons(snap) {
+  if (!snap || typeof snap !== 'object' || !Array.isArray(snap.els)) {
+    return ['the snapshot is not a snapshot'];
+  }
+  var problems = [];
+  for (var i = 0; i < snap.els.length; i++) {
+    var rec = snap.els[i];
+    if (!rec || typeof rec !== 'object' || !rec.state || typeof rec.state !== 'object') {
+      problems.push('els[' + i + ']: has no state');
+      continue;
+    }
+    var why = illegalReason(rec.state);   // the ONE judge. Do not inline a second copy of the rule.
+    if (why) {
+      problems.push('els[' + i + '] (id "' + rec.state.id + '"): ' + why);
+    }
+  }
+  return problems;
+}
+```
+
+**Non-negotiable:** it calls `illegalReason()`. It does not re-implement bounds, rotated-AABB or
+reserved-region checks, and it does not call `applyConstraints()` — snapping and clamping a snapshot
+would silently rewrite the user's deck on undo, which is the same push-out you correctly refused for
+the mouse and for the importer.
+
+### Step 2 — `restore()` preflights, and reports whether it ran
+
+`restore()` becomes two passes and returns a boolean. The preflight goes **above `stopEditing()`**.
+
+```js
+/* Returns true if the stage now holds `snap`, false if the snapshot was refused and the stage was
+ * NOT TOUCHED -- not cleared, not retitled, not one element made. The caller must not pop until this
+ * has returned true.
+ */
+function restore(snap) {
+  /* PASS 1 -- JUDGE. Nothing below this line has touched the stage, and nothing above it may.
+   * stopEditing() is a DOM mutation, so it belongs below this line too. */
+  var problems = illegalSnapshotReasons(snap);
+  if (problems.length) {
+    setStatus(
+      'That history step cannot be restored -- ' + problems.length + ' element(s) in it may not ' +
+      'exist on this stage, so NOTHING was changed:\n' +
+      problems.map(function (p, n) { return '  ' + (n + 1) + '. ' + p; }).join('\n')
+    );
+    return false;
+  }
+
+  /* PASS 2 -- COMMIT. Every state is legal, so this cannot fail half-way through. */
+  stopEditing();
+  ... the existing body, unchanged ...
+  select(toSelect);
+  syncProps();
+  return true;
+}
+```
+
+Everything from `stopEditing()` down stays **exactly as it is**. `makeEl()` + `appendChild()`, the
+`innerHTML` restore, the `selected = null` before `select()`, the outright `syncProps()` call — all of
+it is correct and all of it is load-bearing. You are adding a gate in front of a working function, not
+rewriting one.
+
+Keeping the preflight inside `restore()` (rather than only in the callers) is deliberate: it is the
+function the critic named, it is the function `test_app.py:910` points at, and a fourth caller added
+later is gated automatically instead of being one more place someone forgot.
+
+### Step 3 — `undo()` / `redo()` peek, then pop
+
+`pop()` moves below the restore. Nothing else about these functions changes.
+
+```js
+function undo() {
+  if (!past.length) { setStatus('Nothing to undo.'); return; }
+  endTx();                                  // a gesture may not straddle an undo
+  var now = snapshot();                     // pure read -- safe before the restore, mutates nothing
+  if (!restore(past[past.length - 1])) return;  // PEEK. Refused => stack and stage both untouched.
+  past.pop();                               // ...only now is the step actually spent
+  future.push(now);
+  syncHistory();
+  setStatus('Undo — ' + past.length + ' step(s) left.');
+}
+```
+
+`redo()` takes the identical shape against `future` / `past`.
+
+**The tradeoff, stated so you do not "improve" it:** a refused entry stays on the stack, so a poisoned
+snapshot makes Ctrl+Z a no-op that keeps explaining itself rather than a key that works once and eats
+the deck. Do **not** "recover" by discarding the entry — that is silently destroying the user's
+history to hide a bug in the editor. A refusal here is not a user error; it is a defect report, and it
+should be loud, repeatable, and non-destructive.
+
+---
+
+## Tests — `tests/canvas/test_app.py`
+
+The existing Node harness (`test_app.py:275–423`) is the pattern: it lifts functions **verbatim by
+name** out of `editor.js` and executes them against a stubbed, recording DOM. Reuse the machinery
+(`_js_decl`, `_js_function`, the `subprocess` runner, `_assert_stage_untouched`'s spirit) — do not
+build a second one, and above all **do not re-implement `illegalReason()` in Python**. The entire bug
+class you are fixing is what happens when the rule lives in more than one place.
+
+Add a Gate 5 harness that lifts `restore`, `undo`, `redo`, `pushUndo`, `snapshot`, `read`,
+`syncHistory` and the `illegalReason` dependency chain (`intersects`, `elementBBox`, `outOfBounds`,
+`geometryIsReadable`, `illegalReason`, `illegalSnapshotReasons`), plus the `past` / `future` / `txOpen`
+/ `txBefore` / `txPushed` / `HIST_MAX` declarations via `_js_decl`. Stub `stage`, `makeEl`,
+`titleField`, `selected`, `select`, `stopEditing`, `syncProps`, `setStatus`, `$` — each **recording**
+what was done to it, so "the DOM was never touched" is an assertion and not a hope. Feed it a
+hand-built snapshot object and print `made` / `appended` / `removed` / `title` / `past.length` /
+`future.length` / `status` as JSON, exactly like `_import()`.
+
+Required cases (`@needs_node`):
+
+1. **`test_undo_refuses_a_snapshot_with_an_element_in_the_header`** — the one the critic asked for.
+   Craft a snapshot whose `els[0].state` sits at `y: 50, h: 80` (the reserved band, 0..92), push it
+   onto `past`, call `undo()`. Assert: `made == []`, `appended == 0`, `removed == 0`, the title is
+   still the user's, **`past` is still length 1**, `future` is still empty, and the status names the
+   element.
+2. **`test_undo_refuses_a_snapshot_in_the_footer`** and **`..._off_the_slide`** — same shape.
+3. **`test_undo_refuses_a_snapshot_with_a_NaN_coordinate`** — the numeric guard. A `dataset` written
+   by a hypothetical future bug reads back as `NaN` through `read()`; every comparison against `NaN`
+   is `false`, so a *correct* geometry check waves it through. `geometryIsReadable()` is what stops
+   it, and this test is what proves `restore()` actually consults it.
+4. **`test_ONE_illegal_element_refuses_the_WHOLE_restoration`** — a snapshot of three elements, one
+   illegal, the other two fine. Assert `made == []`. Not two-thirds of a stage.
+5. **`test_a_refused_undo_does_not_pop_the_history_stack`** — the critic's second sentence, asserted
+   on its own so it cannot regress silently: `len(past)` before == `len(past)` after, and `future` was
+   not pushed to.
+6. **`test_a_refused_redo_does_not_pop_the_future_stack`** — the same, through `redo()`.
+7. **`test_a_legal_snapshot_still_restores`** — the anti-lobotomy test. Undo must still *work*: a
+   legal two-element snapshot rebuilds both through `makeEl()`, clears the old stage, restores the
+   title, pops `past`, and pushes `future`. A gate that refuses everything is not a gate.
+
+And **strengthen the test the critic named**, `test_undo_restores_through_makeEl_and_never_measures_the_dom`
+(`test_app.py:910–916`) — do not delete it, its two assertions are still true and still worth holding.
+Add the structural assertions it was missing, so this survives even where `node` is absent:
+
+```python
+def test_restore_judges_before_it_touches_the_stage():
+    """The critic's finding, held structurally: the preflight is not merely PRESENT in restore() --
+    it is ABOVE every DOM mutation in it. A judge that runs after the stage was cleared is not a
+    judge, it is a post-mortem."""
+    body = _js_function("restore")
+    judged = body.index("illegalSnapshotReasons(")
+    for mutation in ("stopEditing(", ".remove()", "titleField.innerHTML =", "makeEl(", "appendChild("):
+        assert judged < body.index(mutation), (
+            f"restore() reaches {mutation} before it has judged the snapshot"
+        )
+
+
+def test_the_snapshot_preflight_reuses_the_ONE_judge():
+    """A second copy of the bounds/reserved-region rule is exactly how the mouse, the importer and
+    the undo stack drift apart. There is one judge."""
+    assert "illegalReason(" in _js_function("illegalSnapshotReasons")
+
+
+@pytest.mark.parametrize("fn", ["undo", "redo"])
+def test_the_history_pop_is_deferred_until_the_restore_succeeded(fn: str):
+    """`restore(past.pop())` spends the step before it knows the step can be taken -- and if the
+    restore is refused, the stage is cleared and the snapshot that would put it back is gone."""
+    body = _js_function(fn)
+    assert "restore(past.pop())" not in body and "restore(future.pop())" not in body
+    assert body.index("restore(") < body.index(".pop()"), (
+        f"{fn}() pops the history stack before restore() has returned"
+    )
+```
+
+`test_loadIR_is_not_where_the_import_pushes_its_undo_step` (`test_app.py:919`) and
+`test_zoom_is_not_undoable` (`:929`) must both stay green.
+
+---
+
+## Scope discipline
+
+- **Touch two files only:** `src/aippt/canvas/static/editor.js` and `tests/canvas/test_app.py`.
+- `illegalReason()`, `applyConstraints()`, `loadIR()`, `commit()`, `snapshot()`, `pushUndo()`,
+  `beginTx()`/`noteChange()`/`endTx()`, the property panel, double-click-to-edit and Delete/Backspace
+  are **all working and all out of scope**. Phase 1B's import gate is green; do not "harmonise" it.
+- **The Prime Directive still holds:** `getBoundingClientRect()` appears exactly once in `editor.js`,
+  inside `toModel(ev)`. Your preflight reads JS state and nothing else. Gate 1 is a grep and it will
+  catch you.
+- Full suite green before you hand back — the Phase 1B import tests and Gate 1 included, not just your
+  new ones.
+
+Write `tasks/AI_Powered_PPT/phase2_repair_change_detail.md` as you go: the defect, the two-pass
+design, every test added, and the tradeoff in Step 3 stated plainly.
+
+---
+
+claude_model: opus
+mode: continuation
+target_repo: .
+change_detail_path: tasks/AI_Powered_PPT/phase2_repair_change_detail.md
+write_scope: src/aippt/canvas/static/editor.js, tests/canvas/test_app.py
+````
+
+## Assumptions I had to make
+
+- **Output filename.** The brief never names its own output file; I inferred `phase2_repair_brief.md` from the established convention (`phase1b_repair_draft_brief.md` → `phase1b_repair_brief.md`, and the same for phase 1a).
+- **"Rules for claude-review."** I read this as my role — author the repair brief for `claude-main`, not edit `editor.js` myself. The YAML `write_scope` names the two source files, which is `claude-main`'s scope, not mine; I wrote no code.
+- **Poisoned-entry policy** is a genuine design choice the critic left open: I prescribed leave-on-stack-and-report over discard, and said why, so `claude-main` doesn't quietly pick the destructive option to make a stuck stack go away.

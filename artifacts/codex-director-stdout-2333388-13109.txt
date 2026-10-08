@@ -1,0 +1,133 @@
+## Review Verdict: Changes Required
+
+The JSON and Export groups are mostly aligned, but the Server Templates layout, shared button styling, and composer positioning still need correction. No files were modified because the brief specifies `write_scope: none`.
+
+### Critique
+
+#### AI composer
+
+In [index.html](</C:/Users/2021670/Documents/멀티 에이전트/tasks/AI_Powered_PPT/src/aippt/canvas/static/index.html:302>):
+
+- The solid-white, bordered, shadowed single-container appearance is implemented.
+- The plus button and Gemini selector are correctly grouped at bottom-left.
+- The submit button is correctly placed at bottom-right.
+- The submit control is circular (`border-radius: 50%`), not a rounded-square Antigravity-style button.
+- Its background is `#1a1a1a`, inconsistent with the requested slate/dark navy `#1e293b`.
+
+In [style.css](</C:/Users/2021670/Documents/멀티 에이전트/tasks/AI_Powered_PPT/src/aippt/canvas/static/style.css:185>):
+
+- `#ai` is absolutely positioned even though the HTML/CSS comments claim it occupies `grid-area: composer`.
+- Because it is removed from grid flow, the composer row reserves no height. The composer can cover the stage or status bar.
+- `left: 50%` centers it against the viewport rather than the actual stage/composer grid area.
+- `z-index: 1000` further reinforces the unintended overlay behavior.
+- The mobile rules target `.composer-head`, `.composer-model`, `.composer-box`, and `.composer-actions`, none of which exist in the current HTML. Those rules are dead.
+
+#### JSON & Data
+
+In [index.html](</C:/Users/2021670/Documents/멀티 에이전트/tasks/AI_Powered_PPT/src/aippt/canvas/static/index.html:66>):
+
+- “View & Copy JSON” is full-width and visibly emphasized: compliant.
+- Download JSON and Load JSON use a two-column row: compliant.
+- Paste Gem JSON appears immediately below that row and is full-width: compliant.
+- However, the emphasis and spacing are implemented with inline styles.
+- The bright-blue inline color bypasses the shared `#1e293b` button system. If blue is intentionally retained as the featured exception, it should be represented by a modifier class.
+
+#### Export Deck
+
+In [index.html](</C:/Users/2021670/Documents/멀티 에이전트/tasks/AI_Powered_PPT/src/aippt/canvas/static/index.html:77>):
+
+- Export PPT and Download HTML correctly form a 50:50 two-column row.
+- Both already use the dark primary style.
+- Only explicit group-specific class naming is needed to make this layout stable when generic `.row` styling changes.
+
+#### Server Templates
+
+In [index.html](</C:/Users/2021670/Documents/멀티 에이전트/tasks/AI_Powered_PPT/src/aippt/canvas/static/index.html:85>):
+
+- Name and Templates fields are individually full-width, but the required ordering is wrong.
+- Save, Load, and Delete are placed together in a three-column row.
+- The later, authoritative requirement calls for this sequence:
+
+  1. Name input — 100%
+  2. Save Template — 100%
+  3. Templates dropdown — 100%
+  4. Load Template — 100%
+
+- The generic `#toolbar .row button` rule overrides the intended `width: 100%` behavior of `#b-load-design`.
+- Delete is not addressed by the checklist. It should be preserved, but placed after Load as a separate full-width destructive action unless product requirements say otherwise.
+
+#### Shared button styling and HTML structure
+
+In [style.css](</C:/Users/2021670/Documents/멀티 에이전트/tasks/AI_Powered_PPT/src/aippt/canvas/static/style.css:135>):
+
+- The shared 5px radius and hover transition exist.
+- `transition: all` is overly broad; transition only color, background, border, shadow, and transform.
+- Only `.primary` buttons use `#1e293b`. Many sidebar actions remain white, so the requested common modern slate treatment is incomplete.
+- Padding, font weight, and height are inconsistent because the featured JSON and Delete controls use inline declarations.
+- Three inline-styled sidebar buttons prevent centralized maintenance: `#b-view-json`, `#b-paste`, and `#b-delete-design`.
+- The generic `.row` class serves unrelated History, Media, JSON, Export, and Template layouts. Changing it to fix one group risks regressions elsewhere.
+- The CSS lacks a clear component vocabulary for full-width stacks, two-column action grids, featured actions, and destructive actions.
+
+## Work Order for Claude Sonnet
+
+1. Preserve every existing element ID and event-binding target. Limit changes to `index.html` class structure and `style.css`; do not modify JavaScript or stage contract styles.
+
+2. Refactor the AI composer:
+
+   - Return `#ai` to grid flow with `grid-area: composer`.
+   - Center it using grid alignment, such as `justify-self: center`.
+   - Retain the responsive width cap and solid-white single-container styling.
+   - Remove absolute positioning, viewport translation, and unnecessary overlay z-index.
+   - Ensure it always occupies reserved space above `#status`.
+   - Change the submit button to a 32–36px rounded square with approximately 7–9px radius and `#1e293b` background.
+   - Update responsive selectors to target classes that actually exist, especially `.composer-toolbar`, `.toolbar-left`, and `.toolbar-right`.
+
+3. Introduce scoped layout classes, for example:
+
+   - `.action-stack` for vertically stacked 100%-width controls.
+   - `.action-grid-2` for equal two-column actions.
+   - `.sidebar-action` for normalized dimensions.
+   - `.sidebar-action--primary`, `--featured`, and `--danger` modifiers.
+
+   Do not repurpose generic `.row` globally.
+
+4. Refactor JSON & Data:
+
+   - Keep View & Copy JSON first and full-width.
+   - Keep Download JSON and Load JSON in a two-column grid.
+   - Keep Paste Gem JSON immediately below them and full-width.
+   - Remove inline styles.
+   - Represent the featured blue treatment with a CSS modifier if it is retained as the checklist’s intended visual exception.
+
+5. Refactor Export Deck:
+
+   - Apply the explicit two-column layout class.
+   - Keep both actions equal-width and dark-primary.
+
+6. Rebuild Server Templates in this exact order:
+
+   - Full-width Name label/input.
+   - Full-width Save button.
+   - Full-width Templates label/select.
+   - Full-width Load button.
+   - Preserve Delete after Load as a separate full-width danger action.
+
+7. Normalize sidebar action styling:
+
+   - Use consistent font size, weight, padding, and minimum height.
+   - Use 5px rounded corners for standard sidebar actions.
+   - Use `#1e293b` for dark actions with a coordinated lighter hover state.
+   - Add visible `:focus-visible` treatment.
+   - Replace `transition: all` with targeted properties.
+   - Keep circular controls only where their icon semantics explicitly require circles; the submit control should be rounded-square.
+
+8. Validate at minimum:
+
+   - The 232px sidebar has no horizontal overflow.
+   - Two-column groups remain equal-width with consistent gaps.
+   - Server Template controls are all stacked and 100% wide.
+   - The composer never overlaps the status bar or stage.
+   - Hiding/showing `#props` does not displace or incorrectly center the composer.
+   - All existing IDs and control order required by JavaScript remain intact.
+
+Assumption: the composer should occupy the declared grid row above the status bar, as documented in the existing source comments. If floating overlay behavior was intentional, equivalent reserved bottom space and stage-relative centering would still be required to prevent obstruction.

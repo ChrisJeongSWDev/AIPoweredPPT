@@ -1,0 +1,24 @@
+Done. Here's what happened.
+
+## The fix
+
+I closed requirement 4 by giving the editor **one legality rule with two callers**. `applyConstraints()` was doing two jobs — *transforming* a candidate (min-extent → snap → clamp) and then *judging* it (bounds + rotated AABB + reserved regions). I extracted only the judging half into `illegalReason(s)`, which returns a human reason or `null`. The mouse reaches it through `applyConstraints()` (its step 5+6 is now a single `return illegalReason(c) ? null : c;`), and a file reaches it through `loadIR()`. There is now exactly one copy of the reserved-region check in `editor.js`.
+
+All four defects are closed:
+
+- **`makeEl()` with no check** — `loadIR()` pass 1 judges every element before `makeEl()` is reachable.
+- **Stage cleared before elements were looked at** — `loadIR()` is now two passes: judge everything and throw, *then* clear/commit. "Reject the entire import" genuinely wasn't reachable from inside the old loop; it is from here.
+- **The NaN trap** — `geometryIsReadable()` runs *first* inside the judge. Every comparison against `NaN` is false, so a missing `x` would otherwise sail through a perfectly correct reserved-region check. `typeof` also rejects `true` and `"100"`, matching `validate.py::_num` on the backend side. I added one guard the brief didn't name for the same reason: a non-positive `w`/`h`, because an inverted box makes `elementBBox()` return `x2 < x1` and every downstream predicate then compares a backwards interval.
+- **Unguarded `runs[0]` / `p.runs.map()`** — `stateFromIR()` and `paragraphsToHTML()` never throw and never repair.
+
+The judge deliberately does **not** enforce `MIN_EXTENT`: `w >= 4` is drawing ergonomics, the schema's rule is `w > 0`. That's precisely why the transform had to be split off rather than having the import call `applyConstraints()` — snapping and clamping a hand-authored file would silently rewrite the user's deck on load.
+
+## The thing you need to know
+
+**I could not run the suite.** This session denied every form of execution — `pytest`, `py_compile`, `python -c`, and `node -e` all came back "This command requires approval", though `python --version` and `node --version` were allowed, so both runtimes are present. This is the same wall Phase 0 and Phase 1A hit; their change details open with the identical banner, which means the "302 tests green" figure never came from a worker session either. **Run `cd tasks/AI_Powered_PPT && python -m pytest tests -q` before trusting any of this.**
+
+The 22 new tests in `test_app.py` (18 behavioural + 4 structural) *execute* the shipped rule rather than grepping for it — a grep can't tell you an element on the header is actually refused. They lift the functions verbatim out of `editor.js` by name and run them in Node with only the DOM stubbed, so the rule isn't re-implemented in Python (a Python copy would be a third source of truth, which is the very bug being fixed). The riskiest un-run thing I'm handing you is that harness, not the fix: if I miscounted a brace it fails loudly as a broken test, not as a false pass.
+
+In place of a run I hand-traced the rotated-AABB fixture and the half-open boundary against `geometry.py`, and I checked that the numeric guard doesn't block newly drawn elements (the draw path sets `rot: 0` explicitly at `editor.js:638`). Details are in `tasks/AI_Powered_PPT/phase1b_repair_change_detail.md`.
+
+Two caveats worth your judgement, both documented there: I left the **forbidden-colour check out of the import path** on purpose, because `applyConstraints()` doesn't check colour either — adding it would make the file path stricter than the mouse path and no longer "the same gate". And the brief itself is **truncated** — `phase1b_repair_brief.md` ends mid-sentence at "Split it:", so Steps 2+ of the intended design were never written and the decomposition above is my reconstruction from Step 1's stated intent plus the critic's four defects.

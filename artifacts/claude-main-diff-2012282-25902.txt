@@ -1,0 +1,394 @@
+diff --git a/tasks/AI_Powered_PPT/src/aippt/canvas/schema.json b/tasks/AI_Powered_PPT/src/aippt/canvas/schema.json
+index 0fa706e..be12869 100644
+--- a/tasks/AI_Powered_PPT/src/aippt/canvas/schema.json
++++ b/tasks/AI_Powered_PPT/src/aippt/canvas/schema.json
+@@ -91,7 +91,8 @@
+         "rotation": {"$ref": "#/$defs/rotation"},
+         "fill": {"$ref": "#/$defs/fill"},
+         "stroke": {"$ref": "#/$defs/stroke"},
+-        "text": {"$ref": "#/$defs/text"}
++        "text": {"$ref": "#/$defs/text"},
++        "link": {"$ref": "#/$defs/link"}
+       }
+     },
+ 
+@@ -110,7 +111,8 @@
+         "rotation": {"$ref": "#/$defs/rotation"},
+         "fill": {"$ref": "#/$defs/fill"},
+         "stroke": {"$ref": "#/$defs/stroke"},
+-        "text": {"$ref": "#/$defs/text"}
++        "text": {"$ref": "#/$defs/text"},
++        "link": {"$ref": "#/$defs/link"}
+       }
+     },
+ 
+@@ -129,7 +131,8 @@
+         "rotation": {"$ref": "#/$defs/rotation"},
+         "fill": {"$ref": "#/$defs/fill"},
+         "stroke": {"$ref": "#/$defs/stroke"},
+-        "text": {"$ref": "#/$defs/text"}
++        "text": {"$ref": "#/$defs/text"},
++        "link": {"$ref": "#/$defs/link"}
+       }
+     },
+ 
+@@ -148,7 +151,8 @@
+         "rotation": {"$ref": "#/$defs/rotation"},
+         "fill": {"$ref": "#/$defs/fill"},
+         "stroke": {"$ref": "#/$defs/stroke"},
+-        "text": {"$ref": "#/$defs/text"}
++        "text": {"$ref": "#/$defs/text"},
++        "link": {"$ref": "#/$defs/link"}
+       }
+     },
+ 
+@@ -280,6 +284,11 @@
+       "description": "Logical units (== pt). CAUTION: width 0 is a HAIRLINE in PowerPoint, not 'no line' -- a browser draws nothing for border-width:0 while PowerPoint draws the thinnest line it can. To get no line at all, use `\"stroke\": null`."
+     },
+ 
++    "link": {
++      "type": "string",
++      "description": "Phase 6 (HTML export): an optional hyperlink target for this shape, e.g. a URL or an in-deck anchor like '#slide-3'. NOT read by render_canvas.py -- the PPTX renderer never applies a hyperlink relationship, so this is informational-only for the .pptx path. The HTML exporter (editor.js exportHTML()) wraps an element carrying this in an <a href> so the exported deck is interactive; that exporter also restricts the scheme to http:/https:/mailto:/an in-page anchor before writing it into an attribute, independently of this schema (this field itself accepts any string)."
++    },
++
+     "text": {
+       "description": "Null or absent means the shape carries no text. Connectors cannot carry text at all.",
+       "oneOf": [
+diff --git a/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js b/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js
+index 90450f2..d73b1e2 100644
+--- a/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js
++++ b/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js
+@@ -82,9 +82,9 @@
+     // fillAlpha is a PERCENT (0-100), never serialized on its own -- toIR() folds it into the
+     // trailing hex byte of the fill colour string (Phase 6; schema.json's `color` def already
+     // accepts #RRGGBB + an optional AA byte). 100 == opaque == no byte emitted at all.
+-    shape: { fill: BRAND_RED, fillAlpha: 100, strokeColor: '', strokeWidth: 1, size: 14, color: '#FFFFFF', align: 'CENTER', valign: 'MIDDLE', bold: false, italic: false },
++    shape: { fill: BRAND_RED, fillAlpha: 100, strokeColor: '', strokeWidth: 1, size: 14, color: '#FFFFFF', align: 'CENTER', valign: 'MIDDLE', bold: false, italic: false, link: '' },
+     // A textbox is geometrically a rect; the split is authorial intent. No fill, black ink.
+-    textbox: { fill: '', fillAlpha: 100, strokeColor: '', strokeWidth: 1, size: 14, color: '#000000', align: 'CENTER', valign: 'MIDDLE', bold: false, italic: false },
++    textbox: { fill: '', fillAlpha: 100, strokeColor: '', strokeWidth: 1, size: 14, color: '#000000', align: 'CENTER', valign: 'MIDDLE', bold: false, italic: false, link: '' },
+     connector: { color: BRAND_RED, width: 1.5, arrow: 'end', kind: 'straight' },
+     // Media (Phase 6) is not a drawing TOOL -- it is inserted from a file picker, never dragged out
+     // -- so it carries no drag-out default box the way SHAPE_TYPES do; MEDIA_DEFAULT_SIZE (below)
+@@ -432,6 +432,9 @@
+       s.size = +d.size; s.color = d.color; s.align = d.align; s.valign = d.valign;
+       // A dataset value is a STRING, so '' and '0' and 'false' are all truthy traps. Compare.
+       s.bold = d.bold === '1'; s.italic = d.italic === '1';
++      // Phase 6 (HTML export): an optional hyperlink. Never read by render_canvas.py -- see
++      // schema.json's $defs.link description.
++      s.link = d.link || '';
+     }
+     return s;
+   }
+@@ -452,6 +455,7 @@
+       d.size = s.size; d.color = s.color; d.align = s.align; d.valign = s.valign;
+       // '1' or '' -- style.css keys off [data-bold='1'], so "off" must not be the string 'false'.
+       d.bold = s.bold ? '1' : ''; d.italic = s.italic ? '1' : '';
++      d.link = s.link || '';
+     }
+   }
+ 
+@@ -1392,6 +1396,7 @@
+     };
+     if (s.rot) out.rotation = round6(s.rot);
+     if (s.strokeColor) out.stroke = { color: s.strokeColor, width: round6(s.strokeWidth) };
++    if (s.link) out.link = s.link;
+ 
+     var body = el.querySelector('.txt .body');
+     var paragraphs = body ? normalizeText(body, s.size, s.color, s.bold, s.italic) : null;
+@@ -1524,7 +1529,7 @@
+   }
+ 
+   ['p-fill', 'p-fill-alpha', 'p-stroke', 'p-stroke-w', 'p-color', 'p-size', 'p-align', 'p-valign',
+-   'p-kind', 'p-arrow', 'p-rot'].forEach(function (id) { txControl($(id)); });
++   'p-kind', 'p-arrow', 'p-rot', 'p-link'].forEach(function (id) { txControl($(id)); });
+ 
+   guardColor($('p-fill'), function (v) {
+     if (isConnector()) return; // a connector has no fill -- the schema does not give it one
+@@ -1587,6 +1592,12 @@
+     if (!isConnector()) patchSelected({ size: +this.value });
+   });
+ 
++  // Phase 6 (HTML export): defensive only -- data-for="shape" already scopes #p-link out of the
++  // DOM for a connector/media selection, same guard shape as p-fill-alpha's handler above.
++  $('p-link').addEventListener('input', function () {
++    if (!isConnector() && !isMedia()) patchSelected({ link: this.value });
++  });
++
+   /* ---------------------------------------------------------------------------- run.bold / run.italic
+    *
+    * The two IR properties the Phase 1B panel never exposed. They are ELEMENT-level controls over a
+@@ -1841,6 +1852,7 @@
+       $('p-valign').value = s.valign;
+       $('p-rot').value = Math.round(s.rot || 0);
+       $('p-rot-out').textContent = Math.round(s.rot || 0) + '°';
++      $('p-link').value = s.link || '';
+     }
+     setStatus(s.id + ' — ' + s.type);
+   }
+@@ -2071,6 +2083,224 @@
+     }
+   });
+ 
++  /* Phase 6: HTML export. A standalone, offline-openable .html file that reproduces the stage —
++   * absolute positioning, colours, rotation, DOM order (== stacking order, see the comment on
++   * addEl() above) — and turns any element carrying a `link` into a clickable <a>.
++   *
++   * Deliberately does NOT fetch or inline style.css: the exported file must stand on its own, and
++   * style.css also carries app chrome (toolbar, composer, warnings banner) that has no business in
++   * an exported slide. EXPORT_CSS below is a self-contained subset of just the CONTRACT rules that
++   * govern how a `.el` is positioned and painted (see style.css's own "CONTRACT" comments) — the
++   * SAME rules, copied rather than derived, because this file has no build step to share them with.
++   *
++   * Not gated behind CONTEXT/disableExports() the way #b-json/#b-export are: those need
++   * `template_sha256`/`layout_index` from /api/context before a payload is meaningful, but this
++   * needs no server round trip at all, so it stays enabled even offline.
++   */
++  var EXPORT_CSS = [
++    'html,body{margin:0;padding:0;background:#FFFFFF}',
++    '#stage{position:relative;width:960px;height:540px;background:#FFFFFF;overflow:hidden}',
++    '#title-field{position:absolute;left:45.55px;top:26.75px;width:725.29px;height:37.25px;' +
++      'padding:0;margin:0;border:0;box-sizing:border-box;display:flex;align-items:center;' +
++      "font-family:'Century Gothic','Malgun Gothic',sans-serif;font-size:30px;line-height:1.2;" +
++      'color:#000000;white-space:pre-wrap;overflow-wrap:break-word;word-break:keep-all}',
++    '.el{position:absolute;transform:rotate(var(--rot,0deg));transform-origin:50% 50%}',
++    '.el[data-type="connector"]{overflow:visible}',
++    '.el svg{overflow:visible;position:absolute;inset:0}',
++    '.el .txt{position:absolute;left:7.2px;right:7.2px;top:3.6px;bottom:3.6px;box-sizing:border-box;' +
++      "padding:0;margin:0;border:0;font-family:'Century Gothic','Malgun Gothic',sans-serif;" +
++      'font-size:14px;line-height:1.2;white-space:pre-wrap;overflow-wrap:break-word;' +
++      'word-break:keep-all;display:flex;align-items:center;justify-content:center;text-align:center;' +
++      'overflow:visible;outline:none;pointer-events:none}',
++    '.el .txt>.body{width:100%;outline:none}',
++    '.el[data-bold="1"] .txt{font-weight:700}',
++    '.el[data-italic="1"] .txt{font-style:italic}',
++    '.el .txt[data-valign="TOP"]{align-items:flex-start}',
++    '.el .txt[data-valign="MIDDLE"]{align-items:center}',
++    '.el .txt[data-valign="BOTTOM"]{align-items:flex-end}',
++    '.el .txt[data-align="LEFT"]{justify-content:flex-start;text-align:left}',
++    '.el .txt[data-align="CENTER"]{justify-content:center;text-align:center}',
++    '.el .txt[data-align="RIGHT"]{justify-content:flex-end;text-align:right}',
++    '.el .media{position:absolute;inset:0;width:100%;height:100%;object-fit:fill}',
++  ].join('\n');
++
++  // Removes everything about a cloned `.el` that exists only for the EDITOR's benefit: selection/
++  // multi-select/blocked-flash outlines and the resize/rotate/connector-endpoint handles. Deliberately
++  // does NOT try to sanitize `.txt .body` here — exportElementHTML() below throws that subtree away
++  // entirely and rebuilds it from normalized data instead of trying to launder the live markup, see
++  // its own comment for why.
++  function stripEditorChrome(clone) {
++    clone.classList.remove('selected', 'editing', 'multi-selected', 'blocked');
++    var handles = clone.querySelectorAll('.handle');
++    for (var i = 0; i < handles.length; i++) handles[i].remove();
++  }
++
++  /* Phase 6 REPAIR: a File -> its `data:<mime>;base64,...` URL, unlike fileToBase64() below (which
++   * strips that prefix for the server's pure-base64 field) -- an exported <img>/<video> `src` wants
++   * the prefix so the browser opening the standalone file knows how to decode it. */
++  function fileToDataURL(file) {
++    return new Promise(function (resolve, reject) {
++      var reader = new FileReader();
++      reader.onload = function () { resolve(String(reader.result || '')); };
++      reader.onerror = function () { reject(reader.error || new Error('could not read the file')); };
++      reader.readAsDataURL(file);
++    });
++  }
++
++  /* Phase 6 REPAIR (Codex Critic BLOCK): window.uploadedMedia[src].url is an object URL --
++   * URL.createObjectURL(file) -- valid only inside THIS TAB'S SESSION. renderEl() binds it onto the
++   * live `.media` element for on-stage preview, which is fine there because the tab stays open; but
++   * exportElementHTML() below clones that live node, and a blob: URL baked into a downloaded HTML
++   * file dies the moment this tab closes (or immediately in any OTHER browser/tab), breaking every
++   * image/video in a file whose whole point is to keep working offline and standalone. Converts the
++   * SAME File object the PPTX export already multipart-uploads (window.uploadedMedia[src].file) to
++   * a data: URL instead, so the bytes travel inside the .html file itself. Cached on the entry so
++   * exporting twice (or two elements sharing one `src`) reads the File once.
++   */
++  function mediaDataURL(src) {
++    var entry = window.uploadedMedia && window.uploadedMedia[src];
++    if (!entry) return Promise.resolve('');
++    if (entry.dataUrl) return Promise.resolve(entry.dataUrl);
++    return fileToDataURL(entry.file).then(function (url) {
++      entry.dataUrl = url;
++      return url;
++    });
++  }
++
++  /* Phase 6 REPAIR (Codex Critic BLOCK): an ALLOWLIST, not a denylist. `javascript:`/`data:`/
++   * `vbscript:` etc. are refused by virtue of not being http/https/mailto -- not by name-matching
++   * every dangerous scheme there is, which is a list that only ever grows. The scheme regex below
++   * requires the whole run of characters up to the first ':' to be letters/digits/+/./- (RFC 3986
++   * scheme syntax) -- a control character or a space ANYWHERE in that run (e.g. a tab smuggled into
++   * "java\tscript:", which some browsers strip before reading the scheme) breaks the match and
++   * falls through to the "not one of the allowed forms" rejection below, so a browser-side strip-
++   * then-reinterpret trick cannot turn a rejected string into an accepted one. Returns '' (== "no
++   * link") for anything that is not http:, https:, mailto:, or an in-page anchor ('#...') --
++   * including a bare scheme-less string like "example.com", which is not one of the allowed forms
++   * either.
++   */
++  function sanitizeLink(link) {
++    var v = String(link || '').trim();
++    if (!v) return '';
++    if (v.charAt(0) === '#') return v;
++    var m = /^([a-zA-Z][a-zA-Z0-9+.-]*):/.exec(v);
++    if (!m) return '';
++    var scheme = m[1].toLowerCase();
++    return (scheme === 'http' || scheme === 'https' || scheme === 'mailto') ? v : '';
++  }
++
++  /* Phase 6 REPAIR #2 (Codex Critic BLOCK): `.txt .body` is `contenteditable`, and pasted rich text
++   * can carry markup this app never authored — a nested `<a href="javascript:...">`, an
++   * `onerror`/`onload` attribute a browser did not strip on paste, a `style` with a legacy
++   * `expression()`/`-moz-binding` payload, and so on. The first repair cloned the live node and
++   * serialized it with `outerHTML`, which shipped all of that straight into a file this app's own
++   * caller then opens in a real browser — exactly the reviewer's "bypasses sanitizeLink()" report,
++   * except the injection lands in the TEXT, not the link.
++   *
++   * Rather than trying to enumerate every unsafe tag/attribute (a denylist that only ever grows —
++   * the same reasoning sanitizeLink() above is built on), this reconstructs the body from the SAME
++   * normalizeText()/paragraphsToHTML() pair toIR() and loadIR() already use to move text through the
++   * IR (loadIR calls paragraphsToHTML() at roughly line 2693 above; see its own comment).
++   * normalizeText() reduces the live DOM to plain strings plus three formatting fields (bold,
++   * italic, color) and discards every tag/attribute in the process; paragraphsToHTML() rebuilds
++   * markup from ONLY that data, through esc() and a hard-coded `<div>/<span style="color:...">/
++   * <b>/<i>` shape. There is no path from a pasted `<script>` or an `onerror=` attribute to the
++   * reconstructed output, because neither one is a field that data shape carries — the same
++   * "extract to a narrow trusted shape, then rebuild" strategy titleString() gives the title field
++   * below, applied to per-run formatting instead of a flat string.
++   */
++  function exportElementHTML(el, dataUrls) {
++    var clone = el.cloneNode(true);
++    stripEditorChrome(clone);
++    var type = el.dataset.type;
++    if (isMediaType(type)) {
++      var media = clone.querySelector('.media');
++      if (media) media.setAttribute('src', dataUrls[el.dataset.src] || '');
++      return clone.outerHTML;
++    }
++    var s = read(el);
++    var cloneBody = clone.querySelector('.txt .body');
++    if (cloneBody) {
++      var liveBody = el.querySelector('.txt .body');
++      var paragraphs = liveBody ? normalizeText(liveBody, s.size, s.color, s.bold, s.italic) : null;
++      cloneBody.innerHTML = paragraphs ? paragraphsToHTML(paragraphs, s.color) : '';
++      cloneBody.removeAttribute('contenteditable');
++    }
++    var link = sanitizeLink(s.link);
++    return link
++      ? '<a href="' + esc(link) + '" style="display:contents;cursor:pointer">' + clone.outerHTML + '</a>'
++      : clone.outerHTML;
++  }
++
++  async function exportHTML() {
++    clearWarnings();
++    var elements = Array.prototype.slice.call(stage.querySelectorAll(':scope > .el'));
++
++    // Same missing-media guard $('b-export') already runs before the PPTX round trip: a reload
++    // clears window.uploadedMedia, so a src an on-stage element still names may have no File behind
++    // it any more.
++    var srcs = [];
++    elements.forEach(function (el) {
++      if (isMediaType(el.dataset.type) && srcs.indexOf(el.dataset.src) < 0) srcs.push(el.dataset.src);
++    });
++    var missing = srcs.filter(function (n) { return !window.uploadedMedia || !window.uploadedMedia[n]; });
++    if (missing.length) {
++      warn(
++        'Cannot export — missing media file(s): ' + missing.join(', '),
++        'This element references an image/video this browser tab no longer has the bytes for ' +
++        '(a reload clears them). Re-add it with the Media buttons in the toolbar, or delete the ' +
++        'element, then export again.'
++      );
++      setStatus('Export failed.');
++      return;
++    }
++
++    setStatus('Exporting…');
++
++    var dataUrls;
++    try {
++      dataUrls = {};
++      for (var i = 0; i < srcs.length; i++) dataUrls[srcs[i]] = await mediaDataURL(srcs[i]);
++    } catch (e) {
++      warn('Could not embed a media file', String(e));
++      setStatus('Export failed.');
++      return;
++    }
++
++    // Named so the export still succeeds when a link is unsafe -- the ELEMENT is not dropped, only
++    // its href -- but the user is told why the exported file's link does not work, rather than
++    // silently shipping a slide that looks clickable and is not.
++    var blockedLinks = elements
++      .filter(function (el) { var link = read(el).link; return link && !sanitizeLink(link); })
++      .map(function (el) { return el.dataset.id; });
++    if (blockedLinks.length) {
++      warn(
++        'Some links were not exported: ' + blockedLinks.join(', '),
++        'Only http:, https:, mailto: links and in-page anchors (#...) are allowed in exported HTML.'
++      );
++    }
++
++    var body = elements.map(function (el) { return exportElementHTML(el, dataUrls); }).join('\n');
++    // Phase 6 REPAIR #2 (Codex Critic BLOCK): titleField is ALSO a live contenteditable, with the
++    // same rich-paste risk exportElementHTML() defends the shape/textbox body against above.
++    // titleString() (used by serialize() for the very same field) already reduces it to a plain
++    // string plus '\n' for line breaks, discarding every tag and attribute on the way -- the title
++    // has no bold/italic/color of its own in the IR at all (schema.json's `title` is a bare string;
++    // see its description) -- so reconstructing through esc() here carries the identical guarantee
++    // exportElementHTML() relies on: nothing pasted into the title can become a tag or an attribute
++    // in the exported file.
++    var titleHTML = esc(titleString()).replace(/\n/g, '<br>');
++    var html = '<!DOCTYPE html>\n<html lang="ko">\n<head>\n<meta charset="utf-8">\n' +
++      '<meta name="viewport" content="width=device-width, initial-scale=1">\n' +
++      '<title>' + esc(safeStem()) + '</title>\n<style>' + EXPORT_CSS + '</style>\n</head>\n<body>\n' +
++      '<div id="stage">\n<div id="title-field">' + titleHTML + '</div>\n' +
++      body + '\n</div>\n</body>\n</html>\n';
++    download(new Blob([html], { type: 'text/html' }), safeStem() + '.html');
++    setStatus('Downloaded HTML (' + elements.length + ' element(s)).');
++  }
++
++  $('b-export-html').addEventListener('click', exportHTML);
++
+   /* Load JSON — a stretch goal, and the other half of the Gate 4 round trip. */
+   $('b-load').addEventListener('click', function () { $('f-load').click(); });
+ 
+@@ -2618,6 +2848,9 @@
+       valign: text.valign || def.valign,
+       bold: nRuns > 0 && nBold === nRuns,
+       italic: nRuns > 0 && nItalic === nRuns,
++      // Phase 6 (HTML export): absent or non-string falls back to '' rather than throwing, same
++      // defensive treatment every other optional field in this function gets.
++      link: typeof e.link === 'string' ? e.link : def.link,
+     };
+   }
+ 
+diff --git a/tasks/AI_Powered_PPT/src/aippt/canvas/static/index.html b/tasks/AI_Powered_PPT/src/aippt/canvas/static/index.html
+index e7abf6a..41cfd9c 100644
+--- a/tasks/AI_Powered_PPT/src/aippt/canvas/static/index.html
++++ b/tasks/AI_Powered_PPT/src/aippt/canvas/static/index.html
+@@ -69,6 +69,9 @@
+       <button type="button" id="b-load">Load JSON</button>
+       <input type="file" id="f-load" accept="application/json,.json" hidden>
+       <button type="button" id="b-export" class="primary">Export PPT</button>
++      <!-- Phase 6: pure client-side bundling -- no /api round trip, no CONTEXT dependency, so this
++           stays enabled even when disableExports() has fired (offline, or a stale template). -->
++      <button type="button" id="b-export-html" class="primary">Download HTML</button>
+     </section>
+ 
+     <!-- AI_PPT_v2 Phase 4: server-side save/load. A design saved here goes through the SAME
+@@ -203,6 +206,16 @@
+       </label>
+     </section>
+ 
++    <!-- Phase 6: HTML export. `link` is informational-only to the .pptx path (render_canvas.py never
++         reads it) -- exportHTML() in editor.js is the only consumer, wrapping the exported element in
++         an <a href> when this is non-empty (after sanitizeLink() restricts it to http:/https:/mailto:/
++         an in-page anchor). Scoped to shape only, same as Fill/Text above: a connector/media element
++         carries no `link` in the IR (schema.json only adds it to the four shape branches). -->
++    <section class="group" data-for="shape">
++      <h2>Link</h2>
++      <label>Link <input type="url" id="p-link" placeholder="https://…"></label>
++    </section>
++
+     <section class="group" data-for="connector">
+       <h2>Connector</h2>
+       <label>Kind

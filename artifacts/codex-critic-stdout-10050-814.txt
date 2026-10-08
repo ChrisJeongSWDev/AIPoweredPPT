@@ -1,0 +1,19 @@
+VERDICT: REJECT
+
+`src/aippt/canvas/pin.py` violates the exact three-function architecture:
+
+- Lines 58–63 define extra `sha256_file()`.
+- Line 66 defines `load_pin(path=...)`; required signature is parameterless `load_pin()`.
+- Lines 161–162 define extra `_template_path()`.
+- Lines 165–214 define extra `_verify_signature()`.
+
+Inline these helpers into the three required functions and make `load_pin()` use `PIN_PATH` directly.
+
+Also update `HUMAN_VERIFICATION.md` lines 7–14: they incorrectly claim the renderer artifact is absent and the pin is unpinned. The artifact exists, and its SHA-256 and size match `template_pin.json`.
+
+The other critic gates pass:
+
+- No `prs.slides` access inside the deletion loop.
+- `drop_rel()` precedes `sld_id_lst.remove()` at lines 110–111.
+- The pin signature is observed from the saved package and written dynamically.
+- Calibration conversions and style overrides are inline; no `geometry.py` or `style.py` exists.

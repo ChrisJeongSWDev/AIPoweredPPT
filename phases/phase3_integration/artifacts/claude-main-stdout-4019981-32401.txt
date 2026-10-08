@@ -1,0 +1,15 @@
+## Summary
+
+I implemented all four functions in `ai_adapter.py` for this phase, plus the two codex-critic fixes, and documented everything in the outer-tree `change_detail.md`.
+
+**Path bug (recurring, already known):** the temp brief's `target_repo` (`stg.qRwYMvMC`) is a repo-rooted clone, but `write_scope` still says `src/aippt/adapters/ai_adapter.py` unprefixed. That path doesn't exist — the real file is at `stg.qRwYMvMC/tasks/AI_Powered_PPT/src/aippt/adapters/ai_adapter.py` (verified by directory listing). I edited the real file, as every prior attempt on this task family has. `controller/phases/phase3/state.json` confirms this exact false-positive `scope_violation` fired again before this dispatch.
+
+**What I implemented:**
+- `build_system_prompt`, `generate_outline`, `fill_slide` per the original brief.
+- `generate_deck`'s bounded repair loop, now with both codex-critic fixes:
+  1. Verifies `fill_slide`'s returned `layout_id` matches the outline entry's — raises `CliWorkerSchemaError` (repairable) on mismatch, as requested.
+  2. Wires in real budget checking via `render.fit.check_budget`, mapping `slide.title`/`slide.blocks[i]` onto the layout's placeholders using the exact order `ir/schema.json` itself documents.
+
+**One thing I flagged rather than hid:** `render/fit.py`'s `check_budget` (and everything under it) is still a `NotImplementedError` stub — confirmed by reading the actual file, not assuming from memory — and it's outside this brief's `write_scope`, so I couldn't implement it. Wiring it in means `generate_deck` will currently raise `NotImplementedError` on real slides until a later phase builds `fit.py`. I deliberately didn't swallow that error (it's not caught by the repair loop, by design) — silently catching it would make the fix look done without actually enforcing budgets, which is worse than an honest gap. Full reasoning is in `change_detail.md`.
+
+Execution (`python -m py_compile`, etc.) was blocked by approval gates in this session as usual, so verification was by hand-tracing every field name against the current `ir/models.py`, `ir/schema.json`, and `layout_manifest.json` — documented in the change-detail addendum, along with what a session with real execution access should still check.

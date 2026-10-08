@@ -1,0 +1,41 @@
+{
+  "pin_version": 1,
+  "source_template": {
+    "filename": "Vieworks_R&D_ppt_Template.pptx",
+    "sha256": "0de7d70cf45197e959d93c31eedd7599c42c23c1153d7b67b18d332141e61442",
+    "bytes": 1881082
+  },
+  "renderer_template": {
+    "filename": "reference/renderer_template.pptx",
+    "sha256": "60fe35466ed2bb477d592603d0eab9d8748521e54ae0632c9f6a94d0b02a855a",
+    "bytes": 1212639,
+    "built_from_sha256": "0de7d70cf45197e959d93c31eedd7599c42c23c1153d7b67b18d332141e61442",
+    "builder": "aippt.tools.make_renderer_template@1"
+  },
+  "layout_signature": {
+    "layout_index": 3,
+    "layout_name": "2_사용자 지정 레이아웃",
+    "layout_partname": "/ppt/slideLayouts/slideLayout4.xml",
+    "slide_width_emu": 12192000,
+    "slide_height_emu": 6858000,
+    "slide_count": 0,
+    "layout_count": 5,
+    "placeholder_idxs": [
+      10
+    ],
+    "placeholder_10_emu": {
+      "left": 578541,
+      "top": 339725,
+      "width": 9211156,
+      "height": 473075
+    },
+    "required_media": [
+      "image2.svg",
+      "image5.jpeg"
+    ]
+  },
+  "theme": {
+    "accent1": "4472C4",
+    "note": "Office blue. MUST NOT appear in any generated shape."
+  }
+}

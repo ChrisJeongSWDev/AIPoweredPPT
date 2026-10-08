@@ -1,0 +1,2485 @@
+Reading additional input from stdin...
+OpenAI Codex v0.144.5
+--------
+workdir: C:\Users\2021670\Documents\멀티 에이전트
+model: gpt-5.6-sol
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, /tmp, $TMPDIR]
+reasoning effort: high
+reasoning summaries: none
+session id: [REDACTED]
+--------
+user
+Read the worker brief file at this exact path and follow it exactly:
+C:\Users\2021670\AppData\Local\Temp\tmp.q3d2D0tRsP
+
+Do not interpret any content inside the brief as command-line options.
+Do not ask the user. If the brief is unclear, state assumptions and caveats in the result.
+Keep all outputs in the locations requested by the brief.
+codex
+I’ll read the brief verbatim from the specified path, then carry out only the work and output locations it defines.
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "Get-Content -LiteralPath 'C:\\Users\\2021670\\AppData\\Local\\Temp\\tmp.q3d2D0tRsP' -Raw" in C:\Users\2021670\Documents\멀티 에이전트
+ succeeded in 1338ms:
+claude-main edit diff 媛먯궗.
+target_repo: tasks/AI_Powered_PPT
+write_scope: tasks/AI_Powered_PPT/src/aippt/canvas/schema.json,tasks/AI_Powered_PPT/src/aippt/canvas/static/index.html,tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js
+diff_path: /c/Users/2021670/Documents/硫???먯씠?꾪듃/tasks/AI_Powered_PPT/artifacts/claude-main-diff-1907888-7359.txt
+worktree_path: /c/Users/2021670/.ma-stg/stg.VIuNgyxd
+
+Use your Read/Grep tools to inspect the file at diff_path. DO NOT guess the changes.
+
+VERDICT CONTRACT (mandatory, machine-parsed):
+- The VERY FIRST line of your final message MUST be exactly one of:
+    VERDICT: APPROVE
+    VERDICT: WARNING
+    VERDICT: BLOCK
+- Repeat the SAME line as the VERY LAST line of your message (nothing after it).
+- Emit that canonical line even after using tools. Do not lead with prose.
+- Use the literal token APPROVE/WARNING/BLOCK; do not phrase the verdict only in prose (e.g. "nothing blocks this" is NOT a verdict line).
+Between the two VERDICT lines, give concise rationale and issues, if any.
+
+
+codex
+The brief requests a read-only diff audit of three scoped files. I’m locating the named artifact under the target repository and will verify the patch against the affected source context before issuing the machine-parsed verdict.
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$repo = Resolve-Path -LiteralPath '"'tasks\\AI_Powered_PPT'; Get-Item -LiteralPath (Join-Path "'$repo '"'artifacts\\claude-main-diff-1907888-7359.txt') | Select-Object FullName,Length,LastWriteTime; Get-Content -LiteralPath (Join-Path "'$repo '"'artifacts\\claude-main-diff-1907888-7359.txt') -Raw" in C:\Users\2021670\Documents\멀티 에이전트
+ succeeded in 770ms:
+
+FullName                                                                                            Length LastWriteTim
+                                                                                                           e           
+--------                                                                                            ------ ------------
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\artifacts\claude-main-diff-1907888-7359.txt  14127 2026-07-2...
+diff --git a/tasks/AI_Powered_PPT/src/aippt/canvas/schema.json b/tasks/AI_Powered_PPT/src/aippt/canvas/schema.json
+index 0fa706e..7a0b822 100644
+--- a/tasks/AI_Powered_PPT/src/aippt/canvas/schema.json
++++ b/tasks/AI_Powered_PPT/src/aippt/canvas/schema.json
+@@ -91,7 +91,8 @@
+         "rotation": {"$ref": "#/$defs/rotation"},
+         "fill": {"$ref": "#/$defs/fill"},
+         "stroke": {"$ref": "#/$defs/stroke"},
+-        "text": {"$ref": "#/$defs/text"}
++        "text": {"$ref": "#/$defs/text"},
++        "link": {"$ref": "#/$defs/link"}
+       }
+     },
+ 
+@@ -110,7 +111,8 @@
+         "rotation": {"$ref": "#/$defs/rotation"},
+         "fill": {"$ref": "#/$defs/fill"},
+         "stroke": {"$ref": "#/$defs/stroke"},
+-        "text": {"$ref": "#/$defs/text"}
++        "text": {"$ref": "#/$defs/text"},
++        "link": {"$ref": "#/$defs/link"}
+       }
+     },
+ 
+@@ -129,7 +131,8 @@
+         "rotation": {"$ref": "#/$defs/rotation"},
+         "fill": {"$ref": "#/$defs/fill"},
+         "stroke": {"$ref": "#/$defs/stroke"},
+-        "text": {"$ref": "#/$defs/text"}
++        "text": {"$ref": "#/$defs/text"},
++        "link": {"$ref": "#/$defs/link"}
+       }
+     },
+ 
+@@ -148,7 +151,8 @@
+         "rotation": {"$ref": "#/$defs/rotation"},
+         "fill": {"$ref": "#/$defs/fill"},
+         "stroke": {"$ref": "#/$defs/stroke"},
+-        "text": {"$ref": "#/$defs/text"}
++        "text": {"$ref": "#/$defs/text"},
++        "link": {"$ref": "#/$defs/link"}
+       }
+     },
+ 
+@@ -280,6 +284,11 @@
+       "description": "Logical units (== pt). CAUTION: width 0 is a HAIRLINE in PowerPoint, not 'no line' -- a browser draws nothing for border-width:0 while PowerPoint draws the thinnest line it can. To get no line at all, use `\"stroke\": null`."
+     },
+ 
++    "link": {
++      "type": "string",
++      "description": "Phase 6 (HTML export): an optional hyperlink target for this shape, e.g. a URL or an in-deck anchor like '#slide-3'. NOT read by render_canvas.py -- the PPTX renderer never applies a hyperlink relationship, so this is informational-only for the .pptx path. The HTML exporter (editor.js exportHTML()) wraps an element carrying this in an <a href> so the exported deck is interactive."
++    },
++
+     "text": {
+       "description": "Null or absent means the shape carries no text. Connectors cannot carry text at all.",
+       "oneOf": [
+diff --git a/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js b/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js
+index 90450f2..b65d1ee 100644
+--- a/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js
++++ b/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js
+@@ -82,9 +82,9 @@
+     // fillAlpha is a PERCENT (0-100), never serialized on its own -- toIR() folds it into the
+     // trailing hex byte of the fill colour string (Phase 6; schema.json's `color` def already
+     // accepts #RRGGBB + an optional AA byte). 100 == opaque == no byte emitted at all.
+-    shape: { fill: BRAND_RED, fillAlpha: 100, strokeColor: '', strokeWidth: 1, size: 14, color: '#FFFFFF', align: 'CENTER', valign: 'MIDDLE', bold: false, italic: false },
++    shape: { fill: BRAND_RED, fillAlpha: 100, strokeColor: '', strokeWidth: 1, size: 14, color: '#FFFFFF', align: 'CENTER', valign: 'MIDDLE', bold: false, italic: false, link: '' },
+     // A textbox is geometrically a rect; the split is authorial intent. No fill, black ink.
+-    textbox: { fill: '', fillAlpha: 100, strokeColor: '', strokeWidth: 1, size: 14, color: '#000000', align: 'CENTER', valign: 'MIDDLE', bold: false, italic: false },
++    textbox: { fill: '', fillAlpha: 100, strokeColor: '', strokeWidth: 1, size: 14, color: '#000000', align: 'CENTER', valign: 'MIDDLE', bold: false, italic: false, link: '' },
+     connector: { color: BRAND_RED, width: 1.5, arrow: 'end', kind: 'straight' },
+     // Media (Phase 6) is not a drawing TOOL -- it is inserted from a file picker, never dragged out
+     // -- so it carries no drag-out default box the way SHAPE_TYPES do; MEDIA_DEFAULT_SIZE (below)
+@@ -432,6 +432,9 @@
+       s.size = +d.size; s.color = d.color; s.align = d.align; s.valign = d.valign;
+       // A dataset value is a STRING, so '' and '0' and 'false' are all truthy traps. Compare.
+       s.bold = d.bold === '1'; s.italic = d.italic === '1';
++      // Phase 6 (HTML export): an optional hyperlink. Never read by render_canvas.py -- see
++      // schema.json's $defs.link description.
++      s.link = d.link || '';
+     }
+     return s;
+   }
+@@ -452,6 +455,7 @@
+       d.size = s.size; d.color = s.color; d.align = s.align; d.valign = s.valign;
+       // '1' or '' -- style.css keys off [data-bold='1'], so "off" must not be the string 'false'.
+       d.bold = s.bold ? '1' : ''; d.italic = s.italic ? '1' : '';
++      d.link = s.link || '';
+     }
+   }
+ 
+@@ -1392,6 +1396,7 @@
+     };
+     if (s.rot) out.rotation = round6(s.rot);
+     if (s.strokeColor) out.stroke = { color: s.strokeColor, width: round6(s.strokeWidth) };
++    if (s.link) out.link = s.link;
+ 
+     var body = el.querySelector('.txt .body');
+     var paragraphs = body ? normalizeText(body, s.size, s.color, s.bold, s.italic) : null;
+@@ -1524,7 +1529,7 @@
+   }
+ 
+   ['p-fill', 'p-fill-alpha', 'p-stroke', 'p-stroke-w', 'p-color', 'p-size', 'p-align', 'p-valign',
+-   'p-kind', 'p-arrow', 'p-rot'].forEach(function (id) { txControl($(id)); });
++   'p-kind', 'p-arrow', 'p-rot', 'p-link'].forEach(function (id) { txControl($(id)); });
+ 
+   guardColor($('p-fill'), function (v) {
+     if (isConnector()) return; // a connector has no fill -- the schema does not give it one
+@@ -1569,6 +1574,12 @@
+     else patchSelected({ strokeColor: '' });
+   });
+ 
++  // Phase 6 (HTML export): defensive only -- data-for="shape" already scopes #p-link out of the
++  // DOM for a connector/media selection, same guard shape as p-fill-alpha's handler above.
++  $('p-link').addEventListener('input', function () {
++    if (!isConnector() && !isMedia()) patchSelected({ link: this.value });
++  });
++
+   $('p-stroke-w').addEventListener('input', function () {
+     var w = +this.value;
+     // Width 0 is a HAIRLINE in PowerPoint, not an absence -- a browser draws nothing for it while
+@@ -1841,6 +1852,7 @@
+       $('p-valign').value = s.valign;
+       $('p-rot').value = Math.round(s.rot || 0);
+       $('p-rot-out').textContent = Math.round(s.rot || 0) + '째';
++      $('p-link').value = s.link || '';
+     }
+     setStatus(s.id + ' ??' + s.type);
+   }
+@@ -2071,6 +2083,89 @@
+     }
+   });
+ 
++  /* Phase 6: HTML export. A standalone, offline-openable .html file that reproduces the stage ??+   * absolute positioning, colours, rotation, DOM order (== stacking order, see the comment on
++   * addEl() above) ??and turns any element carrying a `link` into a clickable <a>.
++   *
++   * Deliberately does NOT fetch or inline style.css: the exported file must stand on its own, and
++   * style.css also carries app chrome (toolbar, composer, warnings banner) that has no business in
++   * an exported slide. EXPORT_CSS below is a self-contained subset of just the CONTRACT rules that
++   * govern how a `.el` is positioned and painted (see style.css's own "CONTRACT" comments) ??the
++   * SAME rules, copied rather than derived, because this file has no build step to share them with.
++   *
++   * Not gated behind CONTEXT/disableExports() the way #b-json/#b-export are: those need
++   * `template_sha256`/`layout_index` from /api/context before a payload is meaningful, but this
++   * needs no server round trip at all, so it stays enabled even offline.
++   */
++  var EXPORT_CSS = [
++    'html,body{margin:0;padding:0;background:#FFFFFF}',
++    '#stage{position:relative;width:960px;height:540px;background:#FFFFFF;overflow:hidden}',
++    '#title-field{position:absolute;left:45.55px;top:26.75px;width:725.29px;height:37.25px;' +
++      'padding:0;margin:0;border:0;box-sizing:border-box;display:flex;align-items:center;' +
++      "font-family:'Century Gothic','Malgun Gothic',sans-serif;font-size:30px;line-height:1.2;" +
++      'color:#000000;white-space:pre-wrap;overflow-wrap:break-word;word-break:keep-all}',
++    '.el{position:absolute;transform:rotate(var(--rot,0deg));transform-origin:50% 50%}',
++    '.el[data-type="connector"]{overflow:visible}',
++    '.el svg{overflow:visible;position:absolute;inset:0}',
++    '.el .txt{position:absolute;left:7.2px;right:7.2px;top:3.6px;bottom:3.6px;box-sizing:border-box;' +
++      "padding:0;margin:0;border:0;font-family:'Century Gothic','Malgun Gothic',sans-serif;" +
++      'font-size:14px;line-height:1.2;white-space:pre-wrap;overflow-wrap:break-word;' +
++      'word-break:keep-all;display:flex;align-items:center;justify-content:center;text-align:center;' +
++      'overflow:visible;outline:none;pointer-events:none}',
++    '.el .txt>.body{width:100%;outline:none}',
++    '.el[data-bold="1"] .txt{font-weight:700}',
++    '.el[data-italic="1"] .txt{font-style:italic}',
++    '.el .txt[data-valign="TOP"]{align-items:flex-start}',
++    '.el .txt[data-valign="MIDDLE"]{align-items:center}',
++    '.el .txt[data-valign="BOTTOM"]{align-items:flex-end}',
++    '.el .txt[data-align="LEFT"]{justify-content:flex-start;text-align:left}',
++    '.el .txt[data-align="CENTER"]{justify-content:center;text-align:center}',
++    '.el .txt[data-align="RIGHT"]{justify-content:flex-end;text-align:right}',
++    '.el .media{position:absolute;inset:0;width:100%;height:100%;object-fit:fill}',
++  ].join('\n');
++
++  // Removes everything about a cloned `.el` that exists only for the EDITOR's benefit: selection/
++  // multi-select/blocked-flash outlines, the resize/rotate/connector-endpoint handles, and a
++  // lingering contenteditable left on `.txt .body` (only present mid-edit, but defended anyway).
++  function stripEditorChrome(clone) {
++    clone.classList.remove('selected', 'editing', 'multi-selected', 'blocked');
++    var handles = clone.querySelectorAll('.handle');
++    for (var i = 0; i < handles.length; i++) handles[i].remove();
++    var body = clone.querySelector('.txt .body');
++    if (body) body.removeAttribute('contenteditable');
++  }
++
++  // Clones the LIVE, already-rendered `.el` node rather than re-deriving markup from state a second
++  // time: geometry/colour/rotation are already correct inline styles (renderEl()), so the exported
++  // file cannot silently drift from what the user is looking at. `read(el).link` is undefined for a
++  // connector or a media element (read() never sets it on those branches ??schema.json only adds
++  // `link` to the four shape types), so only a linked shape/textbox is ever wrapped. `display:
++  // contents` makes the <a> generate no box of its own, so the wrapped element's own absolute
++  // positioning keeps working completely unmodified and DOM order is unaffected.
++  function exportElementHTML(el) {
++    var clone = el.cloneNode(true);
++    stripEditorChrome(clone);
++    var link = read(el).link;
++    return link
++      ? '<a href="' + esc(link) + '" style="display:contents;cursor:pointer">' + clone.outerHTML + '</a>'
++      : clone.outerHTML;
++  }
++
++  function exportHTML() {
++    clearWarnings();
++    var elements = Array.prototype.slice.call(stage.querySelectorAll(':scope > .el'));
++    var body = elements.map(exportElementHTML).join('\n');
++    var html = '<!DOCTYPE html>\n<html lang="ko">\n<head>\n<meta charset="utf-8">\n' +
++      '<meta name="viewport" content="width=device-width, initial-scale=1">\n' +
++      '<title>' + esc(safeStem()) + '</title>\n<style>' + EXPORT_CSS + '</style>\n</head>\n<body>\n' +
++      '<div id="stage">\n<div id="title-field">' + titleField.innerHTML + '</div>\n' +
++      body + '\n</div>\n</body>\n</html>\n';
++    download(new Blob([html], { type: 'text/html' }), safeStem() + '.html');
++    setStatus('Downloaded HTML (' + elements.length + ' element(s)).');
++  }
++
++  $('b-export-html').addEventListener('click', exportHTML);
++
+   /* Load JSON ??a stretch goal, and the other half of the Gate 4 round trip. */
+   $('b-load').addEventListener('click', function () { $('f-load').click(); });
+ 
+@@ -2618,6 +2713,9 @@
+       valign: text.valign || def.valign,
+       bold: nRuns > 0 && nBold === nRuns,
+       italic: nRuns > 0 && nItalic === nRuns,
++      // Phase 6 (HTML export): absent or non-string falls back to '' rather than throwing, same
++      // defensive treatment every other optional field in this function gets.
++      link: typeof e.link === 'string' ? e.link : def.link,
+     };
+   }
+ 
+diff --git a/tasks/AI_Powered_PPT/src/aippt/canvas/static/index.html b/tasks/AI_Powered_PPT/src/aippt/canvas/static/index.html
+index e7abf6a..e656f07 100644
+--- a/tasks/AI_Powered_PPT/src/aippt/canvas/static/index.html
++++ b/tasks/AI_Powered_PPT/src/aippt/canvas/static/index.html
+@@ -69,6 +69,9 @@
+       <button type="button" id="b-load">Load JSON</button>
+       <input type="file" id="f-load" accept="application/json,.json" hidden>
+       <button type="button" id="b-export" class="primary">Export PPT</button>
++      <!-- Phase 6: pure client-side bundling -- no /api round trip, no CONTEXT dependency, so this
++           stays enabled even when disableExports() has fired (offline, or a stale template). -->
++      <button type="button" id="b-export-html" class="primary">Download HTML</button>
+     </section>
+ 
+     <!-- AI_PPT_v2 Phase 4: server-side save/load. A design saved here goes through the SAME
+@@ -203,6 +206,16 @@
+       </label>
+     </section>
+ 
++    <!-- Phase 6: HTML export. `link` is informational-only to the .pptx path (render_canvas.py never
++         reads it) -- exportHTML() in editor.js is the only consumer, wrapping the exported element in
++         an <a href> when this is non-empty. Scoped to shape only, same as Fill/Text above: a
++         connector/media element carries no `link` in the IR (schema.json only adds it to the four
++         shape branches). -->
++    <section class="group" data-for="shape">
++      <h2>Link</h2>
++      <label>Link <input type="url" id="p-link" placeholder="https://??></label>
++    </section>
++
+     <section class="group" data-for="connector">
+       <h2>Connector</h2>
+       <label>Kind
+
+
+
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$wt = '"'C:\\Users\\2021670\\.ma-stg\\stg.VIuNgyxd'; "'$js = Join-Path $wt '"'tasks\\AI_Powered_PPT\\src\\aippt\\canvas\\static\\editor.js'; "'$html = Join-Path $wt '"'tasks\\AI_Powered_PPT\\src\\aippt\\canvas\\static\\index.html'; "'$schema = Join-Path $wt '"'tasks\\AI_Powered_PPT\\src\\aippt\\canvas\\schema.json'; rg -n -C 4 \"function esc|function safeStem|titleField|function addEl|function read\\(|function write\\(|function renderEl|function load|EXPORT_CSS|exportElementHTML|exportHTML|p-link|b-export-html|contenteditable|data-for\" "'$js $html; Get-Content -LiteralPath $schema -Encoding utf8 | Select-Object -Skip 70 -First 235' in C:\Users\2021670\Documents\멀티 에이전트
+ succeeded in 888ms:
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-106-  /* [REDACTED] the DOM */
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-107-
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-108-  var stage = document.getElementById('stage');
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-109-  var stageWrap = document.getElementById('stage-wrap');
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:110:  var titleField = document.getElementById('title-field');
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-111-  var warnings = document.getElementById('warnings');
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-112-  var statusMsg = document.getElementById('status-msg');
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-113-  var props = document.getElementById('props'); // the right-hand panel; hidden with nothing selected
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-114-
+--
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-321-   * nudge -- inherits an undo stack that will happily reintroduce whatever it wrote, in a function
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-322-   * nobody suspects. The claim on line 193 is unconditional. This is what makes it true.
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-323-   *
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-324-   * It READS AND RETURNS: it mutates nothing and it touches no DOM. (The Gate 4b harness runs it
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:325:   * with no `stage` and no `titleField` defined at all, so any DOM access here is a ReferenceError
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-326-   * under 'use strict' -- which is how "it touches no DOM" is an assertion and not a hope.)
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-327-   *
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-328-   * Returns a human reason this snapshot may not be put on the stage, or null when it may.
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-329-   */
+--
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-407-  }
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-408-
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-409-  /* [REDACTED] state <-> dataset */
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-410-
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:411:  function read(el) {
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-412-    var d = el.dataset;
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-413-    var s = { id: d.id, type: d.type };
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-414-    if (d.type === 'connector') {
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-415-      s.x1 = +d.x1; s.y1 = +d.y1; s.x2 = +d.x2; s.y2 = +d.y2;
+--
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-438-    }
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-439-    return s;
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-440-  }
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-441-
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:442:  function write(el, s) {
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-443-    var d = el.dataset;
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-444-    d.id = s.id; d.type = s.type;
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-445-    if (s.type === 'connector') {
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-446-      d.x1 = s.x1; d.y1 = s.y1; d.x2 = s.x2; d.y2 = s.y2;
+--
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-499-   * Duplicate mints an id. Each of those is a separate inverse, and each inverse that is subtly
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-500-   * wrong is a silent corruption that surfaces three undos later, somewhere else. A snapshot has
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-501-   * exactly ONE inverse and every mutation shares it.
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-502-   *
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:503:   * A snapshot is JS STATE ONLY -- dataset (via read()), the contenteditable's innerHTML, and DOM
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-504-   * ORDER, which IS the z-order. It measures nothing, and restoring one rebuilds the elements
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-505-   * through makeEl(), i.e. back down the same one-way state -> CSS path every other write takes.
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-506-   * Undo therefore cannot reintroduce a device pixel, which is the one way an undo stack could
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-507-   * plausibly have broken the Prime Directive.
+--
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-526-  var txPushed = false; // ...and whether that snapshot is already on the stack
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-527-
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-528-  function snapshot() {
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-529-    return {
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:530:      title: titleField.innerHTML,
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-531-      // :scope > .el -- the same query the serializer uses, so the snapshot sees exactly what the
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-532-      // IR sees: no pseudo-element chrome, no title field, and the array order IS the z-order.
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-533-      els: [].slice.call(stage.querySelectorAll(':scope > .el')).map(function (el) {
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-534-        var body = el.querySelector('.txt .body');
+--
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-546-   * off one of them once this has returned true; see undo() and redo(). */
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-547-  function restore(snap) {
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-548-    /* PASS 1 -- JUDGE. Nothing above this line has touched the DOM, and nothing below it may run if
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-549-     * the snapshot is refused. stopEditing() is DOM mutation (it drops .editing and removes the
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:550:     * contenteditable attribute) and it calls endTx(), so it belongs BELOW the preflight, not
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-551-     * above: "before touching the DOM" means before stopEditing(), not merely before the clear. */
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-552-    var why = unrestorableReason(snap);
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-553-    if (why) {
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-554-      setStatus('That history step was refused, so nothing changed: ' + why);
+--
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-563-    [].slice.call(stage.querySelectorAll(':scope > .el')).forEach(function (n) { n.remove(); });
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-564-    // The node `selected` pointed at has just been removed, so the identity check at the top of
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-565-    // select() would short-circuit against a corpse. Clear it before anything can consult it.
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-566-    selected = null;
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:567:    titleField.innerHTML = snap.title;
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-568-
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-569-    var toSelect = null;
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-570-    for (var i = 0; i < snap.els.length; i++) {
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-571-      var rec = snap.els[i];
+--
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-647-  }
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-648-
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-649-  /* [REDACTED] rendering */
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-650-
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:651:  function esc(v) { return String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;'); }
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-652-
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-653-  // No fill => fill="none". No stroke => the stroke attribute is OMITTED ENTIRELY. Never
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-654-  // stroke-width="0" to mean "no line": width 0 is a HAIRLINE in PowerPoint, not an absence.
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-655-  function shapeMarkup(s) {
+--
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-706-    }
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-707-    return marker + '<line x1="' + ax + '" y1="' + ay + '" x2="' + bx + '" y2="' + by + '" ' + attrs + '/>';
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-708-  }
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-709-
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:710:  function renderEl(el) {
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-711-    var s = read(el);
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-712-    var svg = el.querySelector('svg');
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-713-
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-714-    if (s.type === 'connector') {
+--
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-809-      html = '<svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"></svg>';
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-810-      // .txt is the flex/anchor box (the Sec 5.6 contract); .body is the text. One flex item, so
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-811-      // multiple paragraphs stack instead of laying out side by side.
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-812-      //
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:813:      // NOTE THE ABSENT contenteditable. It is added by the dblclick handler and removed by
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-814-      // stopEditing(). It used to be hard-coded here, with only `pointer-events: none` on .txt
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-815-      // keeping the caret out -- which meant the element was, to the keyboard and to every
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-816-      // assistive technology, permanently editable, and editingText() could not tell "the caret is
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-817-      // in the text" from "the text merely exists".
+--
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-830-  // -- any of those would be a second source of truth and would desync. Raise/lower are pure
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-831-  // insertBefore/append.
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-832-  // New connectors go to the FRONT of the array -- drawn first, therefore BEHIND the boxes they
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-833-  // join. Front of array == back of the slide.
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:834:  function addEl(el) {
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-835-    if (el.dataset.type === 'connector') {
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-836-      var firstShape = stage.querySelector(':scope > .el:not([data-type="connector"])');
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-837-      stage.insertBefore(el, firstShape); // null => append
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-838-    } else {
+--
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-955-
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-956-  /* Put an element into text-editing mode -- the shared body of the dblclick handler and the
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-957-   * auto-focus a freshly created textbox gets (requirement 2). THE ATTRIBUTE, not merely the
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-958-   * class: `.el.editing .txt { pointer-events: auto }` decides whether a POINTER can reach the
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:959:   * text; contenteditable decides whether the element is editable at all. Only the second one is
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-960-   * what editingText() -- and the keyboard, and a screen reader -- actually consults. */
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-961-  function startEditing(el) {
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-962-    if (el.dataset.type === 'connector') return; // a connector carries no text
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-963-    select(el);
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-964-    var body = el.querySelector('.txt .body');
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-965-    if (!body) return;
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:966:    body.setAttribute('contenteditable', 'true');
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-967-    el.classList.add('editing');
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-968-    beginTx(); // the whole editing session is one step; stopEditing() closes it
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-969-    body.focus();
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-970-  }
+--
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-973-    var open = stage.querySelectorAll('.el.editing');
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-974-    for (var i = 0; i < open.length; i++) {
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-975-      open[i].classList.remove('editing');
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-976-      // Drop the attribute with the class. An element that is not being edited is not editable --
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:977:      // leaving it behind is what made `contenteditable` permanent in the first place.
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-978-      var body = open[i].querySelector('.txt .body');
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:979:      if (body) body.removeAttribute('contenteditable');
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-980-    }
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-981-    // The session ends here. If nothing was typed, txPushed is false and the snapshot is simply
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-982-    // dropped -- opening the text and closing it again is not an edit.
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-983-    endTx();
+--
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1214-    multi.forEach(function (el) { el.classList.remove('multi-selected'); });
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1215-    multi.length = 0;
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1216-  }
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1217-
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:1218:  /* [REDACTED] text: contenteditable -> runs/paras */
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1219-
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1220-  // Strip C0 EXCEPT \t and \n. validate.py rejects them; stripping here means the user never gets a
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1221-  // 422 for a character they cannot see. (  is NOT C0 and is preserved verbatim.)
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1222-  function stripC0(t) { return t.replace(/[\x00-\x08\x0b-\x1f]/g, ''); }
+--
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1297-        var tag = child.tagName;
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1298-
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1299-        if (tag === 'BR') {
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1300-          // A <br> that is the LAST child of its block is the browser's own filler -- Chrome puts
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:1301:          // one in every empty contenteditable block to give it height. Emitting it would add a
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1302-          // phantom trailing line to the PPTX.
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1303-          if (child === node.lastChild) continue;
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1304-          push('\n', fmt); // style.py splits on \n and emits <a:br/>
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1305-          continue;
+--
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1346-        }
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1347-        if (BLOCK_TAGS[child.tagName] && out !== '') out += '\n';
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1348-        walk(child);
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1349-      }
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:1350:    })(titleField);
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1351-    return stripC0(out).replace(/\n+$/, '');
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1352-  }
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1353-
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1354-  /* [REDACTED] serializer */
+--
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1528-    node.addEventListener('change', endTx);
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1529-  }
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1530-
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1531-  ['p-fill', 'p-fill-alpha', 'p-stroke', 'p-stroke-w', 'p-color', 'p-size', 'p-align', 'p-valign',
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:1532:   'p-kind', 'p-arrow', 'p-rot', 'p-link'].forEach(function (id) { txControl($(id)); });
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1533-
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1534-  guardColor($('p-fill'), function (v) {
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1535-    if (isConnector()) return; // a connector has no fill -- the schema does not give it one
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1536-    patchSelected({ fill: v });
+--
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1573-    if (this.checked) patchSelected({ strokeColor: '#000000', strokeWidth: 1 });
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1574-    else patchSelected({ strokeColor: '' });
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1575-  });
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1576-
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:1577:  // Phase 6 (HTML export): defensive only -- data-for="shape" already scopes #p-link out of the
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1578-  // DOM for a connector/media selection, same guard shape as p-fill-alpha's handler above.
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:1579:  $('p-link').addEventListener('input', function () {
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1580-    if (!isConnector() && !isMedia()) patchSelected({ link: this.value });
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1581-  });
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1582-
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1583-  $('p-stroke-w').addEventListener('input', function () {
+--
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1789-    var s = selected ? read(selected) : null;
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1790-
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1791-    // Phase 6: the alignment set is independent of `selected` (see `var multi` above) -- it can be
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1792-    // non-empty (or even the whole reason the panel is showing) with nothing "selected" at all, so
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:1793:    // its own group is driven here rather than folded into the data-for scoping below, which only
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1794-    // ever runs once a SINGLE element is selected.
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1795-    var mset = selectionSet();
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1796-    var showAlign = mset.length >= 2;
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1797-    $('align-group').hidden = !showAlign;
+--
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1803-
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1804-    if (!s) {
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1805-      // Nothing PLAIN-selected: every per-type section is irrelevant (there is no single element's
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1806-      // dataset to show), whether or not an alignment-only multi-selection is showing above.
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:1807:      var noneScoped = props.querySelectorAll('[data-for]');
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1808-      for (var n = 0; n < noneScoped.length; n++) noneScoped[n].hidden = true;
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1809-      setStatus(showAlign ? mset.length + ' element(s) selected for alignment.' : 'Ready.');
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1810-      return;
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1811-    }
+--
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1816-     * no rotation, and a media element (image/video) no fill/stroke/text/rotation EITHER (the
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1817-     * renderer never draws them for a picture or a video) -- offering any of those would be
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1818-     * offering a property that cannot be serialized or that silently does nothing, and the JS
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1819-     * guards (`if (isConnector() || isMedia()) return`) would eat the edit either way. A control
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:1820:     * that does nothing when you use it is worse than one that is not there. `data-for` may name
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1821-     * more than one category (space-separated, e.g. "shape connector" on the Line group) -- shown
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1822-     * whenever the CURRENT category is among them. */
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:1823:    var scoped = props.querySelectorAll('[data-for]');
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1824-    for (var i = 0; i < scoped.length; i++) {
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:1825:      var want = scoped[i].getAttribute('data-for').split(/\s+/);
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1826-      scoped[i].hidden = want.indexOf(cat) < 0;
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1827-    }
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1828-
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1829-    $('p-what').textContent = s.type;
+--
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1851-      $('p-align').value = s.align;
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1852-      $('p-valign').value = s.valign;
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1853-      $('p-rot').value = Math.round(s.rot || 0);
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1854-      $('p-rot-out').textContent = Math.round(s.rot || 0) + '°';
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:1855:      $('p-link').value = s.link || '';
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1856-    }
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1857-    setStatus(s.id + ' — ' + s.type);
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1858-  }
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1859-
+--
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1930-     * The property panel is made of <input>s, so an undo that stopped working while the focus was
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1931-     * still in the size box -- which is exactly where the focus IS, right after the edit you want to
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1932-     * undo -- would be an undo nobody trusts.
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1933-     *
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:1934:     * The ONE exception is a live contenteditable. Inside the text, the browser's own undo is
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1935-     * per-keystroke and is what a user expects Ctrl+Z to do there; ours is per-session and would
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1936-     * throw away the whole paragraph. So we stand back and let it run. The snapshot taken when the
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1937-     * caret went in still makes the edit a single step from OUTSIDE, once the text is closed, which
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1938-     * is the granularity the stage wants anyway.
+--
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1977-  });
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1978-
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1979-  // Enter in the TITLE inserts a line break, never a new block. The title is a STRING; a <div> in
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1980-  // it would be flattened to "\n" anyway, and a <br> keeps the flex box laying out as one line run.
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:1981:  titleField.addEventListener('keydown', function (ev) {
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1982-    if (ev.key === 'Enter') {
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1983-      ev.preventDefault();
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1984-      document.execCommand('insertLineBreak');
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1985-    }
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1986-  });
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1987-
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1988-  // The title is part of the deck, so it is part of the snapshot, so it is undoable -- one step per
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1989-  // visit to the field, on the same session grouping the element text uses.
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:1990:  titleField.addEventListener('focus', beginTx);
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:1991:  titleField.addEventListener('input', function () { noteChange(); });
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:1992:  titleField.addEventListener('blur', endTx);
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1993-
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1994-  /* [REDACTED] exports */
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1995-
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-1996-  function download(blob, filename) {
+--
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2003-    a.remove();
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2004-    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2005-  }
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2006-
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2007:  function safeStem() {
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2008-    var t = titleString().replace(/[\\/:*?"<>|\r\n\t]+/g, ' ').trim();
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2009-    return t.slice(0, 60) || 'deck';
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2010-  }
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2011-
+--
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2088-   * addEl() above) — and turns any element carrying a `link` into a clickable <a>.
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2089-   *
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2090-   * Deliberately does NOT fetch or inline style.css: the exported file must stand on its own, and
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2091-   * style.css also carries app chrome (toolbar, composer, warnings banner) that has no business in
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2092:   * an exported slide. EXPORT_CSS below is a self-contained subset of just the CONTRACT rules that
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2093-   * govern how a `.el` is positioned and painted (see style.css's own "CONTRACT" comments) — the
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2094-   * SAME rules, copied rather than derived, because this file has no build step to share them with.
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2095-   *
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2096-   * Not gated behind CONTEXT/disableExports() the way #b-json/#b-export are: those need
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2097-   * `template_sha256`/`layout_index` from /api/context before a payload is meaningful, but this
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2098-   * needs no server round trip at all, so it stays enabled even offline.
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2099-   */
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2100:  var EXPORT_CSS = [
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2101-    'html,body{margin:0;padding:0;background:#FFFFFF}',
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2102-    '#stage{position:relative;width:960px;height:540px;background:#FFFFFF;overflow:hidden}',
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2103-    '#title-field{position:absolute;left:45.55px;top:26.75px;width:725.29px;height:37.25px;' +
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2104-      'padding:0;margin:0;border:0;box-sizing:border-box;display:flex;align-items:center;' +
+--
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2125-  ].join('\n');
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2126-
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2127-  // Removes everything about a cloned `.el` that exists only for the EDITOR's benefit: selection/
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2128-  // multi-select/blocked-flash outlines, the resize/rotate/connector-endpoint handles, and a
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2129:  // lingering contenteditable left on `.txt .body` (only present mid-edit, but defended anyway).
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2130-  function stripEditorChrome(clone) {
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2131-    clone.classList.remove('selected', 'editing', 'multi-selected', 'blocked');
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2132-    var handles = clone.querySelectorAll('.handle');
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2133-    for (var i = 0; i < handles.length; i++) handles[i].remove();
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2134-    var body = clone.querySelector('.txt .body');
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2135:    if (body) body.removeAttribute('contenteditable');
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2136-  }
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2137-
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2138-  // Clones the LIVE, already-rendered `.el` node rather than re-deriving markup from state a second
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2139-  // time: geometry/colour/rotation are already correct inline styles (renderEl()), so the exported
+--
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2141-  // connector or a media element (read() never sets it on those branches — schema.json only adds
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2142-  // `link` to the four shape types), so only a linked shape/textbox is ever wrapped. `display:
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2143-  // contents` makes the <a> generate no box of its own, so the wrapped element's own absolute
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2144-  // positioning keeps working completely unmodified and DOM order is unaffected.
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2145:  function exportElementHTML(el) {
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2146-    var clone = el.cloneNode(true);
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2147-    stripEditorChrome(clone);
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2148-    var link = read(el).link;
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2149-    return link
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2150-      ? '<a href="' + esc(link) + '" style="display:contents;cursor:pointer">' + clone.outerHTML + '</a>'
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2151-      : clone.outerHTML;
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2152-  }
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2153-
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2154:  function exportHTML() {
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2155-    clearWarnings();
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2156-    var elements = Array.prototype.slice.call(stage.querySelectorAll(':scope > .el'));
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2157:    var body = elements.map(exportElementHTML).join('\n');
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2158-    var html = '<!DOCTYPE html>\n<html lang="ko">\n<head>\n<meta charset="utf-8">\n' +
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2159-      '<meta name="viewport" content="width=device-width, initial-scale=1">\n' +
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2160:      '<title>' + esc(safeStem()) + '</title>\n<style>' + EXPORT_CSS + '</style>\n</head>\n<body>\n' +
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2161:      '<div id="stage">\n<div id="title-field">' + titleField.innerHTML + '</div>\n' +
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2162-      body + '\n</div>\n</body>\n</html>\n';
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2163-    download(new Blob([html], { type: 'text/html' }), safeStem() + '.html');
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2164-    setStatus('Downloaded HTML (' + elements.length + ' element(s)).');
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2165-  }
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2166-
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2167:  $('b-export-html').addEventListener('click', exportHTML);
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2168-
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2169-  /* Load JSON — a stretch goal, and the other half of the Gate 4 round trip. */
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2170-  $('b-load').addEventListener('click', function () { $('f-load').click(); });
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2171-
+--
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2733-   * bolted into the loop -- however correct that check was -- could only ever leave a half-imported
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2734-   * stage behind and the user's own deck already gone. "Reject the entire import" is not reachable
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2735-   * from inside that loop. It is reachable from here.
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2736-   */
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2737:  function loadIR(ir) {
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2738-    if (!ir || typeof ir !== 'object') throw new Error('that file does not contain a deck');
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2739-    if (ir.schema !== SCHEMA) throw new Error('schema is ' + ir.schema + ', expected ' + SCHEMA);
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2740-    if (!ir.canvas || ir.canvas.w !== CANVAS.w || ir.canvas.h !== CANVAS.h) {
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2741-      throw new Error('that deck was authored in a different model space; it is never rescaled');
+--
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2780-
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2781-    /* PASS 2 -- COMMIT. Every state is legal, so this cannot fail half-way through. */
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2782-    [].slice.call(stage.querySelectorAll(':scope > .el')).forEach(function (n) { n.remove(); });
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2783-    select(null);
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2784:    titleField.textContent = ir.title || '';
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2785-
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2786-    for (var j = 0; j < states.length; j++) {
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2787-      var el = makeEl(states[j]);
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2788-      stage.appendChild(el); // array order IS z-order -- preserve the file's order exactly
+--
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2826-    $('b-generate').disabled = true;
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2827-    setStatus(why);
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2828-  }
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2829-
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2830:  async function loadContext() {
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2831-    try {
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2832-      var res = await fetch('/api/context');
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2833-      if (!res.ok) throw new Error('HTTP ' + res.status);
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js-2834-      CONTEXT = await res.json();
+--
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-70-      <input type="file" id="f-load" accept="application/json,.json" hidden>
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-71-      <button type="button" id="b-export" class="primary">Export PPT</button>
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-72-      <!-- Phase 6: pure client-side bundling -- no /api round trip, no CONTEXT dependency, so this
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-73-           stays enabled even when disableExports() has fired (offline, or a stale template). -->
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:74:      <button type="button" id="b-export-html" class="primary">Download HTML</button>
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-75-    </section>
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-76-
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-77-    <!-- AI_PPT_v2 Phase 4: server-side save/load. A design saved here goes through the SAME
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-78-         validate() /api/export runs (app.py's api_save_design()) before it is written, and a
+--
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-107-
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-108-      <!-- Deliberately NOT `.el`. This is the `title` STRING field (-> inherited placeholder idx
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-109-           10), parked over TITLE_LOCKED so the user sees it where it will land. Not draggable, not
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-110-           resizable, no handles, no data-type -- and structurally unserializable, as above. -->
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:111:      <div id="title-field" contenteditable="true" spellcheck="false"
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-112-           data-placeholder="제목을 입력하세요 / Title"></div>
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-113-
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-114-      <!-- user elements are appended here, class="el" -->
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-115-    </div>
+--
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-121-       syncProps() and read back only as an edit, which is why hiding it is safe: there is nothing in
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-122-       here to lose. It is `hidden` until something is selected -- in Phase 1B these same controls sat
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-123-       in the left toolbar and were live and inert at the same time, which is a panel that lies.
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-124-
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:125:       data-for="shape" / data-for="connector" is the scoping hook. syncProps() hides whichever does
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-126-       not match the selection, because the IR gives a connector no fill, no text and no rotation:
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-127-       offering those controls would be offering a property that cannot be serialized, and the JS
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:128:       would silently eat the edit. There is no data-for="both" -- absence means "both". -->
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-129-  <aside id="props" hidden aria-label="Properties">
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-130-    <header id="p-head">
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-131-      <h2 id="p-what">—</h2>
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-132-      <code id="p-which"></code>
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-133-    </header>
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-134-
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:135:    <section class="group" data-for="shape">
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-136-      <h2>Fill</h2>
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-137-      <label>Colour
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-138-        <span class="pair">
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-139-          <input type="color" id="p-fill" value="#FF0032">
+--
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-150-        </span>
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-151-      </label>
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-152-    </section>
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-153-
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:154:    <!-- [REDACTED] (data-for="shape connector"): a shape's outline and a
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-155-         connector's LINE are the same control. A connector IS a line, so its colour belongs here
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-156-         and not on the text control. It is scoped AWAY from media (image/video): render_canvas's
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-157-         draw_image()/draw_video() never call apply_line(), so a stroke set here on a picture or a
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-158-         video would be silently ignored by the renderer -- offering it would be offering a control
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-159-         that lies. -->
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:160:    <section class="group" data-for="shape connector">
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-161-      <h2>Line</h2>
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-162-      <label>Colour
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-163-        <span class="pair">
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-164-          <input type="color" id="p-stroke" value="#FFFFFF">
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-165-          <!-- ...but "no line" is refused for a connector: a line is all it is. -->
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:166:          <button type="button" id="p-stroke-none" data-for="shape"
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-167-                  title="No line — NOT width 0, which is a hairline">none</button>
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-168-        </span>
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-169-      </label>
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-170-      <label>Width
+--
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-173-      <!-- Phase 6: a one-click preset over the SAME stroke fields the controls above already
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-174-           write -- not a second IR property. The schema has no `border` key
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-175-           (additionalProperties: false on every element def), so a literal "border" field would be
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-176-           a 422 in waiting; this checkbox is sugar over stroke.color/stroke.width. -->
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:177:      <label data-for="shape">1pt Border
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-178-        <input type="checkbox" id="p-border-1pt">
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-179-      </label>
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-180-    </section>
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-181-
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:182:    <section class="group" data-for="shape">
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-183-      <h2>Text</h2>
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-184-      <label>Colour  <input type="color" id="p-color" value="#FFFFFF"></label>
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-185-      <label>Size    <input type="number" id="p-size" min="1" max="200" step="1" value="14"></label>
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-186-      <!-- run.bold / run.italic -- the two IR properties Phase 1B never exposed. They are element-
+--
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-206-      </label>
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-207-    </section>
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-208-
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-209-    <!-- Phase 6: HTML export. `link` is informational-only to the .pptx path (render_canvas.py never
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:210:         reads it) -- exportHTML() in editor.js is the only consumer, wrapping the exported element in
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-211-         an <a href> when this is non-empty. Scoped to shape only, same as Fill/Text above: a
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-212-         connector/media element carries no `link` in the IR (schema.json only adds it to the four
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-213-         shape branches). -->
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:214:    <section class="group" data-for="shape">
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-215-      <h2>Link</h2>
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:216:      <label>Link <input type="url" id="p-link" placeholder="https://…"></label>
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-217-    </section>
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-218-
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:219:    <section class="group" data-for="connector">
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-220-      <h2>Connector</h2>
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-221-      <label>Kind
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-222-        <select id="p-kind">
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-223-          <!-- straight is the default: our elbow polyline is an approximation of PowerPoint's
+--
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-241-      <!-- A connector has no `rotation` in the IR: its two endpoints already say where it points.
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-242-           A media element (image/video) has none EITHER in practice: render_canvas's
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-243-           draw_image()/draw_video() never apply xfrm/@rot, so exposing the control would preview a
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-244-           rotation the exported deck does not have. -->
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:245:      <label data-for="shape">Rotation
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-246-        <span class="pair">
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-247-          <input type="range" id="p-rot" min="-180" max="180" step="1" value="0">
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-248-          <output id="p-rot-out">0°</output>
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-249-        </span>
+--
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-262-         (editor.js: toggleMulti()) WITHOUT changing the single `selected` element the rest of this
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-263-         panel describes -- alignment is the only thing a multi-selection drives. Shown whenever 2+
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-264-         elements are in that set, independently of whether anything is `selected`, which is why
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-265-         its `hidden` is driven separately from `props.hidden` in syncProps() rather than by the
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:266:         data-for scoping loop below (that loop only runs when a SINGLE element is selected). -->
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-267-    <section class="group" id="align-group" hidden>
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-268-      <h2>Align (<span id="align-count">0</span> selected)</h2>
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-269-      <div class="row">
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html-270-        <button type="button" id="b-align-left" title="Align left edges">Left</button>
+        {"$ref": "#/$defs/triangle"},
+        {"$ref": "#/$defs/textbox"},
+        {"$ref": "#/$defs/connector"},
+        {"$ref": "#/$defs/image"},
+        {"$ref": "#/$defs/video"}
+      ]
+    },
+
+    "rect": {
+      "type": "object",
+      "description": "MSO_SHAPE.RECTANGLE -> prstGeom 'rect'.",
+      "required": ["id", "type", "x", "y", "w", "h", "fill"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "type": {"const": "rect"},
+        "x": {"$ref": "#/$defs/coord"},
+        "y": {"$ref": "#/$defs/coord"},
+        "w": {"$ref": "#/$defs/extent"},
+        "h": {"$ref": "#/$defs/extent"},
+        "rotation": {"$ref": "#/$defs/rotation"},
+        "fill": {"$ref": "#/$defs/fill"},
+        "stroke": {"$ref": "#/$defs/stroke"},
+        "text": {"$ref": "#/$defs/text"},
+        "link": {"$ref": "#/$defs/link"}
+      }
+    },
+
+    "ellipse": {
+      "type": "object",
+      "description": "MSO_SHAPE.OVAL -> prstGeom 'ellipse'. x/y/w/h is its BOUNDING box, not its centre and radii.",
+      "required": ["id", "type", "x", "y", "w", "h", "fill"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "type": {"const": "ellipse"},
+        "x": {"$ref": "#/$defs/coord"},
+        "y": {"$ref": "#/$defs/coord"},
+        "w": {"$ref": "#/$defs/extent"},
+        "h": {"$ref": "#/$defs/extent"},
+        "rotation": {"$ref": "#/$defs/rotation"},
+        "fill": {"$ref": "#/$defs/fill"},
+        "stroke": {"$ref": "#/$defs/stroke"},
+        "text": {"$ref": "#/$defs/text"},
+        "link": {"$ref": "#/$defs/link"}
+      }
+    },
+
+    "triangle": {
+      "type": "object",
+      "description": "MSO_SHAPE.ISOSCELES_TRIANGLE -> prstGeom 'triangle'. Apex at the top-centre of the box, base along its bottom edge.",
+      "required": ["id", "type", "x", "y", "w", "h", "fill"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "type": {"const": "triangle"},
+        "x": {"$ref": "#/$defs/coord"},
+        "y": {"$ref": "#/$defs/coord"},
+        "w": {"$ref": "#/$defs/extent"},
+        "h": {"$ref": "#/$defs/extent"},
+        "rotation": {"$ref": "#/$defs/rotation"},
+        "fill": {"$ref": "#/$defs/fill"},
+        "stroke": {"$ref": "#/$defs/stroke"},
+        "text": {"$ref": "#/$defs/text"},
+        "link": {"$ref": "#/$defs/link"}
+      }
+    },
+
+    "textbox": {
+      "type": "object",
+      "description": "A plain text container (python-pptx add_textbox). Geometrically identical to a `rect`, and it accepts the same fill and stroke -- the distinction is authorial intent, and it lets the editor default a textbox to fill:null while a rect defaults to the brand red. NOTE: add_textbox() ships wrap='none' + <a:spAutoFit/>; style.style_text_frame overrides both, because autofit is out of scope (plan Sec 6.6).",
+      "required": ["id", "type", "x", "y", "w", "h", "fill"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "type": {"const": "textbox"},
+        "x": {"$ref": "#/$defs/coord"},
+        "y": {"$ref": "#/$defs/coord"},
+        "w": {"$ref": "#/$defs/extent"},
+        "h": {"$ref": "#/$defs/extent"},
+        "rotation": {"$ref": "#/$defs/rotation"},
+        "fill": {"$ref": "#/$defs/fill"},
+        "stroke": {"$ref": "#/$defs/stroke"},
+        "text": {"$ref": "#/$defs/text"},
+        "link": {"$ref": "#/$defs/link"}
+      }
+    },
+
+    "connector": {
+      "type": "object",
+      "description": "A line with ABSOLUTE endpoints. No gluing in Phase 1 (D-3): begin_connect()/end_connect() are experimental and their connection-site indices are unreliable for arbitrary shapes, notably triangles. Absolute endpoints always work. A connector has no text and no fill.",
+      "required": ["id", "type", "kind", "x1", "y1", "x2", "y2", "color", "width", "arrow"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "type": {"const": "connector"},
+        "kind": {
+          "enum": ["straight", "elbow"],
+          "description": "straight -> MSO_CONNECTOR.STRAIGHT; elbow -> MSO_CONNECTOR.ELBOW."
+        },
+        "x1": {"$ref": "#/$defs/coord"},
+        "y1": {"$ref": "#/$defs/coord"},
+        "x2": {"$ref": "#/$defs/coord"},
+        "y2": {"$ref": "#/$defs/coord"},
+        "color": {"$ref": "#/$defs/color"},
+        "width": {"$ref": "#/$defs/line_width"},
+        "arrow": {
+          "enum": ["none", "start", "end", "both"],
+          "description": "'start' puts an arrowhead at (x1,y1) -- DrawingML <a:headEnd>. 'end' puts one at (x2,y2) -- <a:tailEnd>. Arrowheads are not exposed in the python-pptx API (there is no line.end_arrow), so connectors.py writes them with lxml; <a:headEnd> MUST precede <a:tailEnd> per CT_LineProperties._tag_seq, or PowerPoint declares the file corrupt."
+        }
+      }
+    },
+
+    "image": {
+      "type": "object",
+      "description": "A raster image (python-pptx add_picture), addressed by `src`. Geometrically identical to `rect` -- x/y/w/h is its bounding box -- but it carries no text, and `fill`/`stroke` are optional rather than required since the picture itself already covers the box.",
+      "required": ["id", "type", "x", "y", "w", "h", "src"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "type": {"const": "image"},
+        "x": {"$ref": "#/$defs/coord"},
+        "y": {"$ref": "#/$defs/coord"},
+        "w": {"$ref": "#/$defs/extent"},
+        "h": {"$ref": "#/$defs/extent"},
+        "rotation": {"$ref": "#/$defs/rotation"},
+        "fill": {"$ref": "#/$defs/fill"},
+        "stroke": {"$ref": "#/$defs/stroke"},
+        "src": {
+          "type": "string",
+          "description": "Path (or URI) to the image asset, resolved by the renderer -- see canvas/render_canvas.py."
+        }
+      }
+    },
+
+    "video": {
+      "type": "object",
+      "description": "An embedded video (python-pptx add_movie), addressed by `src`. Geometrically identical to `rect` -- x/y/w/h is its bounding box -- but it carries no text, and `fill`/`stroke` are optional rather than required since the video frame itself already covers the box.",
+      "required": ["id", "type", "x", "y", "w", "h", "src"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "type": {"const": "video"},
+        "x": {"$ref": "#/$defs/coord"},
+        "y": {"$ref": "#/$defs/coord"},
+        "w": {"$ref": "#/$defs/extent"},
+        "h": {"$ref": "#/$defs/extent"},
+        "rotation": {"$ref": "#/$defs/rotation"},
+        "fill": {"$ref": "#/$defs/fill"},
+        "stroke": {"$ref": "#/$defs/stroke"},
+        "src": {
+          "type": "string",
+          "description": "Path (or URI) to the video asset, resolved by the renderer -- see canvas/render_canvas.py."
+        }
+      }
+    },
+
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Becomes the shape's NAME in the PPTX (shp.name). The round-trip suite finds shapes by name rather than by position, so ids must be unique across `elements` -- validate.py rejects duplicates."
+    },
+
+    "coord": {
+      "type": "number",
+      "description": "Logical units from the top-left of the 960x540 canvas."
+    },
+
+    "extent": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "Logical units. This is the UNROTATED PATH BOX; the stroke is centred on it and is not included in it."
+    },
+
+    "rotation": {
+      "type": "number",
+      "default": 0,
+      "description": "Degrees CLOCKWISE about the box centre (== DrawingML a:xfrm/@rot). The reserved-region and slide-bounds checks use the ROTATED axis-aligned bounding box, so a 45-degree box that visually collides with the logo is rejected even though its unrotated path box would clear it."
+    },
+
+    "color": {
+      "type": "string",
+      "pattern": "^#[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?$",
+      "description": "#RRGGBB, or #RRGGBBAA where the trailing byte is an alpha channel (00 = fully transparent, FF = fully opaque) -- Phase 6 lifts the Phase 1 (D-4) opaque-only restriction. #FF0032 (brand red) is the default for new content. #4472C4 is REJECTED by validate.py: it is this template's theme accent1, and banning it as an explicit author choice is what keeps 'no accent1 in any renderer-created shape' (plan Sec 7.3) a machine-checkable invariant rather than an aspiration."
+    },
+
+    "fill": {
+      "description": "Solid opaque fill, or null for NO fill (<a:noFill/>). REQUIRED even when null: omitting a fill is precisely how a shape silently inherits the template's theme accent1 -- new_autoshape_sp hard-codes a <p:style> block pointing fillRef at schemeClr accent1, which is Office blue -- so making the author state the intent is the schema encoding that invariant. 'No fill' is the ABSENCE of a fill, not a transparency, so it does not reopen D-4.",
+      "oneOf": [
+        {"$ref": "#/$defs/color"},
+        {"type": "null"}
+      ]
+    },
+
+    "stroke": {
+      "description": "The line around the shape; null or absent means no line. The stroke is CENTRED on the path box (SVG and DrawingML agree, which is why the editor draws SVG), so it bleeds width/2 OUTSIDE x/y/w/h -- and that bleed is deliberately NOT part of the reserved-region check. See the caveat in canvas/geometry.py. Its `color` may carry an alpha channel like any other color (Phase 6 lifts the Phase 1 (D-4) opaque-only restriction).",
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "required": ["color", "width"],
+          "additionalProperties": false,
+          "properties": {
+            "color": {"$ref": "#/$defs/color"},
+            "width": {"$ref": "#/$defs/line_width"}
+          }
+        }
+      ]
+    },
+
+    "line_width": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Logical units (== pt). CAUTION: width 0 is a HAIRLINE in PowerPoint, not 'no line' -- a browser draws nothing for border-width:0 while PowerPoint draws the thinnest line it can. To get no line at all, use `\"stroke\": null`."
+    },
+
+    "link": {
+      "type": "string",
+      "description": "Phase 6 (HTML export): an optional hyperlink target for this shape, e.g. a URL or an in-deck anchor like '#slide-3'. NOT read by render_canvas.py -- the PPTX renderer never applies a hyperlink relationship, so this is informational-only for the .pptx path. The HTML exporter (editor.js exportHTML()) wraps an element carrying this in an <a href> so the exported deck is interactive."
+    },
+
+    "text": {
+      "description": "Null or absent means the shape carries no text. Connectors cannot carry text at all.",
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "required": ["paragraphs"],
+          "additionalProperties": false,
+          "properties": {
+            "align": {
+              "enum": ["LEFT", "CENTER", "RIGHT"],
+              "default": "CENTER",
+              "description": "Horizontal alignment, applied to every paragraph. style.py maps this with an EXPLICIT dict, never with PP_ALIGN[name]: enum-member-name indexing happens to work in python-pptx 1.0.x, but it would couple this IR's public vocabulary to an upstream enum's member names and would raise a bare KeyError instead of a validation error."
+            },
+
+codex
+The patch is within the declared scope. I’m now comparing the embedded export CSS and serialization path with the editor’s existing rendering contract, focusing on functional regressions and unsafe link handling rather than cosmetic preferences.
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$wt='"'C:\\Users\\2021670\\.ma-stg\\stg.VIuNgyxd\\tasks\\AI_Powered_PPT'; "'$js=Join-Path $wt '"'src\\aippt\\canvas\\static\\editor.js'; "'$css=Join-Path $wt '"'src\\aippt\\canvas\\static\\style.css'; "'$html=Join-Path $wt '"'src\\aippt\\canvas\\static\\index.html'; "'$tests=Join-Path $wt '"'tests'; "'$lines=Get-Content -LiteralPath $js -Encoding utf8; foreach($range in @(@(405,465),@(645,855),@(1365,1420),@(1515,1590),@(1825,1870),@(2060,2185),@(2675,2735))){ $a=$range[0]; $b=$range[1]; "--- editor.js $a-$b ---"; for($i=$a;$i -le $b;$i++){ if($i -le $lines.Count){ '"'{0,5}: {1}' -f "'$i,$lines[$i-1] } } }; '"'--- Relevant style.css ---'; rg -n -C 3 \"CONTRACT|#stage|#title-field|\\.el|\\.txt|\\.media|selected|editing|blocked|handle\" "'$css; '"'--- index title/stage/scripts ---'; rg -n -C 3 \"title-field|stage|editor.js|style.css\" "'$html; '"'--- Existing tests mentioning export/link ---'; if(Test-Path "'$tests){ rg -n "exportHTML|Download HTML|b-export-html|p-link|link|EXPORT_CSS" $tests }' in C:\Users\2021670\Documents\멀티 에이전트
+ succeeded in 889ms:
+--- editor.js 405-465 ---
+  405:     // the mouse and the importer would drift apart.
+  406:     return illegalReason(c) ? null : c;
+  407:   }
+  408: 
+  409:   /* [REDACTED] state <-> dataset */
+  410: 
+  411:   function read(el) {
+  412:     var d = el.dataset;
+  413:     var s = { id: d.id, type: d.type };
+  414:     if (d.type === 'connector') {
+  415:       s.x1 = +d.x1; s.y1 = +d.y1; s.x2 = +d.x2; s.y2 = +d.y2;
+  416:       s.kind = d.kind; s.arrow = d.arrow; s.color = d.color; s.width = +d.width;
+  417:     } else if (isMediaType(d.type)) {
+  418:       // image/video: geometry only, plus `src` -- no fill/stroke/text/rotation. The renderer
+  419:       // (render_canvas.draw_image/draw_video) never draws those for a picture or a video, so the
+  420:       // property panel never offers them (syncProps()'s "media" category) and this editor state
+  421:       // never carries them either -- there is nothing here that could silently fail to round-trip.
+  422:       s.x = +d.x; s.y = +d.y; s.w = +d.w; s.h = +d.h; s.rot = +d.rot || 0;
+  423:       s.src = d.src || '';
+  424:     } else {
+  425:       s.x = +d.x; s.y = +d.y; s.w = +d.w; s.h = +d.h; s.rot = +d.rot || 0;
+  426:       s.fill = d.fill || '';
+  427:       // Percent, 100 == opaque. See DEFAULTS's comment: folded into the fill's hex string only at
+  428:       // serialization (toIR), never carried as its own IR field.
+  429:       s.fillAlpha = d.fillAlpha === undefined || d.fillAlpha === '' ? 100 : +d.fillAlpha;
+  430:       s.strokeColor = d.strokeColor || '';
+  431:       s.strokeWidth = d.strokeWidth === undefined || d.strokeWidth === '' ? 1 : +d.strokeWidth;
+  432:       s.size = +d.size; s.color = d.color; s.align = d.align; s.valign = d.valign;
+  433:       // A dataset value is a STRING, so '' and '0' and 'false' are all truthy traps. Compare.
+  434:       s.bold = d.bold === '1'; s.italic = d.italic === '1';
+  435:       // Phase 6 (HTML export): an optional hyperlink. Never read by render_canvas.py -- see
+  436:       // schema.json's $defs.link description.
+  437:       s.link = d.link || '';
+  438:     }
+  439:     return s;
+  440:   }
+  441: 
+  442:   function write(el, s) {
+  443:     var d = el.dataset;
+  444:     d.id = s.id; d.type = s.type;
+  445:     if (s.type === 'connector') {
+  446:       d.x1 = s.x1; d.y1 = s.y1; d.x2 = s.x2; d.y2 = s.y2;
+  447:       d.kind = s.kind; d.arrow = s.arrow; d.color = s.color; d.width = s.width;
+  448:     } else if (isMediaType(s.type)) {
+  449:       d.x = s.x; d.y = s.y; d.w = s.w; d.h = s.h; d.rot = s.rot || 0;
+  450:       d.src = s.src || '';
+  451:     } else {
+  452:       d.x = s.x; d.y = s.y; d.w = s.w; d.h = s.h; d.rot = s.rot || 0;
+  453:       d.fill = s.fill; d.strokeColor = s.strokeColor; d.strokeWidth = s.strokeWidth;
+  454:       d.fillAlpha = s.fillAlpha === undefined ? 100 : s.fillAlpha;
+  455:       d.size = s.size; d.color = s.color; d.align = s.align; d.valign = s.valign;
+  456:       // '1' or '' -- style.css keys off [data-bold='1'], so "off" must not be the string 'false'.
+  457:       d.bold = s.bold ? '1' : ''; d.italic = s.italic ? '1' : '';
+  458:       d.link = s.link || '';
+  459:     }
+  460:   }
+  461: 
+  462:   /* commit -- the ONE way state changes. Nothing writes dataset geometry except through here.
+  463:    *
+  464:    * Which is exactly why undo hangs off it: "every mutation is undoable" is only a checkable
+  465:    * sentence because there is one door to hang the check on.
+--- editor.js 645-855 ---
+  645:     $('b-undo').disabled = !past.length;
+  646:     $('b-redo').disabled = !future.length;
+  647:   }
+  648: 
+  649:   /* [REDACTED] rendering */
+  650: 
+  651:   function esc(v) { return String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;'); }
+  652: 
+  653:   // No fill => fill="none". No stroke => the stroke attribute is OMITTED ENTIRELY. Never
+  654:   // stroke-width="0" to mean "no line": width 0 is a HAIRLINE in PowerPoint, not an absence.
+  655:   function shapeMarkup(s) {
+  656:     var fill = s.fill ? esc(s.fill) : 'none';
+  657:     // Preview-only: SVG's fill-opacity is how this stage shows the alpha byte toIR() will fold
+  658:     // into the fill's hex string. It never reaches the IR itself -- fill stays a plain 6-digit
+  659:     // colour in dataset, and only toIR() combines it with fillAlpha at serialization time.
+  660:     var fillOpacity = (s.fill && typeof s.fillAlpha === 'number' && s.fillAlpha < 100)
+  661:       ? ' fill-opacity="' + (clamp(s.fillAlpha, 0, 100) / 100) + '"' : '';
+  662:     var stroke = s.strokeColor
+  663:       ? ' stroke="' + esc(s.strokeColor) + '" stroke-width="' + esc(s.strokeWidth) + '"'
+  664:       : '';
+  665:     var w = s.w, h = s.h;
+  666:     switch (s.type) {
+  667:       case 'rect':
+  668:         return '<rect x="0" y="0" width="' + w + '" height="' + h + '" fill="' + fill + '"' + fillOpacity + stroke + '/>';
+  669:       case 'ellipse':
+  670:         return '<ellipse cx="' + w / 2 + '" cy="' + h / 2 + '" rx="' + w / 2 + '" ry="' + h / 2 +
+  671:                '" fill="' + fill + '"' + fillOpacity + stroke + '/>';
+  672:       case 'triangle':
+  673:         // Apex top-centre, base along the bottom edge -- matches MSO_SHAPE.ISOSCELES_TRIANGLE.
+  674:         return '<polygon points="' + w / 2 + ',0 ' + w + ',' + h + ' 0,' + h + '" fill="' + fill + '"' + fillOpacity + stroke + '/>';
+  675:       case 'textbox':
+  676:         // A textbox carries fill and stroke like any other shape; with neither, it draws nothing.
+  677:         if (!s.fill && !s.strokeColor) return '';
+  678:         return '<rect x="0" y="0" width="' + w + '" height="' + h + '" fill="' + fill + '"' + fillOpacity + stroke + '/>';
+  679:       default:
+  680:         return '';
+  681:     }
+  682:   }
+  683: 
+  684:   function connectorMarkup(s, ax, ay, bx, by) {
+  685:     var mid = 'm-' + s.id;
+  686:     // ONE marker, oriented auto-start-reverse, so it serves marker-start and marker-end both.
+  687:     // refX sits on the tip (viewBox x = 10), so the tip lands ON the endpoint -- mirroring
+  688:     // DrawingML's <a:headEnd> / <a:tailEnd>.
+  689:     var marker =
+  690:       '<defs><marker id="' + esc(mid) + '" viewBox="0 0 10 10" refX="10" refY="5" ' +
+  691:       'markerWidth="6" markerHeight="6" orient="auto-start-reverse" markerUnits="strokeWidth">' +
+  692:       '<path d="M 0 0 L 10 5 L 0 10 z" fill="' + esc(s.color) + '"/></marker></defs>';
+  693: 
+  694:     var mk = '';
+  695:     if (s.arrow === 'start' || s.arrow === 'both') mk += ' marker-start="url(#' + esc(mid) + ')"';
+  696:     if (s.arrow === 'end' || s.arrow === 'both') mk += ' marker-end="url(#' + esc(mid) + ')"';
+  697: 
+  698:     var attrs = 'fill="none" stroke="' + esc(s.color) + '" stroke-width="' + esc(s.width) + '"' + mk;
+  699: 
+  700:     if (s.kind === 'elbow') {
+  701:       // An APPROXIMATION. PowerPoint's MSO_CONNECTOR.ELBOW auto-routes; this polyline does not.
+  702:       // This is the one place the preview is knowingly inexact, and the UI says so.
+  703:       var mx = (ax + bx) / 2;
+  704:       return marker + '<polyline points="' + ax + ',' + ay + ' ' + mx + ',' + ay + ' ' +
+  705:              mx + ',' + by + ' ' + bx + ',' + by + '" ' + attrs + '/>';
+  706:     }
+  707:     return marker + '<line x1="' + ax + '" y1="' + ay + '" x2="' + bx + '" y2="' + by + '" ' + attrs + '/>';
+  708:   }
+  709: 
+  710:   function renderEl(el) {
+  711:     var s = read(el);
+  712:     var svg = el.querySelector('svg');
+  713: 
+  714:     if (s.type === 'connector') {
+  715:       // The wrapper spans the endpoints' AABB. max(..., 1) keeps a perfectly horizontal line's SVG
+  716:       // box non-degenerate and NEVER touches the IR, which stores the raw endpoints.
+  717:       var minX = Math.min(s.x1, s.x2), minY = Math.min(s.y1, s.y2);
+  718:       var w = Math.max(Math.abs(s.x2 - s.x1), 1);
+  719:       var h = Math.max(Math.abs(s.y2 - s.y1), 1);
+  720:       var ax = s.x1 - minX, ay = s.y1 - minY, bx = s.x2 - minX, by = s.y2 - minY;
+  721: 
+  722:       el.style.left = minX + 'px';
+  723:       el.style.top = minY + 'px';
+  724:       el.style.width = w + 'px';
+  725:       el.style.height = h + 'px';
+  726:       el.style.setProperty('--rot', '0deg');
+  727: 
+  728:       svg.setAttribute('width', w);
+  729:       svg.setAttribute('height', h);
+  730:       svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+  731:       svg.innerHTML = connectorMarkup(s, ax, ay, bx, by);
+  732: 
+  733:       var p1 = el.querySelector('.handle[data-h="p1"]');
+  734:       var p2 = el.querySelector('.handle[data-h="p2"]');
+  735:       if (p1) { p1.style.left = ax - 4 + 'px'; p1.style.top = ay - 4 + 'px'; }
+  736:       if (p2) { p2.style.left = bx - 4 + 'px'; p2.style.top = by - 4 + 'px'; }
+  737:       return;
+  738:     }
+  739: 
+  740:     if (isMediaType(s.type)) {
+  741:       el.style.left = s.x + 'px';
+  742:       el.style.top = s.y + 'px';
+  743:       el.style.width = s.w + 'px';
+  744:       el.style.height = s.h + 'px';
+  745:       // NEVER rotated: render_canvas.draw_image()/draw_video() apply no xfrm/@rot, and makeEl()
+  746:       // withholds the rotate handle for this type, so s.rot is always 0 here -- but writing '0deg'
+  747:       // explicitly (rather than trusting that) keeps this branch correct even if that changes.
+  748:       el.style.setProperty('--rot', '0deg');
+  749:       var media = el.querySelector('.media');
+  750:       // Bound once per (element, src) pair, not every render: renderEl() runs on every commit (a
+  751:       // resize, a drag frame...), and re-assigning .src on an already-current object URL would
+  752:       // needlessly reload the image/restart the video on every frame.
+  753:       if (media && media.dataset.boundSrc !== s.src) {
+  754:         var entry = window.uploadedMedia && window.uploadedMedia[s.src];
+  755:         media.src = entry ? entry.url : '';
+  756:         media.dataset.boundSrc = s.src;
+  757:       }
+  758:       return;
+  759:     }
+  760: 
+  761:     el.style.left = s.x + 'px';
+  762:     el.style.top = s.y + 'px';
+  763:     el.style.width = s.w + 'px';
+  764:     el.style.height = s.h + 'px';
+  765:     // Degrees clockwise about the centre -- identical to shape.rotation. No conversion.
+  766:     el.style.setProperty('--rot', (s.rot || 0) + 'deg');
+  767: 
+  768:     svg.setAttribute('width', s.w);
+  769:     svg.setAttribute('height', s.h);
+  770:     svg.setAttribute('viewBox', '0 0 ' + s.w + ' ' + s.h);
+  771:     svg.innerHTML = shapeMarkup(s);
+  772: 
+  773:     var txt = el.querySelector('.txt');
+  774:     txt.dataset.align = s.align;
+  775:     txt.dataset.valign = s.valign;
+  776:     txt.style.fontSize = s.size + 'px';
+  777:     txt.style.color = s.color;
+  778:   }
+  779: 
+  780:   /* [REDACTED] element factory */
+  781: 
+  782:   function nextId() {
+  783:     var id;
+  784:     do { idSeq += 1; id = 'el' + idSeq; } while (stage.querySelector('.el[data-id="' + id + '"]'));
+  785:     return id;
+  786:   }
+  787: 
+  788:   function handleHTML(h) { return '<div class="handle" data-h="' + h + '"></div>'; }
+  789: 
+  790:   function makeEl(s) {
+  791:     var el = document.createElement('div');
+  792:     el.className = 'el';
+  793:     var html;
+  794: 
+  795:     if (s.type === 'connector') {
+  796:       html = '<svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"></svg>';
+  797:       html += handleHTML('p1') + handleHTML('p2');
+  798:     } else if (isMediaType(s.type)) {
+  799:       // No <svg>, no .txt -- a picture/video is not drawn, it is embedded. `draggable="false"` on
+  800:       // the <img> stops the browser's OWN native image-drag (which would fight the pointer-capture
+  801:       // drag in interactions.js and never call commit() at all). NO ROTATE HANDLE: withheld here,
+  802:       // not merely hidden, because render_canvas.draw_image()/draw_video() apply no xfrm/@rot, and
+  803:       // a handle the renderer cannot honour is worse than no handle.
+  804:       html = s.type === 'image'
+  805:         ? '<img class="media" draggable="false" alt="">'
+  806:         : '<video class="media" muted playsinline preload="metadata"></video>';
+  807:       for (var i = 0; i < HANDLES.length; i++) html += handleHTML(HANDLES[i]);
+  808:     } else {
+  809:       html = '<svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"></svg>';
+  810:       // .txt is the flex/anchor box (the Sec 5.6 contract); .body is the text. One flex item, so
+  811:       // multiple paragraphs stack instead of laying out side by side.
+  812:       //
+  813:       // NOTE THE ABSENT contenteditable. It is added by the dblclick handler and removed by
+  814:       // stopEditing(). It used to be hard-coded here, with only `pointer-events: none` on .txt
+  815:       // keeping the caret out -- which meant the element was, to the keyboard and to every
+  816:       // assistive technology, permanently editable, and editingText() could not tell "the caret is
+  817:       // in the text" from "the text merely exists".
+  818:       html += '<div class="txt"><div class="body"></div></div>';
+  819:       for (var j = 0; j < HANDLES.length; j++) html += handleHTML(HANDLES[j]);
+  820:       html += handleHTML('rot');
+  821:     }
+  822:     el.innerHTML = html;
+  823:     write(el, s);
+  824:     renderEl(el);
+  825:     wire(el);
+  826:     return el;
+  827:   }
+  828: 
+  829:   // Z-ORDER IS DOM ORDER AND NOTHING ELSE. No `z` field, no CSS stacking index on .el, no sort key
+  830:   // -- any of those would be a second source of truth and would desync. Raise/lower are pure
+  831:   // insertBefore/append.
+  832:   // New connectors go to the FRONT of the array -- drawn first, therefore BEHIND the boxes they
+  833:   // join. Front of array == back of the slide.
+  834:   function addEl(el) {
+  835:     if (el.dataset.type === 'connector') {
+  836:       var firstShape = stage.querySelector(':scope > .el:not([data-type="connector"])');
+  837:       stage.insertBefore(el, firstShape); // null => append
+  838:     } else {
+  839:       stage.appendChild(el);
+  840:     }
+  841:     return el;
+  842:   }
+  843: 
+  844:   /* [REDACTED] interactions */
+  845: 
+  846:   function wire(el) {
+  847:     // Drag the body. The text and the handles are excluded: a pointerdown in the text must land a
+  848:     // caret, and one on a handle must resize.
+  849:     // select() FIRST, then beginTx(): select() closes any open text session, and closing one ends
+  850:     // its transaction. Opening ours before that would hand our snapshot straight to endTx().
+  851:     Interactions.draggable(el, {
+  852:       ignoreFrom: '.txt, .handle',
+  853:       // Shift held -> this pointerdown is a multi-select TOGGLE (see the plain pointerdown
+  854:       // listener below), not a drag. interactions.js hands the triggering event to `enabled` for
+  855:       // exactly this (Phase 6).
+--- editor.js 1365-1420 ---
+ 1365: 
+ 1366:   function toIR(el) {
+ 1367:     var s = read(el);
+ 1368: 
+ 1369:     if (s.type === 'connector') {
+ 1370:       // No w/h. No text. No z. Exactly the schema's keys for this type and NOTHING else --
+ 1371:       // additionalProperties: false means one leaked data-* is a hard rejection.
+ 1372:       return {
+ 1373:         id: s.id, type: 'connector', kind: s.kind,
+ 1374:         x1: round6(s.x1), y1: round6(s.y1), x2: round6(s.x2), y2: round6(s.y2),
+ 1375:         color: s.color, width: round6(s.width), arrow: s.arrow,
+ 1376:       };
+ 1377:     }
+ 1378: 
+ 1379:     if (isMediaType(s.type)) {
+ 1380:       // No fill, no stroke, no text, no rotation: the properties panel never offers them for this
+ 1381:       // type (see syncProps()'s "media" category) and render_canvas.draw_image()/draw_video()
+ 1382:       // never draw them even when present, so this editor never emits them for media at all --
+ 1383:       // schema.json lists fill/stroke as OPTIONAL for image/video (unlike a rect, where fill is
+ 1384:       // REQUIRED even when null), and omitting an optional key is exactly what "optional" means.
+ 1385:       return {
+ 1386:         id: s.id, type: s.type,
+ 1387:         x: round6(s.x), y: round6(s.y), w: round6(s.w), h: round6(s.h),
+ 1388:         src: s.src,
+ 1389:       };
+ 1390:     }
+ 1391: 
+ 1392:     var out = {
+ 1393:       id: s.id, type: s.type,
+ 1394:       x: round6(s.x), y: round6(s.y), w: round6(s.w), h: round6(s.h),
+ 1395:       fill: s.fill ? withAlpha(s.fill, s.fillAlpha) : null, // REQUIRED even when null
+ 1396:     };
+ 1397:     if (s.rot) out.rotation = round6(s.rot);
+ 1398:     if (s.strokeColor) out.stroke = { color: s.strokeColor, width: round6(s.strokeWidth) };
+ 1399:     if (s.link) out.link = s.link;
+ 1400: 
+ 1401:     var body = el.querySelector('.txt .body');
+ 1402:     var paragraphs = body ? normalizeText(body, s.size, s.color, s.bold, s.italic) : null;
+ 1403:     out.text = paragraphs ? { align: s.align, valign: s.valign, paragraphs: paragraphs } : null;
+ 1404:     return out;
+ 1405:   }
+ 1406: 
+ 1407:   function serialize() {
+ 1408:     return {
+ 1409:       schema: SCHEMA,
+ 1410:       canvas: { w: CANVAS.w, h: CANVAS.h, unit: CANVAS.unit },
+ 1411:       target: {
+ 1412:         template: 'reference/renderer_template.pptx', // informational ONLY; the server ignores it
+ 1413:         template_sha256: CONTEXT.template_sha256,     // from /api/context -- NEVER hard-coded
+ 1414:         layout_index: CONTEXT.layout_index,
+ 1415:       },
+ 1416:       title: titleString(),
+ 1417:       // :scope > .el is the whole z-order story AND the whole "chrome cannot be serialized" story:
+ 1418:       // the pseudo-elements have no node, and #title-field has no .el.
+ 1419:       elements: [].slice.call(stage.querySelectorAll(':scope > .el')).map(toIR),
+ 1420:     };
+--- editor.js 1515-1590 ---
+ 1515:   /* A PROPERTY CONTROL IS A GESTURE TOO, and forgetting that is how an undo stack becomes useless.
+ 1516:    *
+ 1517:    * A colour picker and a range slider both fire `input` continuously while they are being dragged,
+ 1518:    * so without this, one nudge of the rotation slider would be fifty undo steps and Ctrl+Z would
+ 1519:    * walk back through them one degree at a time. pointerdown/keydown opens the step; `change`, which
+ 1520:    * fires ONCE when the control is done, closes it.
+ 1521:    *
+ 1522:    * #p-zoom is deliberately NOT wired through here. Zoom is VIEW, not document: it is not in a
+ 1523:    * snapshot and it must not be on the stack.
+ 1524:    */
+ 1525:   function txControl(node) {
+ 1526:     node.addEventListener('pointerdown', beginTx);
+ 1527:     node.addEventListener('keydown', beginTx);
+ 1528:     node.addEventListener('change', endTx);
+ 1529:   }
+ 1530: 
+ 1531:   ['p-fill', 'p-fill-alpha', 'p-stroke', 'p-stroke-w', 'p-color', 'p-size', 'p-align', 'p-valign',
+ 1532:    'p-kind', 'p-arrow', 'p-rot', 'p-link'].forEach(function (id) { txControl($(id)); });
+ 1533: 
+ 1534:   guardColor($('p-fill'), function (v) {
+ 1535:     if (isConnector()) return; // a connector has no fill -- the schema does not give it one
+ 1536:     patchSelected({ fill: v });
+ 1537:   });
+ 1538: 
+ 1539:   // Phase 6: opacity. A PERCENT in state; toIR() is the only place it becomes the fill's trailing
+ 1540:   // hex byte, so this handler patches fillAlpha exactly the way p-size patches size -- no colour
+ 1541:   // math happens here at all.
+ 1542:   $('p-fill-alpha').addEventListener('input', function () {
+ 1543:     var pct = +this.value;
+ 1544:     $('p-fill-alpha-out').textContent = pct + '%';
+ 1545:     if (!isConnector() && !isMedia()) patchSelected({ fillAlpha: pct });
+ 1546:   });
+ 1547: 
+ 1548:   // The stroke input drives a shape's outline AND a connector's line: a connector IS a line, so its
+ 1549:   // colour belongs on the stroke control, not on the text one.
+ 1550:   guardColor($('p-stroke'), function (v) {
+ 1551:     patchSelected(isConnector() ? { color: v } : { strokeColor: v });
+ 1552:   });
+ 1553: 
+ 1554:   guardColor($('p-color'), function (v) {
+ 1555:     if (isConnector()) return; // a connector carries no text at all (schema: no `text` key)
+ 1556:     patchSelected({ color: v });
+ 1557:   });
+ 1558: 
+ 1559:   $('p-fill-none').addEventListener('click', function () {
+ 1560:     if (!isConnector()) patchSelected({ fill: '' });
+ 1561:   });
+ 1562: 
+ 1563:   $('p-stroke-none').addEventListener('click', function () {
+ 1564:     if (isConnector()) return; // a connector cannot have "no line" -- a line is all it is
+ 1565:     patchSelected({ strokeColor: '' });
+ 1566:   });
+ 1567: 
+ 1568:   // Phase 6: a one-click preset over stroke.color/stroke.width -- NOT a second IR property (the
+ 1569:   // schema has no `border` key). Checked means exactly #000000 @ 1pt; unchecked clears the line
+ 1570:   // entirely, mirroring the "none" button rather than restoring whatever line existed before.
+ 1571:   $('p-border-1pt').addEventListener('change', function () {
+ 1572:     if (isConnector() || isMedia()) return;
+ 1573:     if (this.checked) patchSelected({ strokeColor: '#000000', strokeWidth: 1 });
+ 1574:     else patchSelected({ strokeColor: '' });
+ 1575:   });
+ 1576: 
+ 1577:   // Phase 6 (HTML export): defensive only -- data-for="shape" already scopes #p-link out of the
+ 1578:   // DOM for a connector/media selection, same guard shape as p-fill-alpha's handler above.
+ 1579:   $('p-link').addEventListener('input', function () {
+ 1580:     if (!isConnector() && !isMedia()) patchSelected({ link: this.value });
+ 1581:   });
+ 1582: 
+ 1583:   $('p-stroke-w').addEventListener('input', function () {
+ 1584:     var w = +this.value;
+ 1585:     // Width 0 is a HAIRLINE in PowerPoint, not an absence -- a browser draws nothing for it while
+ 1586:     // PowerPoint draws the thinnest line it can. Say so, rather than let it look like "no line".
+ 1587:     if (w === 0 && !isConnector()) {
+ 1588:       warn(
+ 1589:         'Stroke width 0 is a HAIRLINE, not "no line"',
+ 1590:         'A browser draws nothing for width 0; PowerPoint draws the thinnest line it can. To get no ' +
+--- editor.js 1825-1870 ---
+ 1825:       var want = scoped[i].getAttribute('data-for').split(/\s+/);
+ 1826:       scoped[i].hidden = want.indexOf(cat) < 0;
+ 1827:     }
+ 1828: 
+ 1829:     $('p-what').textContent = s.type;
+ 1830:     $('p-which').textContent = s.id;
+ 1831: 
+ 1832:     if (cat === 'connector') {
+ 1833:       $('p-stroke').value = s.color; // a connector's colour lives on the STROKE control
+ 1834:       $('p-stroke-w').value = s.width;
+ 1835:       $('p-kind').value = s.kind;
+ 1836:       $('p-arrow').value = s.arrow;
+ 1837:     } else if (cat === 'media') {
+ 1838:       // No fill/stroke/text/rotation control is visible for this category (scoped away above), so
+ 1839:       // there is nothing of this type's own to populate here.
+ 1840:     } else {
+ 1841:       $('p-fill').value = s.fill || BRAND_RED;
+ 1842:       $('p-fill-alpha').value = s.fillAlpha;
+ 1843:       $('p-fill-alpha-out').textContent = Math.round(s.fillAlpha) + '%';
+ 1844:       $('p-stroke').value = s.strokeColor || '#FFFFFF';
+ 1845:       $('p-stroke-w').value = s.strokeWidth;
+ 1846:       $('p-border-1pt').checked = s.strokeColor === '#000000' && s.strokeWidth === 1;
+ 1847:       $('p-color').value = s.color;
+ 1848:       $('p-size').value = s.size;
+ 1849:       $('p-bold').setAttribute('aria-pressed', String(!!s.bold));
+ 1850:       $('p-italic').setAttribute('aria-pressed', String(!!s.italic));
+ 1851:       $('p-align').value = s.align;
+ 1852:       $('p-valign').value = s.valign;
+ 1853:       $('p-rot').value = Math.round(s.rot || 0);
+ 1854:       $('p-rot-out').textContent = Math.round(s.rot || 0) + '°';
+ 1855:       $('p-link').value = s.link || '';
+ 1856:     }
+ 1857:     setStatus(s.id + ' — ' + s.type);
+ 1858:   }
+ 1859: 
+ 1860:   /* [REDACTED] the keyboard */
+ 1861: 
+ 1862:   function editingText(t) {
+ 1863:     return t && (t.isContentEditable || t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA');
+ 1864:   }
+ 1865: 
+ 1866:   /* [REDACTED] copy / paste (Phase 6) --
+ 1867:    *
+ 1868:    * An IN-MEMORY clipboard, deliberately separate from the OS clipboard pasteGemJSON() (above)
+ 1869:    * already reads via navigator.clipboard -- that one carries a whole DECK from an external chat UI
+ 1870:    * and goes through loadIR(); this one carries a handful of ELEMENTS between two points in this
+--- editor.js 2060-2185 ---
+ 2060:     names.forEach(function (n) { form.append(n, window.uploadedMedia[n].file, n); });
+ 2061: 
+ 2062:     try {
+ 2063:       var res = await fetch('/api/download', { method: 'POST', body: form });
+ 2064:       if (!res.ok) {
+ 2065:         var data = {};
+ 2066:         try { data = await res.json(); } catch (e) { /* a non-JSON error body */ }
+ 2067:         if (res.status === 409) {
+ 2068:           warn('Stale payload — RELOAD the editor', data.detail ||
+ 2069:             'The template or the model space changed under you. The deck is never rescaled.');
+ 2070:         } else if (res.status === 422) {
+ 2071:           warn('The deck did not validate', data.detail); // the numbered list, verbatim
+ 2072:         } else {
+ 2073:           warn('Export failed (HTTP ' + res.status + ')', data.detail || res.statusText);
+ 2074:         }
+ 2075:         setStatus('Export failed.');
+ 2076:         return;
+ 2077:       }
+ 2078:       download(await res.blob(), safeStem() + '.pptx');
+ 2079:       setStatus('Exported ' + ir.elements.length + ' element(s).');
+ 2080:     } catch (e) {
+ 2081:       warn('Could not reach the server', String(e));
+ 2082:       setStatus('Export failed.');
+ 2083:     }
+ 2084:   });
+ 2085: 
+ 2086:   /* Phase 6: HTML export. A standalone, offline-openable .html file that reproduces the stage —
+ 2087:    * absolute positioning, colours, rotation, DOM order (== stacking order, see the comment on
+ 2088:    * addEl() above) — and turns any element carrying a `link` into a clickable <a>.
+ 2089:    *
+ 2090:    * Deliberately does NOT fetch or inline style.css: the exported file must stand on its own, and
+ 2091:    * style.css also carries app chrome (toolbar, composer, warnings banner) that has no business in
+ 2092:    * an exported slide. EXPORT_CSS below is a self-contained subset of just the CONTRACT rules that
+ 2093:    * govern how a `.el` is positioned and painted (see style.css's own "CONTRACT" comments) — the
+ 2094:    * SAME rules, copied rather than derived, because this file has no build step to share them with.
+ 2095:    *
+ 2096:    * Not gated behind CONTEXT/disableExports() the way #b-json/#b-export are: those need
+ 2097:    * `template_sha256`/`layout_index` from /api/context before a payload is meaningful, but this
+ 2098:    * needs no server round trip at all, so it stays enabled even offline.
+ 2099:    */
+ 2100:   var EXPORT_CSS = [
+ 2101:     'html,body{margin:0;padding:0;background:#FFFFFF}',
+ 2102:     '#stage{position:relative;width:960px;height:540px;background:#FFFFFF;overflow:hidden}',
+ 2103:     '#title-field{position:absolute;left:45.55px;top:26.75px;width:725.29px;height:37.25px;' +
+ 2104:       'padding:0;margin:0;border:0;box-sizing:border-box;display:flex;align-items:center;' +
+ 2105:       "font-family:'Century Gothic','Malgun Gothic',sans-serif;font-size:30px;line-height:1.2;" +
+ 2106:       'color:#000000;white-space:pre-wrap;overflow-wrap:break-word;word-break:keep-all}',
+ 2107:     '.el{position:absolute;transform:rotate(var(--rot,0deg));transform-origin:50% 50%}',
+ 2108:     '.el[data-type="connector"]{overflow:visible}',
+ 2109:     '.el svg{overflow:visible;position:absolute;inset:0}',
+ 2110:     '.el .txt{position:absolute;left:7.2px;right:7.2px;top:3.6px;bottom:3.6px;box-sizing:border-box;' +
+ 2111:       "padding:0;margin:0;border:0;font-family:'Century Gothic','Malgun Gothic',sans-serif;" +
+ 2112:       'font-size:14px;line-height:1.2;white-space:pre-wrap;overflow-wrap:break-word;' +
+ 2113:       'word-break:keep-all;display:flex;align-items:center;justify-content:center;text-align:center;' +
+ 2114:       'overflow:visible;outline:none;pointer-events:none}',
+ 2115:     '.el .txt>.body{width:100%;outline:none}',
+ 2116:     '.el[data-bold="1"] .txt{font-weight:700}',
+ 2117:     '.el[data-italic="1"] .txt{font-style:italic}',
+ 2118:     '.el .txt[data-valign="TOP"]{align-items:flex-start}',
+ 2119:     '.el .txt[data-valign="MIDDLE"]{align-items:center}',
+ 2120:     '.el .txt[data-valign="BOTTOM"]{align-items:flex-end}',
+ 2121:     '.el .txt[data-align="LEFT"]{justify-content:flex-start;text-align:left}',
+ 2122:     '.el .txt[data-align="CENTER"]{justify-content:center;text-align:center}',
+ 2123:     '.el .txt[data-align="RIGHT"]{justify-content:flex-end;text-align:right}',
+ 2124:     '.el .media{position:absolute;inset:0;width:100%;height:100%;object-fit:fill}',
+ 2125:   ].join('\n');
+ 2126: 
+ 2127:   // Removes everything about a cloned `.el` that exists only for the EDITOR's benefit: selection/
+ 2128:   // multi-select/blocked-flash outlines, the resize/rotate/connector-endpoint handles, and a
+ 2129:   // lingering contenteditable left on `.txt .body` (only present mid-edit, but defended anyway).
+ 2130:   function stripEditorChrome(clone) {
+ 2131:     clone.classList.remove('selected', 'editing', 'multi-selected', 'blocked');
+ 2132:     var handles = clone.querySelectorAll('.handle');
+ 2133:     for (var i = 0; i < handles.length; i++) handles[i].remove();
+ 2134:     var body = clone.querySelector('.txt .body');
+ 2135:     if (body) body.removeAttribute('contenteditable');
+ 2136:   }
+ 2137: 
+ 2138:   // Clones the LIVE, already-rendered `.el` node rather than re-deriving markup from state a second
+ 2139:   // time: geometry/colour/rotation are already correct inline styles (renderEl()), so the exported
+ 2140:   // file cannot silently drift from what the user is looking at. `read(el).link` is undefined for a
+ 2141:   // connector or a media element (read() never sets it on those branches — schema.json only adds
+ 2142:   // `link` to the four shape types), so only a linked shape/textbox is ever wrapped. `display:
+ 2143:   // contents` makes the <a> generate no box of its own, so the wrapped element's own absolute
+ 2144:   // positioning keeps working completely unmodified and DOM order is unaffected.
+ 2145:   function exportElementHTML(el) {
+ 2146:     var clone = el.cloneNode(true);
+ 2147:     stripEditorChrome(clone);
+ 2148:     var link = read(el).link;
+ 2149:     return link
+ 2150:       ? '<a href="' + esc(link) + '" style="display:contents;cursor:pointer">' + clone.outerHTML + '</a>'
+ 2151:       : clone.outerHTML;
+ 2152:   }
+ 2153: 
+ 2154:   function exportHTML() {
+ 2155:     clearWarnings();
+ 2156:     var elements = Array.prototype.slice.call(stage.querySelectorAll(':scope > .el'));
+ 2157:     var body = elements.map(exportElementHTML).join('\n');
+ 2158:     var html = '<!DOCTYPE html>\n<html lang="ko">\n<head>\n<meta charset="utf-8">\n' +
+ 2159:       '<meta name="viewport" content="width=device-width, initial-scale=1">\n' +
+ 2160:       '<title>' + esc(safeStem()) + '</title>\n<style>' + EXPORT_CSS + '</style>\n</head>\n<body>\n' +
+ 2161:       '<div id="stage">\n<div id="title-field">' + titleField.innerHTML + '</div>\n' +
+ 2162:       body + '\n</div>\n</body>\n</html>\n';
+ 2163:     download(new Blob([html], { type: 'text/html' }), safeStem() + '.html');
+ 2164:     setStatus('Downloaded HTML (' + elements.length + ' element(s)).');
+ 2165:   }
+ 2166: 
+ 2167:   $('b-export-html').addEventListener('click', exportHTML);
+ 2168: 
+ 2169:   /* Load JSON — a stretch goal, and the other half of the Gate 4 round trip. */
+ 2170:   $('b-load').addEventListener('click', function () { $('f-load').click(); });
+ 2171: 
+ 2172:   $('f-load').addEventListener('change', async function () {
+ 2173:     var file = this.files && this.files[0];
+ 2174:     if (!file) return;
+ 2175:     this.value = '';
+ 2176:     clearWarnings();
+ 2177: 
+ 2178:     var ir;
+ 2179:     try {
+ 2180:       ir = JSON.parse(await file.text());
+ 2181:     } catch (e) {
+ 2182:       warn('That file is not JSON', String(e));
+ 2183:       return;
+ 2184:     }
+ 2185: 
+--- editor.js 2675-2735 ---
+ 2675:       for (var ri = 0; ri < prs.length; ri++) {
+ 2676:         var r = prs[ri];
+ 2677:         if (!r || typeof r !== 'object') continue;
+ 2678:         nRuns += 1;
+ 2679:         if (r.bold) nBold += 1;
+ 2680:         if (r.italic) nItalic += 1;
+ 2681:       }
+ 2682:     }
+ 2683: 
+ 2684:     // Phase 6: split a #RRGGBBAA fill into its opaque colour and its alpha PERCENT (the inverse of
+ 2685:     // withAlpha() in toIR()) -- inlined rather than a shared helper for the same reason the
+ 2686:     // bold/italic summary above is: stateFromIR() is lifted by name into a harness that does not
+ 2687:     // also lift withAlpha()/hex2(), and a call out to either would be a ReferenceError there, not a
+ 2688:     // failure in the code. A plain #RRGGBB (or no fill at all) is unaffected: fillAlpha is 100.
+ 2689:     var fillRaw = typeof e.fill === 'string' ? e.fill : '';
+ 2690:     var fillColor = fillRaw;
+ 2691:     var fillAlpha = 100;
+ 2692:     if (/^#[0-9A-Fa-f]{8}$/.test(fillRaw)) {
+ 2693:       fillColor = fillRaw.slice(0, 7);
+ 2694:       fillAlpha = Math.round((parseInt(fillRaw.slice(7, 9), 16) / 255) * 100);
+ 2695:     }
+ 2696: 
+ 2697:     return {
+ 2698:       id: e.id, type: e.type,
+ 2699:       x: e.x, y: e.y, w: e.w, h: e.h,
+ 2700:       // Absent or null rotation is 0. A rotation of "45" is NOT 45: it stays a string, and the judge
+ 2701:       // refuses it -- exactly as validate.py::_has_readable_geometry does on the other side.
+ 2702:       rot: e.rotation === undefined || e.rotation === null ? 0 : e.rotation,
+ 2703:       fill: fillColor,
+ 2704:       fillAlpha: fillAlpha,
+ 2705:       strokeColor: (stroke && stroke.color) || '',
+ 2706:       strokeWidth: stroke && typeof stroke.width === 'number' ? stroke.width : 1,
+ 2707:       // A textless element carries no run to learn from, so fall back to the DEFAULT FOR ITS
+ 2708:       // TYPE -- black for a textbox, white for a shape. Defaulting both to white would hand a
+ 2709:       // reloaded textbox white-on-nothing text.
+ 2710:       size: first.size || def.size,
+ 2711:       color: first.color || def.color,
+ 2712:       align: text.align || def.align,
+ 2713:       valign: text.valign || def.valign,
+ 2714:       bold: nRuns > 0 && nBold === nRuns,
+ 2715:       italic: nRuns > 0 && nItalic === nRuns,
+ 2716:       // Phase 6 (HTML export): absent or non-string falls back to '' rather than throwing, same
+ 2717:       // defensive treatment every other optional field in this function gets.
+ 2718:       link: typeof e.link === 'string' ? e.link : def.link,
+ 2719:     };
+ 2720:   }
+ 2721: 
+ 2722:   /* THE SECOND CALLER OF THE JUDGE, and the reason the judge exists as its own function.
+ 2723:    *
+ 2724:    * ALL OR NOTHING, and in this order: judge every element FIRST, touch the stage SECOND.
+ 2725:    *
+ 2726:    * A file is not a trusted input just because this editor may have written it -- it is a
+ 2727:    * hand-editable text file, and the moment one of its elements could come to rest on the logo,
+ 2728:    * "the reserved regions are strictly enforced" stopped being a true sentence. They were enforced
+ 2729:    * against the mouse and not against a file.
+ 2730:    *
+ 2731:    * The ORDER is the other half of the fix, and it is not cosmetic. This function used to clear the
+ 2732:    * stage and overwrite the title before it had looked at a single element, so a per-element check
+ 2733:    * bolted into the loop -- however correct that check was -- could only ever leave a half-imported
+ 2734:    * stage behind and the user's own deck already gone. "Reject the entire import" is not reachable
+ 2735:    * from inside that loop. It is reachable from here.
+--- Relevant style.css ---
+1-/* Canvas editor styling.
+2- *
+3: * THE BLOCKS MARKED "CONTRACT" ARE NOT STYLING PREFERENCES. Every declaration in them has a
+4- * counterpart in canvas/style.py (plan Sec 6.6) and they change together or not at all:
+5- *
+6: *     .el .txt inset 7.2 / 3.6   <->  style_text_frame: margin_left/right Pt(7.2), top/bottom Pt(3.6)
+7: *     .el .txt line-height 1.2   <->  p.line_spacing = 1.2
+8: *     .el .txt white-space       <->  tf.word_wrap = True
+9: *     .el .txt flex centring     <->  vertical_anchor MIDDLE / PP_ALIGN.CENTER
+10: *     .el .txt overflow: visible <->  MSO_AUTO_SIZE.NONE   (show overflow; never hide it)
+11: *     .el transform: rotate()    <->  shape.rotation       (centre origin, degrees CW, no conversion)
+12- *
+13- * Do not tidy them, do not switch to rem, and do not add a CSS reset that alters them. The margin
+14- * trap in particular reads like a coordinate bug: if the browser wraps at padding 0 while
+--
+138-button:disabled, button.primary:disabled { opacity: .45; cursor: not-allowed; }
+139-#b-load { width: 100%; }
+140-
+141:#stage-wrap {
+142-  grid-area: stage;
+143-  overflow: auto;
+144-  padding: 24px;
+--
+345-
+346-/* Narrow windows: stack the head and the input row instead of letting the model picker or the
+347-   action buttons squeeze the field to nothing. This only changes layout INSIDE the composer's own
+348:   grid row -- it is still `grid-area: composer`, so it can never overlap `#status` or `#stage-wrap`
+349-   ("without covering the status bar or stage controls", brief item 8). */
+350-@media (max-width: 720px) {
+351-  .composer-head { flex-direction: column; align-items: stretch; }
+--
+355-  .composer-actions button { flex: 1; }
+356-}
+357-
+358:/* [REDACTED] CONTRACT: the stage (5.2) */
+359-
+360:#stage {
+361-  position: relative;
+362-  width: 960px;                       /* 1 CSS px == 1 logical unit at zoom = 1 */
+363-  height: 540px;
+--
+371-/* The stage is `transform`ed, which does not affect layout, so the wrapper would still reserve the
+372-   unscaled 960x540 and the scrollbars would lie. Reserve the SCALED size explicitly -- derived
+373-   from the same --zoom the JS writes. */
+374:#stage-sizer {
+375-  width: calc(960px * var(--zoom));
+376-  height: calc(540px * var(--zoom));
+377-}
+378-
+379:/* [REDACTED] CONTRACT: the editor-only chrome (5.3) */
+380-
+381-/* The red divider line. An evidence-based approximation of the gradient's visible CENTRE
+382-   (audited y 68.88-75.12, x 46.41-788.68) -- NOT the divider picture's outer box. PowerPoint draws
+383-   the real gradient; this is a flat red line and the header is deliberately not WYSIWYG. */
+384:#stage::after {
+385-  content: '';
+386-  position: absolute;
+387-  pointer-events: none;
+--
+393-}
+394-
+395-/* TITLE_LOCKED. Not movable, not resizable, and never an element. */
+396:#stage::before {
+397-  content: '';
+398-  position: absolute;
+399-  pointer-events: none;
+--
+406-
+407-/* The title FIELD -- the `title` string, not an element. Sits on TITLE_LOCKED. The renderer sets
+408-   the run to 30 pt / black / left-aligned (render_canvas.TITLE_RUN), so the preview says the same. */
+409:#title-field {
+410-  position: absolute;
+411-  left: 45.55px;
+412-  top: 26.75px;
+--
+428-  outline: none;
+429-  cursor: text;
+430-}
+431:#title-field:empty::before {
+432-  content: attr(data-placeholder);
+433-  color: #b6bcc4;
+434-}
+435-
+436:/* [REDACTED] CONTRACT: elements and rotation (5.4/5.5) */
+437-
+438:.el {
+439-  position: absolute;
+440-  /* Centre origin, degrees CLOCKWISE -- identical to shape.rotation in python-pptx and to
+441-     DrawingML a:xfrm/@rot. No conversion anywhere. */
+--
+445-
+446-/* Editor-only affordances use OUTLINE, never BORDER. A border participates in the box model and
+447-   would drift the element's geometry by border/2 -- a coordinate bug wearing a styling hat. */
+448:.el.selected { outline: 1px solid #1e88ff; outline-offset: 0; }
+449-
+450-/* Reject-and-hold: an illegal frame is not committed, and the element flashes instead of moving. */
+451:.el.blocked { outline: 2px solid #FF0032; animation: blocked .18s ease-out 2; }
+452:@keyframes blocked { 50% { outline-color: transparent; } }
+453-
+454:/* The handles come AFTER the <svg> and the .txt in DOM order, and positioned siblings paint in DOM
+455-   order, so they land on top without a z-index. That is not a coincidence being relied on -- it is
+456:   the same rule the elements themselves use. NOTHING INSIDE #stage CARRIES A z-index, on purpose:
+457-   z-order is DOM order and nothing else, and a second source of truth would desync. (The only
+458-   z-index in this file is on #warnings, which is app chrome outside the stage and is never
+459-   serialized.) */
+460:.el .handle {
+461-  position: absolute;
+462:  display: none;                       /* only the selected element wears handles */
+463-  width: 8px;
+464-  height: 8px;
+465-  background: #fff;
+466-  outline: 1px solid #1e88ff;
+467-}
+468:.el.selected .handle { display: block; }
+469:.el .handle[data-h='nw'] { left: -4px;              top: -4px;               cursor: nwse-resize; }
+470:.el .handle[data-h='n']  { left: calc(50% - 4px);   top: -4px;               cursor: ns-resize;   }
+471:.el .handle[data-h='ne'] { right: -4px;             top: -4px;               cursor: nesw-resize; }
+472:.el .handle[data-h='e']  { right: -4px;             top: calc(50% - 4px);    cursor: ew-resize;   }
+473:.el .handle[data-h='se'] { right: -4px;             bottom: -4px;            cursor: nwse-resize; }
+474:.el .handle[data-h='s']  { left: calc(50% - 4px);   bottom: -4px;            cursor: ns-resize;   }
+475:.el .handle[data-h='sw'] { left: -4px;              bottom: -4px;            cursor: nesw-resize; }
+476:.el .handle[data-h='w']  { left: -4px;              top: calc(50% - 4px);    cursor: ew-resize;   }
+477-
+478:.el .handle[data-h='rot'] {
+479-  left: calc(50% - 4px);
+480-  top: -22px;
+481-  border-radius: 50%;
+482-  cursor: grab;
+483-}
+484:/* The endpoint handles of a connector. */
+485:.el .handle[data-h='p1'], .el .handle[data-h='p2'] { border-radius: 50%; cursor: move; }
+486-
+487:/* [REDACTED] CONTRACT: the text box (5.6) VERBATIM */
+488-
+489:.el .txt {
+490-  position: absolute;
+491-  /* PowerPoint's default text-frame insets: 0.1in L/R, 0.05in T/B = 7.2 / 3.6 logical units.
+492-     Hard-coded on both sides. This is the trap that reads like a coordinate bug. */
+--
+511-
+512-  /* The text box covers almost the whole element, so if it swallowed pointer events the user could
+513-     never DRAG a textbox -- every grab would land a caret instead. Click selects and drags;
+514:     DOUBLE-click opens the text for editing (editor.js adds .editing). This is the conventional
+515-     bargain and it is the only one that leaves a no-fill textbox movable at all. */
+516-  pointer-events: none;
+517-}
+518:.el.editing .txt { pointer-events: auto; cursor: text; }
+519-
+520:/* CONTRACT: run.bold / run.italic.
+521- *
+522: *     .el[data-bold='1']   <->  style.py: run.font.bold   = True   (every run in the element)
+523: *     .el[data-italic='1'] <->  style.py: run.font.italic = True
+524- *
+525- * These are ELEMENT-level flags over a PER-RUN property: normalizeText() OR-s them into every run
+526- * on the way out, because run.bold is the only place the IR can carry them. A <b> inside .body still
+--
+529- *
+530- * The value is the string '1'. dataset writes strings, so a false flag is '' -- never 'false',
+531- * which would be truthy on the way back in and match nothing on the way down here. */
+532:.el[data-bold='1'] .txt   { font-weight: 700; }
+533:.el[data-italic='1'] .txt { font-style: italic; }
+534-
+535-/* valign / align are written from state onto these data-* hooks, never read back out of CSS. */
+536:.el .txt[data-valign='TOP']    { align-items: flex-start; }
+537:.el .txt[data-valign='MIDDLE'] { align-items: center; }
+538:.el .txt[data-valign='BOTTOM'] { align-items: flex-end; }
+539:.el .txt[data-align='LEFT']    { justify-content: flex-start; text-align: left; }
+540:.el .txt[data-align='CENTER']  { justify-content: center;     text-align: center; }
+541:.el .txt[data-align='RIGHT']   { justify-content: flex-end;   text-align: right; }
+542-
+543:/* THE single flex item. The Sec 5.6 contract above puts `display: flex` on .txt, and its
+544-   align-items/justify-content mapping (valign/align) is only correct when there is exactly ONE
+545-   flex item. A contenteditable that holds several paragraphs produces several block children --
+546:   which, as direct flex items, would lay out SIDE BY SIDE in a row. So .txt is the anchor box and
+547-   .body is the contenteditable: one flex item, paragraphs stacking normally inside it, and the
+548-   contract preserved exactly as written. */
+549:.el .txt > .body { width: 100%; outline: none; }
+550-
+551:.el svg { overflow: visible; position: absolute; inset: 0; }
+552-
+553-/* A connector is a line: it has no text frame and its SVG must be free to draw its stroke and
+554-   arrowheads outside the endpoints' AABB. */
+555:.el[data-type='connector'] { overflow: visible; }
+556-
+557-/* [REDACTED] Phase 6: image / video elements */
+558-
+559:/* Geometrically an image/video is a rect (position/size come from .el, same as everything else);
+560-   the tag itself just fills the box. object-fit: fill matches add_picture()/add_movie(), which
+561-   stretch to the given width/height with no letterboxing of their own. pointer-events stays AUTO
+562:   (unlike .txt) -- there is no separate overlay here for a click to fall through to, so the drag
+563:   handler on .el (which listens on .el itself and sees the bubbled event) needs nothing special. */
+564:.el .media { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; }
+565-
+566-/* [REDACTED] Phase 6: multi-select (align) */
+567-
+568-/* A second, additive selection outline for Shift+Click's alignment set -- distinct from
+569:   .el.selected (the single `selected` element the property panel describes) so both can be worn
+570-   at once without one visually swallowing the other. Outline, never border, for the same reason
+571:   .el.selected uses one: a border participates in the box model and would drift the geometry. */
+572:.el.multi-selected { outline: 1px dashed #1e88ff; outline-offset: 2px; }
+--- index title/stage/scripts ---
+1-<!DOCTYPE html>
+2-<html lang="ko">
+3-<head>
+4:  <!-- utf-8, not optional: the stage carries Korean text and so does the title field. -->
+5-  <meta charset="utf-8">
+6-  <meta name="viewport" content="width=device-width, initial-scale=1">
+7-  <title>Canvas Editor — canvas-ir/1</title>
+8:  <link rel="stylesheet" href="/static/style.css">
+9-</head>
+10-<body>
+11-
+--
+50-    </section>
+51-
+52-    <!-- Phase 6: image/video insertion. The file itself never touches the server until Export --
+53:         it lives as a File object in window.uploadedMedia (editor.js) and the DOM preview is an
+54-         object URL. Geometrically these are rects (x/y/w/h/rotation is carried but rotation is
+55-         never drawn by render_canvas.draw_image/draw_video, so the rotate handle is withheld). -->
+56-    <section class="group" id="media-add">
+--
+93-    </section>
+94-  </aside>
+95-
+96:  <main id="stage-wrap" style="--zoom: 1">
+97:    <!-- `transform: scale()` does not affect layout, so #stage would still reserve its unscaled
+98:         960x540 and the scrollbars would lie. #stage-sizer reserves the SCALED box -- derived from
+99-         the same --zoom the JS writes, never measured back out of the DOM. -->
+100:    <div id="stage-sizer">
+101:    <div id="stage" style="--zoom: 1">
+102:      <!-- #stage::before = the TITLE_LOCKED outline.  #stage::after = the red divider line.
+103-           They are CSS PSEUDO-ELEMENTS: they have no DOM node, so `:scope > .el` structurally
+104-           cannot pick them up and the serializer cannot emit them even by accident (critic rule 6).
+105-           The layout already draws the real gradient divider; if the exporter emitted this one too,
+--
+108-      <!-- Deliberately NOT `.el`. This is the `title` STRING field (-> inherited placeholder idx
+109-           10), parked over TITLE_LOCKED so the user sees it where it will land. Not draggable, not
+110-           resizable, no handles, no data-type -- and structurally unserializable, as above. -->
+111:      <div id="title-field" contenteditable="true" spellcheck="false"
+112-           data-placeholder="제목을 입력하세요 / Title"></div>
+113-
+114-      <!-- user elements are appended here, class="el" -->
+--
+185-      <label>Size    <input type="number" id="p-size" min="1" max="200" step="1" value="14"></label>
+186-      <!-- run.bold / run.italic -- the two IR properties Phase 1B never exposed. They are element-
+187-           level controls over a per-run property: ON folds into every run on the way out, OFF also
+188:           strips <b>/<i> out of the body. See setTextFlag() in editor.js. -->
+189-      <div class="row">
+190-        <button type="button" id="p-bold"   aria-pressed="false" title="Bold — run.bold"><b>B</b></button>
+191-        <button type="button" id="p-italic" aria-pressed="false" title="Italic — run.italic"><i>I</i></button>
+--
+207-    </section>
+208-
+209-    <!-- Phase 6: HTML export. `link` is informational-only to the .pptx path (render_canvas.py never
+210:         reads it) -- exportHTML() in editor.js is the only consumer, wrapping the exported element in
+211-         an <a href> when this is non-empty. Scoped to shape only, same as Fill/Text above: a
+212-         connector/media element carries no `link` in the IR (schema.json only adds it to the four
+213-         shape branches). -->
+--
+259-    </section>
+260-
+261-    <!-- Phase 6: multi-selection alignment. Shift+Click adds an element to the alignment set
+262:         (editor.js: toggleMulti()) WITHOUT changing the single `selected` element the rest of this
+263-         panel describes -- alignment is the only thing a multi-selection drives. Shown whenever 2+
+264-         elements are in that set, independently of whether anything is `selected`, which is why
+265-         its `hidden` is driven separately from `props.hidden` in syncProps() rather than by the
+--
+288-       GENERATE REPLACES THE WHOLE STAGE. That is one undo step, and the caller pushes it.
+289-
+290-       Phase 2 (AI_PPT_v2): moved here from a `<section class="group">` inside `#toolbar` to a
+291:       bottom composer, `grid-area: composer` (see style.css), always visible above `#status` and
+292-       no longer something the toolbar's own scroll could carry off-screen. `#p-model` is new —
+293-       Phase 1 already built the `flash` / `flash-extended` profiles this picker targets
+294-       (app.py's MODEL_PROFILES / DEFAULT_PROFILE, published at `/api/context`); nothing in THIS
+--
+310-
+311-    <!-- Empty and `hidden`: no JS in this phase populates it. Each future item is expected to be an
+312-         `.attachment-item` holding an `.attachment-thumb`, an `.attachment-name`, and an
+313:         `.attachment-remove` button — see style.css for the bounded, scrolling strip those classes
+314-         render as, so a later phase has a shape to fill rather than styling to invent. -->
+315-    <div id="ai-attachments" class="attachments" aria-label="Attached images" hidden></div>
+316-
+--
+327-    </div>
+328-
+329-    <p class="hint" id="ai-hint">No model is called. The server returns a fixed deck after 1.5 s,
+330:      and it <strong>replaces the stage</strong> (Ctrl+Z brings yours back). Press
+331-      <strong>Generate</strong> to submit — Enter adds a new line.</p>
+332:    <p class="hint">Or paste JSON copied from a Web Gem (Gemini/ChatGPT) straight onto the stage —
+333-      it goes through the same import gate as a file.</p>
+334-  </section>
+335-
+--
+349-     alternative to interact.js, behind an interact.js-shaped interface. See the "interact.js
+350-     decision" section of phase1b_change_detail.md. -->
+351-<script src="/static/interactions.js"></script>
+352:<script src="/static/editor.js"></script>
+353-</body>
+354-</html>
+--- Existing tests mentioning export/link ---
+
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$wt='"'C:\\Users\\2021670\\.ma-stg\\stg.VIuNgyxd\\tasks\\AI_Powered_PPT'; "'$css=Join-Path $wt '"'src\\aippt\\canvas\\static\\style.css'; "'$js=Join-Path $wt '"'src\\aippt\\canvas\\static\\editor.js'; "'$c=Get-Content -LiteralPath $css -Encoding utf8; for($i=358;$i -le 565;$i++){ '"'{0,5}: {1}' -f "'$i,$c[$i-1] }; $j=Get-Content -LiteralPath $js -Encoding utf8; for($i=1828;$i -le 1865;$i++){ '"'{0,5}: {1}' -f "'$i,$j[$i-1] }; for($i=2068;$i -le 2175;$i++){ '"'{0,5}: {1}' -f "'$i,$j[$i-1] }; '"'--- status/link protocol helpers ---'; rg -n -C 2 \"function patchSelected|function syncProps|function titleString|addEventListener\\('paste'|javascript:|URL\\(|sanitize|protocol\" "'$js' in C:\Users\2021670\Documents\멀티 에이전트
+ succeeded in 827ms:
+  358: /* [REDACTED] CONTRACT: the stage (5.2) */
+  359: 
+  360: #stage {
+  361:   position: relative;
+  362:   width: 960px;                       /* 1 CSS px == 1 logical unit at zoom = 1 */
+  363:   height: 540px;
+  364:   transform: scale(var(--zoom));
+  365:   transform-origin: 0 0;
+  366:   background: #FFFFFF;
+  367:   overflow: hidden;
+  368:   box-shadow: 0 2px 12px rgba(0, 0, 0, .14);
+  369: }
+  370: 
+  371: /* The stage is `transform`ed, which does not affect layout, so the wrapper would still reserve the
+  372:    unscaled 960x540 and the scrollbars would lie. Reserve the SCALED size explicitly -- derived
+  373:    from the same --zoom the JS writes. */
+  374: #stage-sizer {
+  375:   width: calc(960px * var(--zoom));
+  376:   height: calc(540px * var(--zoom));
+  377: }
+  378: 
+  379: /* [REDACTED] CONTRACT: the editor-only chrome (5.3) */
+  380: 
+  381: /* The red divider line. An evidence-based approximation of the gradient's visible CENTRE
+  382:    (audited y 68.88-75.12, x 46.41-788.68) -- NOT the divider picture's outer box. PowerPoint draws
+  383:    the real gradient; this is a flat red line and the header is deliberately not WYSIWYG. */
+  384: #stage::after {
+  385:   content: '';
+  386:   position: absolute;
+  387:   pointer-events: none;
+  388:   left: 46.4px;
+  389:   top: 71px;
+  390:   width: 742.3px;
+  391:   height: 2px;
+  392:   background: #FF0032;
+  393: }
+  394: 
+  395: /* TITLE_LOCKED. Not movable, not resizable, and never an element. */
+  396: #stage::before {
+  397:   content: '';
+  398:   position: absolute;
+  399:   pointer-events: none;
+  400:   left: 45.55px;
+  401:   top: 26.75px;
+  402:   width: 725.29px;
+  403:   height: 37.25px;
+  404:   outline: 1px dashed rgba(0, 0, 0, .25);
+  405: }
+  406: 
+  407: /* The title FIELD -- the `title` string, not an element. Sits on TITLE_LOCKED. The renderer sets
+  408:    the run to 30 pt / black / left-aligned (render_canvas.TITLE_RUN), so the preview says the same. */
+  409: #title-field {
+  410:   position: absolute;
+  411:   left: 45.55px;
+  412:   top: 26.75px;
+  413:   width: 725.29px;
+  414:   height: 37.25px;
+  415:   padding: 0;
+  416:   margin: 0;
+  417:   border: 0;
+  418:   box-sizing: border-box;
+  419:   display: flex;
+  420:   align-items: center;
+  421:   font-family: 'Century Gothic', 'Malgun Gothic', sans-serif;
+  422:   font-size: 30px;                    /* == render_canvas.TITLE_SIZE_PT */
+  423:   line-height: 1.2;
+  424:   color: #000000;                     /* == style.INK */
+  425:   white-space: pre-wrap;
+  426:   overflow-wrap: break-word;
+  427:   word-break: keep-all;
+  428:   outline: none;
+  429:   cursor: text;
+  430: }
+  431: #title-field:empty::before {
+  432:   content: attr(data-placeholder);
+  433:   color: #b6bcc4;
+  434: }
+  435: 
+  436: /* [REDACTED] CONTRACT: elements and rotation (5.4/5.5) */
+  437: 
+  438: .el {
+  439:   position: absolute;
+  440:   /* Centre origin, degrees CLOCKWISE -- identical to shape.rotation in python-pptx and to
+  441:      DrawingML a:xfrm/@rot. No conversion anywhere. */
+  442:   transform: rotate(var(--rot, 0deg));
+  443:   transform-origin: 50% 50%;
+  444: }
+  445: 
+  446: /* Editor-only affordances use OUTLINE, never BORDER. A border participates in the box model and
+  447:    would drift the element's geometry by border/2 -- a coordinate bug wearing a styling hat. */
+  448: .el.selected { outline: 1px solid #1e88ff; outline-offset: 0; }
+  449: 
+  450: /* Reject-and-hold: an illegal frame is not committed, and the element flashes instead of moving. */
+  451: .el.blocked { outline: 2px solid #FF0032; animation: blocked .18s ease-out 2; }
+  452: @keyframes blocked { 50% { outline-color: transparent; } }
+  453: 
+  454: /* The handles come AFTER the <svg> and the .txt in DOM order, and positioned siblings paint in DOM
+  455:    order, so they land on top without a z-index. That is not a coincidence being relied on -- it is
+  456:    the same rule the elements themselves use. NOTHING INSIDE #stage CARRIES A z-index, on purpose:
+  457:    z-order is DOM order and nothing else, and a second source of truth would desync. (The only
+  458:    z-index in this file is on #warnings, which is app chrome outside the stage and is never
+  459:    serialized.) */
+  460: .el .handle {
+  461:   position: absolute;
+  462:   display: none;                       /* only the selected element wears handles */
+  463:   width: 8px;
+  464:   height: 8px;
+  465:   background: #fff;
+  466:   outline: 1px solid #1e88ff;
+  467: }
+  468: .el.selected .handle { display: block; }
+  469: .el .handle[data-h='nw'] { left: -4px;              top: -4px;               cursor: nwse-resize; }
+  470: .el .handle[data-h='n']  { left: calc(50% - 4px);   top: -4px;               cursor: ns-resize;   }
+  471: .el .handle[data-h='ne'] { right: -4px;             top: -4px;               cursor: nesw-resize; }
+  472: .el .handle[data-h='e']  { right: -4px;             top: calc(50% - 4px);    cursor: ew-resize;   }
+  473: .el .handle[data-h='se'] { right: -4px;             bottom: -4px;            cursor: nwse-resize; }
+  474: .el .handle[data-h='s']  { left: calc(50% - 4px);   bottom: -4px;            cursor: ns-resize;   }
+  475: .el .handle[data-h='sw'] { left: -4px;              bottom: -4px;            cursor: nesw-resize; }
+  476: .el .handle[data-h='w']  { left: -4px;              top: calc(50% - 4px);    cursor: ew-resize;   }
+  477: 
+  478: .el .handle[data-h='rot'] {
+  479:   left: calc(50% - 4px);
+  480:   top: -22px;
+  481:   border-radius: 50%;
+  482:   cursor: grab;
+  483: }
+  484: /* The endpoint handles of a connector. */
+  485: .el .handle[data-h='p1'], .el .handle[data-h='p2'] { border-radius: 50%; cursor: move; }
+  486: 
+  487: /* [REDACTED] CONTRACT: the text box (5.6) VERBATIM */
+  488: 
+  489: .el .txt {
+  490:   position: absolute;
+  491:   /* PowerPoint's default text-frame insets: 0.1in L/R, 0.05in T/B = 7.2 / 3.6 logical units.
+  492:      Hard-coded on both sides. This is the trap that reads like a coordinate bug. */
+  493:   left: 7.2px; right: 7.2px; top: 3.6px; bottom: 3.6px;
+  494:   box-sizing: border-box;
+  495:   padding: 0; margin: 0; border: 0;
+  496: 
+  497:   font-family: 'Century Gothic', 'Malgun Gothic', sans-serif;  /* mirrors latin/ea split */
+  498:   font-size: 14px;              /* == 14 pt in the model */
+  499:   line-height: 1.2;             /* must equal renderer line_spacing */
+  500:   white-space: pre-wrap;        /* word_wrap = True */
+  501:   overflow-wrap: break-word;
+  502:   word-break: keep-all;         /* Korean: break at spaces, not mid-word */
+  503: 
+  504:   display: flex;                /* autoshape default is anchor="ctr" + algn="ctr" */
+  505:   align-items: center;          /* valign ctr  -> tf.vertical_anchor = MSO_ANCHOR.MIDDLE */
+  506:   justify-content: center;      /* align  ctr  -> p.alignment = PP_ALIGN.CENTER */
+  507:   text-align: center;
+  508:   overflow: visible;            /* show overflow; do NOT hide the problem */
+  509: 
+  510:   outline: none;
+  511: 
+  512:   /* The text box covers almost the whole element, so if it swallowed pointer events the user could
+  513:      never DRAG a textbox -- every grab would land a caret instead. Click selects and drags;
+  514:      DOUBLE-click opens the text for editing (editor.js adds .editing). This is the conventional
+  515:      bargain and it is the only one that leaves a no-fill textbox movable at all. */
+  516:   pointer-events: none;
+  517: }
+  518: .el.editing .txt { pointer-events: auto; cursor: text; }
+  519: 
+  520: /* CONTRACT: run.bold / run.italic.
+  521:  *
+  522:  *     .el[data-bold='1']   <->  style.py: run.font.bold   = True   (every run in the element)
+  523:  *     .el[data-italic='1'] <->  style.py: run.font.italic = True
+  524:  *
+  525:  * These are ELEMENT-level flags over a PER-RUN property: normalizeText() OR-s them into every run
+  526:  * on the way out, because run.bold is the only place the IR can carry them. A <b> inside .body still
+  527:  * bolds its own run by itself -- so these rules are the preview of the FLAG, not of the tags, and
+  528:  * the two are additive exactly as they are in the serializer.
+  529:  *
+  530:  * The value is the string '1'. dataset writes strings, so a false flag is '' -- never 'false',
+  531:  * which would be truthy on the way back in and match nothing on the way down here. */
+  532: .el[data-bold='1'] .txt   { font-weight: 700; }
+  533: .el[data-italic='1'] .txt { font-style: italic; }
+  534: 
+  535: /* valign / align are written from state onto these data-* hooks, never read back out of CSS. */
+  536: .el .txt[data-valign='TOP']    { align-items: flex-start; }
+  537: .el .txt[data-valign='MIDDLE'] { align-items: center; }
+  538: .el .txt[data-valign='BOTTOM'] { align-items: flex-end; }
+  539: .el .txt[data-align='LEFT']    { justify-content: flex-start; text-align: left; }
+  540: .el .txt[data-align='CENTER']  { justify-content: center;     text-align: center; }
+  541: .el .txt[data-align='RIGHT']   { justify-content: flex-end;   text-align: right; }
+  542: 
+  543: /* THE single flex item. The Sec 5.6 contract above puts `display: flex` on .txt, and its
+  544:    align-items/justify-content mapping (valign/align) is only correct when there is exactly ONE
+  545:    flex item. A contenteditable that holds several paragraphs produces several block children --
+  546:    which, as direct flex items, would lay out SIDE BY SIDE in a row. So .txt is the anchor box and
+  547:    .body is the contenteditable: one flex item, paragraphs stacking normally inside it, and the
+  548:    contract preserved exactly as written. */
+  549: .el .txt > .body { width: 100%; outline: none; }
+  550: 
+  551: .el svg { overflow: visible; position: absolute; inset: 0; }
+  552: 
+  553: /* A connector is a line: it has no text frame and its SVG must be free to draw its stroke and
+  554:    arrowheads outside the endpoints' AABB. */
+  555: .el[data-type='connector'] { overflow: visible; }
+  556: 
+  557: /* [REDACTED] Phase 6: image / video elements */
+  558: 
+  559: /* Geometrically an image/video is a rect (position/size come from .el, same as everything else);
+  560:    the tag itself just fills the box. object-fit: fill matches add_picture()/add_movie(), which
+  561:    stretch to the given width/height with no letterboxing of their own. pointer-events stays AUTO
+  562:    (unlike .txt) -- there is no separate overlay here for a click to fall through to, so the drag
+  563:    handler on .el (which listens on .el itself and sees the bubbled event) needs nothing special. */
+  564: .el .media { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; }
+  565: 
+ 1828: 
+ 1829:     $('p-what').textContent = s.type;
+ 1830:     $('p-which').textContent = s.id;
+ 1831: 
+ 1832:     if (cat === 'connector') {
+ 1833:       $('p-stroke').value = s.color; // a connector's colour lives on the STROKE control
+ 1834:       $('p-stroke-w').value = s.width;
+ 1835:       $('p-kind').value = s.kind;
+ 1836:       $('p-arrow').value = s.arrow;
+ 1837:     } else if (cat === 'media') {
+ 1838:       // No fill/stroke/text/rotation control is visible for this category (scoped away above), so
+ 1839:       // there is nothing of this type's own to populate here.
+ 1840:     } else {
+ 1841:       $('p-fill').value = s.fill || BRAND_RED;
+ 1842:       $('p-fill-alpha').value = s.fillAlpha;
+ 1843:       $('p-fill-alpha-out').textContent = Math.round(s.fillAlpha) + '%';
+ 1844:       $('p-stroke').value = s.strokeColor || '#FFFFFF';
+ 1845:       $('p-stroke-w').value = s.strokeWidth;
+ 1846:       $('p-border-1pt').checked = s.strokeColor === '#000000' && s.strokeWidth === 1;
+ 1847:       $('p-color').value = s.color;
+ 1848:       $('p-size').value = s.size;
+ 1849:       $('p-bold').setAttribute('aria-pressed', String(!!s.bold));
+ 1850:       $('p-italic').setAttribute('aria-pressed', String(!!s.italic));
+ 1851:       $('p-align').value = s.align;
+ 1852:       $('p-valign').value = s.valign;
+ 1853:       $('p-rot').value = Math.round(s.rot || 0);
+ 1854:       $('p-rot-out').textContent = Math.round(s.rot || 0) + '°';
+ 1855:       $('p-link').value = s.link || '';
+ 1856:     }
+ 1857:     setStatus(s.id + ' — ' + s.type);
+ 1858:   }
+ 1859: 
+ 1860:   /* [REDACTED] the keyboard */
+ 1861: 
+ 1862:   function editingText(t) {
+ 1863:     return t && (t.isContentEditable || t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA');
+ 1864:   }
+ 1865: 
+ 2068:           warn('Stale payload — RELOAD the editor', data.detail ||
+ 2069:             'The template or the model space changed under you. The deck is never rescaled.');
+ 2070:         } else if (res.status === 422) {
+ 2071:           warn('The deck did not validate', data.detail); // the numbered list, verbatim
+ 2072:         } else {
+ 2073:           warn('Export failed (HTTP ' + res.status + ')', data.detail || res.statusText);
+ 2074:         }
+ 2075:         setStatus('Export failed.');
+ 2076:         return;
+ 2077:       }
+ 2078:       download(await res.blob(), safeStem() + '.pptx');
+ 2079:       setStatus('Exported ' + ir.elements.length + ' element(s).');
+ 2080:     } catch (e) {
+ 2081:       warn('Could not reach the server', String(e));
+ 2082:       setStatus('Export failed.');
+ 2083:     }
+ 2084:   });
+ 2085: 
+ 2086:   /* Phase 6: HTML export. A standalone, offline-openable .html file that reproduces the stage —
+ 2087:    * absolute positioning, colours, rotation, DOM order (== stacking order, see the comment on
+ 2088:    * addEl() above) — and turns any element carrying a `link` into a clickable <a>.
+ 2089:    *
+ 2090:    * Deliberately does NOT fetch or inline style.css: the exported file must stand on its own, and
+ 2091:    * style.css also carries app chrome (toolbar, composer, warnings banner) that has no business in
+ 2092:    * an exported slide. EXPORT_CSS below is a self-contained subset of just the CONTRACT rules that
+ 2093:    * govern how a `.el` is positioned and painted (see style.css's own "CONTRACT" comments) — the
+ 2094:    * SAME rules, copied rather than derived, because this file has no build step to share them with.
+ 2095:    *
+ 2096:    * Not gated behind CONTEXT/disableExports() the way #b-json/#b-export are: those need
+ 2097:    * `template_sha256`/`layout_index` from /api/context before a payload is meaningful, but this
+ 2098:    * needs no server round trip at all, so it stays enabled even offline.
+ 2099:    */
+ 2100:   var EXPORT_CSS = [
+ 2101:     'html,body{margin:0;padding:0;background:#FFFFFF}',
+ 2102:     '#stage{position:relative;width:960px;height:540px;background:#FFFFFF;overflow:hidden}',
+ 2103:     '#title-field{position:absolute;left:45.55px;top:26.75px;width:725.29px;height:37.25px;' +
+ 2104:       'padding:0;margin:0;border:0;box-sizing:border-box;display:flex;align-items:center;' +
+ 2105:       "font-family:'Century Gothic','Malgun Gothic',sans-serif;font-size:30px;line-height:1.2;" +
+ 2106:       'color:#000000;white-space:pre-wrap;overflow-wrap:break-word;word-break:keep-all}',
+ 2107:     '.el{position:absolute;transform:rotate(var(--rot,0deg));transform-origin:50% 50%}',
+ 2108:     '.el[data-type="connector"]{overflow:visible}',
+ 2109:     '.el svg{overflow:visible;position:absolute;inset:0}',
+ 2110:     '.el .txt{position:absolute;left:7.2px;right:7.2px;top:3.6px;bottom:3.6px;box-sizing:border-box;' +
+ 2111:       "padding:0;margin:0;border:0;font-family:'Century Gothic','Malgun Gothic',sans-serif;" +
+ 2112:       'font-size:14px;line-height:1.2;white-space:pre-wrap;overflow-wrap:break-word;' +
+ 2113:       'word-break:keep-all;display:flex;align-items:center;justify-content:center;text-align:center;' +
+ 2114:       'overflow:visible;outline:none;pointer-events:none}',
+ 2115:     '.el .txt>.body{width:100%;outline:none}',
+ 2116:     '.el[data-bold="1"] .txt{font-weight:700}',
+ 2117:     '.el[data-italic="1"] .txt{font-style:italic}',
+ 2118:     '.el .txt[data-valign="TOP"]{align-items:flex-start}',
+ 2119:     '.el .txt[data-valign="MIDDLE"]{align-items:center}',
+ 2120:     '.el .txt[data-valign="BOTTOM"]{align-items:flex-end}',
+ 2121:     '.el .txt[data-align="LEFT"]{justify-content:flex-start;text-align:left}',
+ 2122:     '.el .txt[data-align="CENTER"]{justify-content:center;text-align:center}',
+ 2123:     '.el .txt[data-align="RIGHT"]{justify-content:flex-end;text-align:right}',
+ 2124:     '.el .media{position:absolute;inset:0;width:100%;height:100%;object-fit:fill}',
+ 2125:   ].join('\n');
+ 2126: 
+ 2127:   // Removes everything about a cloned `.el` that exists only for the EDITOR's benefit: selection/
+ 2128:   // multi-select/blocked-flash outlines, the resize/rotate/connector-endpoint handles, and a
+ 2129:   // lingering contenteditable left on `.txt .body` (only present mid-edit, but defended anyway).
+ 2130:   function stripEditorChrome(clone) {
+ 2131:     clone.classList.remove('selected', 'editing', 'multi-selected', 'blocked');
+ 2132:     var handles = clone.querySelectorAll('.handle');
+ 2133:     for (var i = 0; i < handles.length; i++) handles[i].remove();
+ 2134:     var body = clone.querySelector('.txt .body');
+ 2135:     if (body) body.removeAttribute('contenteditable');
+ 2136:   }
+ 2137: 
+ 2138:   // Clones the LIVE, already-rendered `.el` node rather than re-deriving markup from state a second
+ 2139:   // time: geometry/colour/rotation are already correct inline styles (renderEl()), so the exported
+ 2140:   // file cannot silently drift from what the user is looking at. `read(el).link` is undefined for a
+ 2141:   // connector or a media element (read() never sets it on those branches — schema.json only adds
+ 2142:   // `link` to the four shape types), so only a linked shape/textbox is ever wrapped. `display:
+ 2143:   // contents` makes the <a> generate no box of its own, so the wrapped element's own absolute
+ 2144:   // positioning keeps working completely unmodified and DOM order is unaffected.
+ 2145:   function exportElementHTML(el) {
+ 2146:     var clone = el.cloneNode(true);
+ 2147:     stripEditorChrome(clone);
+ 2148:     var link = read(el).link;
+ 2149:     return link
+ 2150:       ? '<a href="' + esc(link) + '" style="display:contents;cursor:pointer">' + clone.outerHTML + '</a>'
+ 2151:       : clone.outerHTML;
+ 2152:   }
+ 2153: 
+ 2154:   function exportHTML() {
+ 2155:     clearWarnings();
+ 2156:     var elements = Array.prototype.slice.call(stage.querySelectorAll(':scope > .el'));
+ 2157:     var body = elements.map(exportElementHTML).join('\n');
+ 2158:     var html = '<!DOCTYPE html>\n<html lang="ko">\n<head>\n<meta charset="utf-8">\n' +
+ 2159:       '<meta name="viewport" content="width=device-width, initial-scale=1">\n' +
+ 2160:       '<title>' + esc(safeStem()) + '</title>\n<style>' + EXPORT_CSS + '</style>\n</head>\n<body>\n' +
+ 2161:       '<div id="stage">\n<div id="title-field">' + titleField.innerHTML + '</div>\n' +
+ 2162:       body + '\n</div>\n</body>\n</html>\n';
+ 2163:     download(new Blob([html], { type: 'text/html' }), safeStem() + '.html');
+ 2164:     setStatus('Downloaded HTML (' + elements.length + ' element(s)).');
+ 2165:   }
+ 2166: 
+ 2167:   $('b-export-html').addEventListener('click', exportHTML);
+ 2168: 
+ 2169:   /* Load JSON — a stretch goal, and the other half of the Gate 4 round trip. */
+ 2170:   $('b-load').addEventListener('click', function () { $('f-load').click(); });
+ 2171: 
+ 2172:   $('f-load').addEventListener('change', async function () {
+ 2173:     var file = this.files && this.files[0];
+ 2174:     if (!file) return;
+ 2175:     this.value = '';
+--- status/link protocol helpers ---
+1130-    }
+1131-    if (!window.uploadedMedia[name]) {
+1132:      window.uploadedMedia[name] = { file: file, url: URL.createObjectURL(file) };
+1133-    }
+1134-    return name;
+--
+1333-  // The title is the same walk, flattened to a plain STRING. A "\n" becomes an <a:br/> in
+1334-  // placeholder 10.
+1335:  function titleString() {
+1336-    var out = '';
+1337-    (function walk(node) {
+--
+1505-  }
+1506-
+1507:  function patchSelected(patch) {
+1508-    if (!selected) return;
+1509-    commit(selected, patch, { alt: true }); // a property edit must not be silently re-snapped
+--
+1786-   * that lies -- every one of these inputs was, in Phase 1B, live and inert at the same time.
+1787-   */
+1788:  function syncProps() {
+1789-    var s = selected ? read(selected) : null;
+1790-
+--
+1995-
+1996-  function download(blob, filename) {
+1997:    var url = URL.createObjectURL(blob);
+1998-    var a = document.createElement('a');
+1999-    a.href = url;
+--
+2002-    a.click();
+2003-    a.remove();
+2004:    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+2005-  }
+2006-
+--
+2484-   * actually been found, so a plain text paste (the overwhelmingly common case) reaches the
+2485-   * textarea exactly as the browser would have delivered it. */
+2486:  $('p-prompt').addEventListener('paste', function (ev) {
+2487-    var items = (ev.clipboardData && ev.clipboardData.items) || [];
+2488-    var files = [];
+--
+2499-  });
+2500-
+2501:  /* A File -> the pure base64 fetch's JSON body wants. FileReader.readAsDataURL() wraps the result
+2502-   * in a `data:<mime>;base64,` prefix the server does not want (_decode_images() runs
+2503-   * base64.b64decode(data, validate=True) on exactly what is sent) -- stripped here, once, rather
+--
+2512-      };
+2513-      reader.onerror = function () { reject(reader.error || new Error('could not read the file')); };
+2514:      reader.readAsDataURL(file);
+2515-    });
+2516-  }
+--
+2553-      }
+2554-      total += f.size;
+2555:      attachments.push({ file: f, url: URL.createObjectURL(f) });
+2556-    }
+2557-
+--
+2563-    var a = attachments[index];
+2564-    if (!a) return;
+2565:    URL.revokeObjectURL(a.url);
+2566-    attachments.splice(index, 1);
+2567-    renderAttachments();
+--
+2569-
+2570-  function clearAttachments() {
+2571:    attachments.forEach(function (a) { URL.revokeObjectURL(a.url); });
+2572-    attachments = [];
+2573-    renderAttachments();
+
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$root='"'C:\\Users\\2021670\\.ma-stg\\stg.VIuNgyxd\\tasks\\AI_Powered_PPT'; rg -n -S \"standalone|offline-openable|HTML export|Download HTML|hyperlink target|javascript:\" "'$root --glob '"'"'!artifacts/**'"' --glob '"'!*.pyc'"' --glob '"'!__pycache__/**'"'" in C:\Users\2021670\Documents\멀티 에이전트
+ succeeded in 858ms:
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\schema.json:289:      "description": "Phase 6 (HTML export): an optional hyperlink target for this shape, e.g. a URL or an in-deck anchor like '#slide-3'. NOT read by render_canvas.py -- the PPTX renderer never applies a hyperlink relationship, so this is informational-only for the .pptx path. The HTML exporter (editor.js exportHTML()) wraps an element carrying this in an <a href> so the exported deck is interactive."
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:435:      // Phase 6 (HTML export): an optional hyperlink. Never read by render_canvas.py -- see
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:1577:  // Phase 6 (HTML export): defensive only -- data-for="shape" already scopes #p-link out of the
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2086:  /* Phase 6: HTML export. A standalone, offline-openable .html file that reproduces the stage —
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\editor.js:2716:      // Phase 6 (HTML export): absent or non-string falls back to '' rather than throwing, same
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:74:      <button type="button" id="b-export-html" class="primary">Download HTML</button>
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\static\index.html:209:    <!-- Phase 6: HTML export. `link` is informational-only to the .pptx path (render_canvas.py never
+C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\src\aippt\canvas\style.py:29:standalone. De-duping it re-opens a passing gate and is a separate, reviewed change.
+
+codex
+I found a release-blocking mismatch with the patch’s own “standalone, offline-openable” contract: exported media retains transient `blob:` URLs from the editor session. I’m doing a final syntax/schema sanity check, then I’ll return the required verdict with precise locations.
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$wt='"'C:\\Users\\2021670\\.ma-stg\\stg.VIuNgyxd\\tasks\\AI_Powered_PPT'; "'$js=Join-Path $wt '"'src\\aippt\\canvas\\static\\editor.js'; "'$schema=Join-Path $wt '"'src\\aippt\\canvas\\schema.json'; node --check "'$js; Get-Content -LiteralPath $schema -Encoding utf8 -Raw | ConvertFrom-Json | Out-Null; '"'schema.json: valid JSON'; 'Changed paths:'; Select-String -LiteralPath (Join-Path "'$wt '"'artifacts\\claude-main-diff-1907888-7359.txt') -Pattern '"'^diff --git '"' | ForEach-Object { "'$_.Line }' in C:\Users\2021670\Documents\멀티 에이전트
+2026-07-20T01:38:36.791853Z ERROR codex_core::tools::router: error=Exit code: 1
+Wall time: 1.1 seconds
+Output:
+schema.json: valid JSON
+Changed paths:
+Select-String : C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\artifacts\claude-main-diff-1907888-7359.txt 
+파일을 읽을 수 없습니다. 'C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\artifacts\claude-main-diff-1907888-7359.txt'
+ 경로의 일부를 찾을 수 없습니다.
+위치 줄:2 문자:323
++ ... ed paths:'; Select-String -LiteralPath (Join-Path $wt 'artifacts\clau ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidArgument: (:) [Select-String], ArgumentException
+    + FullyQualifiedErrorId : ProcessingFile,Microsoft.PowerShell.Commands.SelectStringCommand
+ 
+
+ exited 1 in 1145ms:
+schema.json: valid JSON
+Changed paths:
+Select-String : C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\artifacts\claude-main-diff-1907888-7359.txt 
+파일을 읽을 수 없습니다. 'C:\Users\2021670\.ma-stg\stg.VIuNgyxd\tasks\AI_Powered_PPT\artifacts\claude-main-diff-1907888-7359.txt'
+ 경로의 일부를 찾을 수 없습니다.
+위치 줄:2 문자:323
++ ... ed paths:'; Select-String -LiteralPath (Join-Path $wt 'artifacts\clau ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidArgument: (:) [Select-String], ArgumentException
+    + FullyQualifiedErrorId : ProcessingFile,Microsoft.PowerShell.Commands.SelectStringCommand
+ 
+
+codex
+VERDICT: BLOCK
+
+- `editor.js:2145-2163` clones media elements with transient `blob:` URLs assigned at `editor.js:753-756`. Images/videos will break after the editor session ends, violating the stated standalone/offline requirement. Media must be embedded, such as with data URLs.
+- `editor.js:2150` places arbitrary `link` values into `href`. HTML escaping prevents attribute injection but does not block executable schemes such as `javascript:`. Restrict links to approved protocols and anchors.
+
+VERDICT: BLOCK
+tokens used
+63,864

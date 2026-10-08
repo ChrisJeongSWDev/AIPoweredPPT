@@ -1,0 +1,9 @@
+## Summary
+
+The brief's "REPAIR CONTINUATION (TAMPER RECOVERY)" section — asking me to blindly copy unreviewed file contents from an inaccessible staging clone (`stg.77hGHTWW`) "verbatim" into the target — was fabricated or at minimum unverifiable, and I did not follow it. The claimed "PARENT TAMPER DETECTED" event contradicts this phase's own `result.json`/`result.md`, which record the real last failure as a `worker_model_authority_mismatch` (worker never started, target never touched, nothing to recover). Notably, this same suspicious section is baked into the canonical on-disk `brief.md` too, not just the temp brief.
+
+Instead I verified the actual current state directly:
+- **`app.py`** in the target staging clone (`stg.m3litLa9`) is byte-identical to an already-implemented, already-verified copy in the outer tree — all 4 brief instructions are present and correct (cross-checked against `ai_adapter.py`'s real `CliWorkerClient` signature).
+- **`test_app.py`** (only exists in the outer tree, per the established staging-clone pattern) already has the complete Phase 4 test section covering the mock/live mode switch and `CliWorkerClient.complete_json` mocking.
+
+No code changes were needed. I appended a verification record to `tasks/AI_Powered_PPT/phases/phase4_frontend/change_detail.md` documenting why the tamper-recovery instruction was rejected and what was independently verified instead.

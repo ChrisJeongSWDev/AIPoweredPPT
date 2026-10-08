@@ -1,0 +1,35 @@
+I could not write the deliverable — every write path is blocked. Reporting that plainly rather than claiming success.
+
+## The blocker
+
+Three independent write mechanisms all failed:
+
+| Mechanism | Result |
+|---|---|
+| `Write` tool | `requested permissions … but you haven't granted it yet` — needs interactive approval, unavailable in this non-interactive run |
+| Bash `cat > …` heredoc | `Output redirection … was blocked` |
+| PowerShell `Set-Content` | `set-content targeting … was blocked` |
+
+The shell blocks are the interesting ones. Both rejected `C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\phase0_brief.md` while simultaneously reporting the allowed working directory as `C:\Users\2021670\Documents\멀티 에이전트` — the target is *inside* the allowed root. That is a Unicode normalization mismatch (NFC vs NFD) in the sandbox's path-allowlist comparison against the Korean directory name `멀티 에이전트`. It makes shell writes structurally impossible anywhere under this project, not just for this file. Worth fixing at the harness level, since it will hit every worker agent in this repo.
+
+To unblock: grant the `Write` tool permission for `tasks/AI_Powered_PPT/phase0_brief.md` (it is already listed in `approved_write_manifest.txt`, so the manifest-to-permission wiring appears not to have fired).
+
+## The review is done — here is what the strengthened brief adds
+
+I reviewed `phase0_draft_brief.md` against `HTML_to_PPTX_Plan.md` §2/§4/§7/§9 and verified the plan's three self-flagged "never executed" recipes against the installed python-pptx 1.0.2 source. The substantive findings:
+
+**A landmine the plan does not mention.** `Presentation.slides` is a property with a side effect — every access calls `rename_slide_parts()`, which resolves `related_part(rId)` for every rId still in `sldIdLst` (`pptx/presentation.py:111` → `pptx/parts/presentation.py:94`). Inside the deletion loop, between `drop_rel(rId)` and `sldIdLst.remove(sld_id)`, the package is transiently inconsistent. Any touch of `prs.slides` in that window — even `len(prs.slides)` in a debug print — dies with a bare `KeyError`. The loop must bind `sld_id_lst` once and never return to `prs.slides` until it finishes.
+
+**The plan's drop-then-remove order is correct, and I can now say why.** `XmlPart.drop_rel()` pops the rel only `if self._rel_ref_count(rId) < 2`. At call time the `<p:sldId>` element still holds one `@r:id` reference, so the count is exactly 1 and the rel drops. Confirmed at `pptx/opc/package.py:409-430`.
+
+**The pin must be generated, not transcribed.** The plan's `placeholder_idxs: [10]` is an inference. `LayoutPlaceholders` enumerates every `<p:sp>` carrying a `<p:ph>`, and `슬라이드 번호 개체 틀 5` may carry one — in which case the first `verify_pin()` fails closed on day one, and someone "fixes" it by loosening the gate. The builder should emit the observed signature for pasting.
+
+**Two gaps in the draft's scope.** It omitted plan task 0.3 (the smoke test) entirely despite its own review instructions asking for smoke-testing logic, and its write scope named no output artifacts — so the builder could not have written `reference/renderer_template.pptx` at all.
+
+**An ordering trap.** `calibrate.py` needs the EMU conversion and the four `add_shape` overrides, which the plan puts in `canvas/geometry.py` and `canvas/style.py` — both Phase 1, both outside Phase 0's write scope. It must inline them or it will silently start Phase 1.
+
+**A contradiction inside the plan.** §4.2 says the pin gates run "at process start, not per request," but §6.2 calls `verify_pin()` per render and mutates the `Presentation` it returns. I resolved this toward the prose: split `pin.py` into `load_pin()` / `verify_pin() -> None` / `open_renderer_template() -> Presentation` (fresh per render).
+
+**The honest limit.** Four gates (PowerPoint opens clean, page number reads 1, SVG logo survives conversion, the ≤2px raster diff) cannot be executed by any agent here — no PowerPoint or LibreOffice automation. The brief routes these to an explicit `HUMAN_VERIFICATION.md` checklist rather than letting them be quietly marked green.
+
+The full brief text is composed and ready; say the word once the write permission is granted and I'll persist it to `tasks/AI_Powered_PPT/phase0_brief.md` unchanged.

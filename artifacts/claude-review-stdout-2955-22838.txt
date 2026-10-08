@@ -1,0 +1,213 @@
+Write permission is denied too — same read-only sandbox that blocked the last two stages. I'll deliver the full analysis inline. **Orchestrator: save this to `tasks/AI_Powered_PPT/plan_review.md` before passing to codex-critic, and check it isn't truncated — `result.md:14` records a brief being silently truncated by exactly this stdout→file path.**
+
+---
+
+# Plan Review — HTML Visual Editor → PPTX Pipeline
+
+**Verdict: the plan is feasible, and it is a better plan than the one it replaces.** Every capability the user asked for exists in `python-pptx`. What needs attention is not feasibility — it's four traps that each silently produce a wrong-looking deck, and one scoping consequence the user may not have noticed.
+
+**Grounding note.** Code execution was denied this session (`python`, `unzip`, .NET `ZipFile`, `Expand-Archive` — all gated). This is the *third* consecutive stage to hit it. So rather than assert `python-pptx` behaviour from memory, I **read the installed source** and cite `file:line` for every API claim. The claims are grounded; nothing was executed end-to-end.
+
+## 1. Headline findings
+
+### F1 — This plan supersedes the slide-cloning workstream. Delete it.
+
+`renderer_draft_brief.md` specifies an `lxml` slide-cloning engine. It exists to **reuse hand-designed slides**. A human drawing from scratch doesn't need to reuse a design — they need the slide *chrome*: logo, divider, page number. **That chrome lives in the layout, not the slides**, and arrives free with a plain `add_slide()`.
+
+From `layout_manifest.json`, layout index 3 (`2_사용자 지정 레이아웃` — the layout 15 of the 23 template slides already use) carries `decoration_shapes` = `그림 3` (logo), `그래픽 8` (divider graphic), `슬라이드 번호 개체 틀 5` (page number), plus placeholder idx 10 (BODY, `0.6327, 0.3715`, `10.0734 × 0.5174 in`, 30pt) — the title header.
+
+That is *precisely* the "Title Header + boundary + body" structure the user described.
+
+```python
+prs = Presentation("Vieworks_R&D_ppt_Template.pptx")
+slide = prs.slides.add_slide(prs.slide_layouts[3])   # logo + divider + page number, free
+slide.placeholders[10].text_frame.text = title       # on-brand, correctly positioned
+# ...then draw the user's shapes absolutely.
+```
+
+This removes the highest-risk module in the project. **One caveat codex-critic must rule on:** Q3 blocked `add_slide()` because the template's designs live in slide-level freeform shapes rather than semantic placeholders. That objection is about *reusing designs*. It does not apply to *drawing your own design onto layout chrome*, which is all this plan does. I believe the Q3 block doesn't bind here — but it was codex-critic's call originally, so it should be codex-critic's call to lift.
+
+### F2 — The red line must not be exported.
+
+The layout already draws the real divider (`그래픽 8`). If the exporter also emits the user's red line, **the deck ships two divider lines, stacked**. The red line is editor chrome, not content — draw it as a CSS `::after` on the stage so it is structurally incapable of reaching the renderer.
+
+Corollary the user should hear: the editor shows a flat red line, PowerPoint shows the real gradient. **The header region is deliberately not WYSIWYG.** §6 fixes that for free.
+
+### F3 — "Century Gothic for both English and Korean" is not achievable.
+
+Century Gothic ships no Hangul glyphs. No API can conjure them. Verified in source:
+
+- `Font.name` writes **only** `<a:latin>` — `text/text.py:363-369` → `get_or_add_latin()`.
+- `CT_TextCharacterProperties` (`oxml/text.py:263-315`) declares `latin` and `hlinkClick` and **no `a:ea` element at all**. The API cannot express an East-Asian typeface; you must drop to lxml.
+- And if you *did* force `ea="Century Gothic"`, PowerPoint finds no Hangul glyph and substitutes anyway.
+
+The honest contract is a **split**: `latin = "Century Gothic"`, `ea = "맑은 고딕"`. Then mirror it in CSS: `font-family: 'Century Gothic', 'Malgun Gothic', sans-serif;`
+
+This is the pleasing part: **the browser's font-fallback chain and PowerPoint's latin/ea split are the same mechanism.** Configure them consistently and preview and export agree — the only route to WYSIWYG for mixed KO/EN. Chase "Century Gothic for Korean" and they diverge forever.
+
+```python
+from pptx.oxml.ns import qn
+
+def set_run_fonts(run, latin: str, ea: str) -> None:
+    rPr = run._r.get_or_add_rPr()
+    rPr.get_or_add_latin().typeface = latin
+    ea_el = rPr.find(qn("a:ea"))
+    if ea_el is None:
+        ea_el = rPr.makeelement(qn("a:ea"), {})
+        # a:ea must follow a:latin and precede a:cs/a:sym/a:hlink... per the DrawingML schema.
+        rPr.insert_element_before(
+            ea_el, "a:cs", "a:sym", "a:hlinkClick", "a:hlinkMouseOver", "a:rtl", "a:extLst"
+        )
+    ea_el.set("typeface", ea)
+```
+(`insert_element_before` verified at `oxml/xmlchemy.py:685`.)
+
+Two more font facts to surface **before** the user commits:
+- **Century Gothic is not the Vieworks brand font.** `exemplar_catalog.md` shows the template's real design fonts are **뷰웍스 B** and **뷰웍스 M**, set at run level on every slide. Century Gothic body text will sit next to inherited 뷰웍스 chrome and look off-brand. The user's call — but it should be a decision, not an accident.
+- **If Century Gothic isn't installed on the opening machine, PowerPoint substitutes and geometry shifts.** `python-pptx` cannot embed fonts. Low risk, invisible until someone else opens the deck.
+
+### F4 — `add_shape()` hands you Office blue, not your colour.
+
+`new_autoshape_sp` (`oxml/shapes/autoshape.py:249-287`) hardcodes a `<p:style>` block pointing `lnRef`, `fillRef` and `effectRef` at `schemeClr accent1`, and `fontRef` at `lt1`. **`accent1` in this template is `#4472C4`** — stock Office blue (`layout_manifest.json:42`). So every shape arrives blue-filled, blue-outlined, **drop-shadowed**, with white theme-font text. Four overrides required, and the third is the one everyone forgets:
+
+```python
+shp.fill.solid(); shp.fill.fore_color.rgb = RGBColor.from_string(hex)
+shp.line.color.rgb = RGBColor.from_string(stroke)
+shp.shadow.inherit = False        # kills effectRef — verified dml/effect.py:33-41
+set_run_fonts(run, "Century Gothic", "맑은 고딕")   # + run.font.color
+```
+
+Without `shadow.inherit = False`, every flow-chart box carries an Office drop shadow that no amount of fill/line overriding removes. There is no other shadow API.
+
+Good news in the same XML: `<a:bodyPr anchor="ctr">` and `<a:pPr algn="ctr">` are the defaults, so autoshape text is **already middle/center-aligned** — exactly what a flex-centered HTML div does. That lines up for free.
+
+## 2. Q1 — Frontend→backend contract
+
+**JSON, absolute coordinates, in a defined model-unit space. Not percentages.**
+
+The load-bearing number: the slide is `12192000 × 6858000` EMU (13.3333 × 7.5in, 16:9).
+
+**Use a 960 × 540 model space.** Then `12192000/960 = 12700`, `6858000/540 = 12700`, and `914400/72 = 12700`. So **1 model unit ≡ 1 point ≡ exactly 12700 EMU** — integer, exact, zero drift. And the payoff that matters most: **font sizes map 1:1**, a 14-unit font is a 14pt font, no scale factor anywhere. This one choice deletes the entire coordinate-and-font-scale bug class before it exists.
+
+(1280×720 also divides exactly — 9525 EMU/px — but then fonts need a ×0.75 factor. 960×540 is strictly better. Decouple model space from display: keep the model at 960×540, zoom with `transform: scale()` on the stage. Never store device pixels.)
+
+**Why not percentages:** they force float math on every read, make font size ambiguous (percent of *what*?), and throw away exact-integer reproducibility for nothing. Absolute-in-model-units is already resolution-independent, because the unit is *defined* rather than tied to a device.
+
+```jsonc
+{
+  "schema": "canvas-ir/1",
+  "canvas": { "w": 960, "h": 540, "unit": "pt" },   // echo -> backend hard-fails on mismatch
+  "target": { "template": "Vieworks_R&D_ppt_Template.pptx", "layout_index": 3 },
+  "title":  "AF Camera Multi Exposure",              // -> placeholder idx 10, NOT a new textbox
+  "elements": [                                      // array order IS z-order
+    { "id": "e1", "type": "rect",
+      "x": 100, "y": 120, "w": 180, "h": 60, "rotation": 0,
+      "fill": "#FF0032", "stroke": { "color": "#FFFFFF", "width": 1 },
+      "text": { "runs": [ { "t": "Capture", "size": 14, "bold": true, "color": "#FFFFFF" } ],
+                "align": "ctr", "valign": "ctr" } }
+  ]
+}
+```
+
+- **Version it.** This IR *will* change.
+- **Echo the canvas dims** so the backend rejects a stale payload rather than silently rescaling it into a subtly-wrong deck.
+- **Array order is z-order.** A separate `z` field is a second source of truth and will desync.
+- **The title maps to inherited placeholder idx 10, not a free textbox** — on-brand and correctly positioned for free. In the editor, **lock** the title box to `x 45.6, y 26.8, w 725.3, h 37.3` (model units) so it cannot drift from the master.
+
+**Transport: do both.** (1) Local FastAPI, HTML served same-origin, `POST /api/export` → `.pptx` download — the user's "Export PPT" button. (2) **A CLI fallback that always works**: "Download JSON" plus `python -m aippt.render_canvas deck.json -o out.pptx`. Corporate IT frequently blocks localhost servers, and this path has zero infrastructure — it's also what you'll actually use to debug the renderer.
+
+**Validate with `jsonschema` before rendering**, and **strip XML-illegal control characters** (C0 except `\t`/`\n`) from all text — they reach `python-pptx` and produce a corrupt `.pptx` that PowerPoint refuses to open with no useful error.
+
+## 3. Q2 — Canvas implementation
+
+**DOM, not `<canvas>`. Do not use Fabric.js.** Absolutely-positioned `<div>`s on a stage div; the triangle as an inline `<svg>` (maps more honestly onto the PPTX triangle than a CSS `clip-path`).
+
+**Why Fabric is the wrong call here**, despite being the obvious answer: it's a `<canvas>` library. Text becomes bitmap-rendered by *Fabric's own* layout engine, so (a) you must reimplement text editing, and (b) Fabric's wrapping metrics become a **third text engine** agreeing with neither the browser nor PowerPoint. For a project whose stated #1 risk is text overflow, adding a third metric model is a bad trade.
+
+The DOM gives you free: `contenteditable` (real text editing, no reimplementation); **real browser metrics in the real Century Gothic** — the closest possible preview of what PowerPoint will do; and the element *is* the model (`el.style.left`), so serialization is trivial.
+
+Drag/resize is ~150 lines of `pointerdown`/`pointermove`/`pointerup` with pointer capture, or **interact.js** (~10KB) for handles/snapping out of the box. That's the entire library requirement. The scope — three shapes, a textbox, a title, a colour picker, a font-size control — is genuinely small. Rotation, if added later, maps cleanly: `shape.rotation` is degrees clockwise, same as CSS `rotate()`.
+
+## 4. Q3 — Coordinate mapping
+
+`emu = round(model_units * 12700)` — exact, by construction.
+
+| Editor | PPTX |
+|---|---|
+| `x, y, w, h` (model units) | `Emu(round(v * 12700))` |
+| `size` (font) | `Pt(size)` — 1:1, no factor |
+| `stroke.width` | `Pt(width)` |
+| `rotation` (deg CW) | `shape.rotation` (deg CW) |
+| `#RRGGBB` | `RGBColor.from_string("RRGGBB")` |
+
+**The trap nobody writes down: text-frame internal margins.** PowerPoint defaults to 0.1in left/right and 0.05in top/bottom (91440 / 45720 EMU) — **7.2 and 3.6 model units**. If the HTML div uses `padding: 0`, the browser wraps text at a *different width* than PowerPoint does, and you get an off-by-one-line overflow that presents as a coordinate bug and will burn a day. Set both sides explicitly and identically:
+
+```python
+tf.margin_left = tf.margin_right = Pt(7.2)
+tf.margin_top  = tf.margin_bottom = Pt(3.6)
+tf.word_wrap = True
+tf.auto_size = MSO_AUTO_SIZE.NONE     # there is no autofit
+```
+
+**There is no autofit in `python-pptx`.** (`fit_text()` exists but needs a TTF path and is unreliable for CJK — do not build on it.) Text that overflows stays overflowing.
+
+**But notice this plan turns the project's #1 risk into a non-issue.** `foundation_research` called text overflow the number-one danger precisely because an LLM had to *guess* a character budget. Here a **human sizes the box by eye and sees the text in it**. That's a far stronger defence than any heuristic — the strongest argument for the user's plan, and worth telling them.
+
+**Verify the mapping once, before building any features.** Calibration slide: four shapes at the exact slide corners, plus a text box of known width and a known string. Export, render via LibreOffice → PNG, diff against a screenshot of the HTML stage. Converts "I think the mapping is right" into a measured number. One hour.
+
+## 5. Q4 — Rendering strategy
+
+**All four sub-questions: yes, with one real gap.** Verified against `pptx/enum/shapes.py`:
+
+| Editor shape | `python-pptx` | `prst` | line |
+|---|---|---|---|
+| Rectangle | `MSO_SHAPE.RECTANGLE` | `rect` | `:586` |
+| Circle | `MSO_SHAPE.OVAL` | `ellipse` | `:552` |
+| Triangle | `MSO_SHAPE.ISOSCELES_TRIANGLE` | `triangle` | `:381` |
+
+Text in shapes ✅. Fill/stroke colours ✅ — **subject to the F4 override**. Century Gothic ✅ for Latin, **not** for Korean (F3). Drawing onto a real Vieworks slide ✅ (F1).
+
+**The gap: flow-chart arrows.** `add_connector(MSO_CONNECTOR.STRAIGHT | ELBOW | CURVE, ...)` exists (`shapetree.py:260`), and `begin_connect`/`end_connect` exist (`connector.py:24,125`) — so connectors can be *glued* to shapes and stay attached when the user later drags a box in PowerPoint. Genuinely valuable; use it.
+
+**But arrowheads are not exposed in the API.** There's no `line.end_arrow`. You must drop to lxml and append `<a:tailEnd type="triangle"/>` to the connector's `<a:ln>`. Small — but it's the difference between a flow chart and a scatter of plain lines.
+
+More importantly: **the brief's shape list (rectangle, circle, triangle) contains no connector or arrow tool at all.** For "flow charts or block diagrams" that's the missing primitive. Either add a connector tool to Phase 1 scope, or tell the user explicitly that v1 ships without flow-chart arrows. It shouldn't be discovered after the editor is built.
+
+## 6. The one number that is missing
+
+**The geometry of `그래픽 8`** — the divider graphic on layout 3. The manifest records decoration shapes **by name only**, with no box. It's the exact number the user asked for ("match the position of this line with the master slide") and I couldn't extract it, because opening the `.pptx` requires code execution.
+
+**Bound, derived from adjacent geometry I do have:** title placeholder bottom = `0.3715 + 0.5174` = **0.8889in**; every content slide's body textbox top = **1.0202in** (consistent across slides 5, 6, 7, 8, 14, 15, 17, 21 in `exemplar_catalog.md`). So the divider sits in **0.889–1.020in**, i.e. **y ≈ 64.0–73.5 model units**. Placing the red line at **y ≈ 68** will be visually right. To get the true value, patch `analyze_pptx_master.py` to emit `decoration_shapes[].emu` — a ~5-line change — and re-run.
+
+**Better: make the question disappear.** Render layout 3 to a PNG once (LibreOffice is already a Phase 3 dependency) and set it as the stage's `background-image`. The editor then shows the *real* logo and the *real* gradient divider, the red-line-position problem evaporates, and F2's "the header isn't WYSIWYG" caveat evaporates with it — true chrome fidelity, for free. Recommend this as the target; the user's flat red line is a perfectly good day-one MVP.
+
+## 7. The scoping consequence the user may not have noticed
+
+**There are now two IRs, and that is correct — but it is not free.**
+
+| | Semantic IR (existing) | Canvas IR (this plan) |
+|---|---|---|
+| Emits | `layout_id` + content blocks | absolute geometry |
+| Author | the **AI** | a **human** |
+| Invariant | *"the AI never emits coordinates"* | the human emits nothing but coordinates |
+
+These are philosophically opposite, and the README's core invariant explicitly forbids the second — *for the AI*. That invariant is still right and still holds: a human emitting geometry in a visual editor is not the failure mode it was written to prevent (an LLM hallucinating layout). **Keep both. Do not merge them.** They should converge only at the low-level "draw a shape on a slide" primitives.
+
+But the user should hear the cost plainly: **this plan makes `html_adapter.py` and the 30-slide HTML corpus dead code for the visual-editor path.** Phase 1 as previously defined (HTML corpus → IR → PPTX round-trip, no AI) is not *extended* by this plan — it is *replaced*. That may well be the right trade; the visual editor is a better product than a corpus converter. But it's a scope decision with sunk cost, not a free addition, and should be made with open eyes.
+
+## 8. Recommended Phase 1 scope
+
+1. **Calibration slide first** (§4). One hour. Proves the coordinate mapping before anything is built on it.
+2. Patch `analyze_pptx_master.py` to dump `decoration_shapes[].emu` (§6). Get the real divider y.
+3. `canvas_ir.schema.json` + `jsonschema` validation + control-char stripping (§2).
+4. `render_canvas.py`: `add_slide(layout 3)` → title into placeholder idx 10 → shapes absolutely, with all four F4 overrides and the F3 font split.
+5. The editor: DOM + interact.js, 960×540 model space, locked title box, red line as stage CSS (§3).
+6. CLI export path first, FastAPI endpoint second (§2).
+7. **Decide the connector/arrow question before building the shape toolbar** (§5).
+
+## Assumptions and caveats
+
+- **Output location.** The brief specifies no output path, and **writes are denied in this session** — I attempted `plan_review.md` and was refused, same as the two prior stages. So this analysis exists only in stdout. The orchestrator must persist it; `result.md:14` records a brief being silently truncated by exactly this path, so **verify the saved file ends at §8 / "Assumptions and caveats"**.
+- **No code was executed.** Every `python-pptx` claim is cited to `file:line` in the installed source — stronger than memory, weaker than a run. The `<a:ea>` insertion recipe (F3) is schema-correct by construction but unrun.
+- **`#FF0032` vs `#DB0032`.** I follow `result.md:18` and treat the user's `#FF0032` override as authoritative for *new* content, with `#DB0032` retained only as the legacy value to detect and overwrite in inherited template content. This plan doesn't change that.
+- **I have not seen the divider graphic.** Everything in §6 about `그래픽 8` is inference from its neighbours' geometry. Its name (`그래픽` = an Office icon/SVG graphic) suggests an SVG rather than a drawn line, consistent with the user's "complex gradient lines".

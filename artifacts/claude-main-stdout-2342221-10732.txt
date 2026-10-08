@@ -1,0 +1,9 @@
+All three code edits are done and documented. Summary:
+
+**Changes made** (in the staged repo `C:\Users\2021670\.ma-stg\stg.wr1mLipz`):
+
+1. **`editor.js`** — before POSTing to `/api/export`, the export handler now walks `ir.elements`, and for each `image` element looks up `window.uploadedMedia[el.src]`, converts the file to base64 via the existing `fileToBase64()` helper, and rewrites `el.src` to a `data:<mime>;base64,...` URI.
+2. **`style.py`** — added `io`/`base64` imports and a new `draw_image(slide, el)` that decodes the data URI and calls `slide.shapes.add_picture(...)`.
+3. **`render_canvas.py`** — `draw()` now routes `el["type"] == "image"` to `draw_image`. One deliberate deviation from the brief's literal snippet: used `from aippt.canvas.style import draw_image` (absolute) instead of `from .style import draw_image` (relative), since this module supports running as a bare script and a relative import would break that path — consistent with every other import already in the file.
+
+Documented everything, including the root-cause analysis and a note that no interpreter/VCS commands could be executed in this session (consistent with known constraints for these staged worker sessions), in `tasks/AI_Powered_PPT/image_export_change_detail.md`, plus a `image_export_write_manifest.txt` listing the three touched files — both written inside the staged `target_repo` per the brief's frontmatter. I also flagged a known orchestrator issue where `tasks/`-scoped diffs can misreport as empty due to a `.gitignore`/`git add -A` interaction, so it isn't mistaken for the edits not having happened.

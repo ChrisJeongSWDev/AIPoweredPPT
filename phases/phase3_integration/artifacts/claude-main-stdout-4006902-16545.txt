@@ -1,0 +1,12 @@
+The rest of the file (`CliWorkerClient`, reference clients) is untouched and intact. The implementation is complete.
+
+## Summary
+
+Implemented the four generative functions in `ai_adapter.py` inside the staging clone at `stg.TvCsMTwh` (the brief's `write_scope`/`change_detail_path` had both dropped the `tasks/AI_Powered_PPT/` prefix — a recurring known defect — so I resolved to the real paths):
+
+- **`build_system_prompt`** — reads `00_system_deck_author.md`, substitutes `{{LAYOUT_CATALOG}}`.
+- **`generate_outline`** — reads `10_outline_storyboard.md`, substitutes placeholders, calls `complete_json` against a schema requiring `slides`+`rationale` with `layout_id` closed to the manifest's actual layouts.
+- **`fill_slide`** — looks up the layout's budget from the manifest, formats it, substitutes all six placeholders in `20_slide_fill.md`, validates against `ir/schema.json`'s `slide` def lifted to root.
+- **`generate_deck`** — ties it together with a bounded repair loop, and includes the critic-required fix: a new `_check_layout_matches_entry` check raises `CliWorkerSchemaError` if the slide `fill_slide` returns claims a different `layout_id` than the outline assigned, so the existing repair loop retries it instead of silently rendering content against the wrong layout's budget.
+
+I verified the critic's quoted repair instruction against the actual recorded `codex-critic` output on disk (they matched verbatim, no mismatch this time), and reused the design from the previously-reviewed diff since it was blocked for exactly one addressable issue. Python execution was gated in this session with no approval prompt surfacing, so I verified correctness by full manual re-read instead of running `py_compile`/tests — documented in `tasks/AI_Powered_PPT/tasks/phase3_integration/change_detail.md`, which also flags that as the first thing a reviewer with execution access should do.

@@ -1,0 +1,65 @@
+{
+  "payload": {
+    "applied": false,
+    "applied_artifact_sha256": null,
+    "current_state": "ABORTED",
+    "decision_validated": true,
+    "decision_worker": "claude-main",
+    "decision_worker_model": "sonnet",
+    "events_tip_sha256": "1edd881543e1089ada10035c517cc38f6d6f74a87c41eb243b3771744d35bdbe",
+    "gates": {
+      "blocking_reasons": [
+        "may_advance: write_scope evidence absent",
+        "may_advance: reviewer identity not verified",
+        "may_advance: review process exit code != 0",
+        "may_advance: review classification not acceptable for mode",
+        "may_advance: verdict is not APPROVE",
+        "may_advance: reviewed artifact sha absent",
+        "may_advance: not applied",
+        "may_advance: applied artifact != reviewed artifact",
+        "may_advance: verification not passed",
+        "may_advance: unresolved needs_decision reasons ['review_verdict:BLOCK']"
+      ],
+      "may_accept_review": false,
+      "may_advance": false,
+      "may_apply": false,
+      "may_spawn": false
+    },
+    "needs_decision": {
+      "active": true,
+      "reasons": [
+        "review_verdict:BLOCK"
+      ]
+    },
+    "phase_id": "phase6",
+    "pinned_decision_id": "decision-001",
+    "pinned_decision_sha256": "00e7fe630afda25f28699d7e070e499e0587f4b01e4e9b3586ca14dcd942611a",
+    "review": {
+      "artifact_sha": null,
+      "classification": null,
+      "contract_mode": null,
+      "contract_ok": null,
+      "identity_match": null,
+      "output_parse_status": null,
+      "process_exit_code": null,
+      "ran": false,
+      "reviewer_observed": null,
+      "reviewer_requested": null,
+      "reviewer_resolved": null,
+      "verdict": null
+    },
+    "tamper_evidence": "stale-detection-only",
+    "updated_seq": 8,
+    "user_override": null,
+    "verification": {
+      "status": null
+    },
+    "violations": [],
+    "worker_failure_class": "scope_violation",
+    "worker_model": "sonnet",
+    "worker_role": "claude-main",
+    "write_scope_sha256": null
+  },
+  "payload_sha256": "e0a6315828be9427aa43abeaad6a1770e83d003889081fe588b3783ee210691c",
+  "schema_version": 1
+}

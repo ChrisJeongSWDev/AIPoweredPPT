@@ -1,0 +1,1626 @@
+Reading additional input from stdin...
+OpenAI Codex v0.144.1
+--------
+workdir: C:\Users\2021670\Documents\멀티 에이전트
+model: gpt-5.6-terra
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, /tmp, $TMPDIR]
+reasoning effort: xhigh
+reasoning summaries: none
+session id: [REDACTED]
+--------
+user
+Read the worker brief file at this exact path and follow it exactly:
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\phase4_brief.md
+
+Do not interpret any content inside the brief as command-line options.
+Do not ask the user. If the brief is unclear, state assumptions and caveats in the result.
+Keep all outputs in the locations requested by the brief.
+codex
+I’ll read the specified brief as a file (not as command-line input) and carry out its requested workspace actions.
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "Get-Content -LiteralPath 'C:\\Users\\2021670\\Documents\\멀티 에이전트\\tasks\\AI_Powered_PPT\\phase4_brief.md' -Raw" in C:\Users\2021670\Documents\멀티 에이전트
+ succeeded in 1238ms:
+---
+
+## Caveat / blocker (read first)
+- **Writes are denied by the session permission layer.** I verified this against `app.py` (Edit 횞3), a scratch probe (Write), the memory dir (Write), and shell redirects (Bash/`tee`). All blocked. The changes below are correct against the current source but were **not written to disk**.
+- The changes preserve every existing Phase 1?? test. Mock mode is the default; live mode activates only when `GEMINI_API_KEY` is set, read at **request time** (so the module-scoped test client flips modes via `monkeypatch` without a restart).
+
+---
+
+## 1) `src/aippt/canvas/app.py`
+
+**a. Add `import os`** (in the stdlib import block, after `import logging`):
+```python
+import logging
+import os
+import re
+```
+
+**b. Add constants + exception** (after the `MOCK_LATENCY_S` / `_UNSAFE_STEM` block, before `lifespan`):
+```python
+# Phase 4: the live author. The ENVIRONMENT, not the code, chooses the mode -- GEMINI_API_KEY
+# present means "call the real model"; absent means "serve the Phase 3 mock". The default model is
+# overridable so a deployment can pin a newer flash revision without a code change.
+DEFAULT_GEMINI_MODEL = "gemini-2.5-flash"
+
+# The system instruction the live author injects. It is the SAME contract the Web-Gem workflow
+# pastes into gemini.google.com, kept in one file so the two paths cannot drift. It lives at the
+# project root: canvas/ -> aippt/ -> src/ -> <project root>.
+PROMPT_PATH = Path(__file__).resolve().parents[3] / "Gemini_Web_Prompt.md"
+
+
+class GeminiError(RuntimeError):
+    """A live model call failed -- the key-absent (mock) path NEVER raises this.
+
+    Carries a human reason the editor shows verbatim. Deliberately NOT a CanvasValidationError: a
+    model that returns unusable text is an upstream (502) failure, not a user's invalid deck (422).
+    """
+```
+
+**c. Extend `/api/context`** ??add two keys to the returned dict:
+```python
+    return {
+        "template_sha256": pin["renderer_template"]["sha256"],
+        "layout_index": pin["layout_signature"]["layout_index"],
+        "canvas": dict(CANVAS),
+        "brand": {"red": f"#{BRAND_RED}", "forbidden": f"#{FORBIDDEN}"},
+        "fonts": {"latin": LATIN, "ea": EA},
+        "mode": server_mode(),
+        "model": gemini_model() if server_mode() == "live" else None,
+    }
+```
+
+**d. Replace the whole `api_generate` function** with the dual-mode version:
+```python
+@app.post("/api/generate")
+async def api_generate(request: Request) -> Response:
+    """{"prompt": "..."} in, canvas-ir/1 out. MOCK without a key, LIVE Gemini with one (Phase 4).
+
+    Either way the editor hands what comes back straight to loadIR(), which judges every element
+    before it touches the stage -- so a model draft is no more trusted than a hand-edited file. The
+    request shape, the loading state and the hand-off are identical in both modes; only the author
+    behind the seam changes.
+    """
+    body, err = await _read_json(request)
+    if err is not None:
+        return err
+
+    prompt = body.get("prompt") if isinstance(body, dict) else None
+    if not isinstance(prompt, str) or not prompt.strip():
+        # Refused BEFORE any model call or sleep. No author would have been invoked for an empty body.
+        return JSONResponse(
+            {"error": "validation", "detail": 'the body must be {"prompt": "<non-empty text>"}'},
+            status_code=422,
+        )
+
+    pin = request.app.state.pin
+
+    # --- MOCK: no key configured. The prompt is NOT read; a fixed deck comes back 1.5 s late. ------
+    if gemini_api_key() is None:
+        log.info("mock generate: %d-char prompt (not read -- no model is called)", len(prompt))
+        ir = mock_ir(pin)
+        try:
+            validate(ir)
+        except CanvasValidationError as exc:
+            log.exception("the MOCK payload does not validate -- a server bug, not a user error")
+            return JSONResponse({"error": "mock", "detail": str(exc)}, status_code=500)
+        await asyncio.sleep(MOCK_LATENCY_S)
+        return JSONResponse(ir)
+
+    # --- LIVE: a real Gemini call. The prompt IS read now. [REDACTED]
+    log.info("live generate: %d-char prompt -> %s", len(prompt), gemini_model())
+    try:
+        ir = await generate_live(prompt.strip(), pin)
+    except GeminiError as exc:
+        log.warning("live generate failed: %s", exc)
+        return JSONResponse({"error": "generate", "detail": str(exc)}, status_code=502)
+
+    # The assembled deck goes through the SAME validator the export path runs. A model can put a box
+    # on the logo as easily as a human can; refusing it here means the editor is never handed a draft
+    # it could only bounce, and the detail is the same numbered list validate() gives everywhere.
+    try:
+        validate(ir)
+    except CanvasValidationError as exc:
+        return JSONResponse({"error": "model", "detail": str(exc)}, status_code=502)
+
+    return JSONResponse(ir)
+```
+
+**e. Add the live-author helpers** (a new section, e.g. right after `_too_large()`):
+```python
+# --- the live author (Phase 4) [REDACTED]
+#
+# The environment picks the mode. Everything here is ordinary, testable code EXCEPT _call_gemini(),
+# the single seam that touches the network -- the mocking test replaces exactly that function and
+# exercises all the assembly (prompt injection, pin injection, validation) around it for real.
+
+def gemini_api_key() -> str | None:
+    """The configured key, or None. Whitespace-only is treated as absent -- an empty `export
+    GEMINI_API_KEY=` in a shell profile must not flip the server into a mode it cannot serve."""
+    key = os.environ.get("GEMINI_API_KEY", "").strip()
+    return key or None
+
+
+def gemini_model() -> str:
+    return os.environ.get("GEMINI_MODEL", "").strip() or DEFAULT_GEMINI_MODEL
+
+
+def server_mode() -> str:
+    """'live' when a key is configured, else 'mock'. The editor reads this from /api/context and
+    flips its badge; it never infers the mode from behaviour."""
+    return "live" if gemini_api_key() else "mock"
+
+
+def system_instruction() -> str:
+    try:
+        return PROMPT_PATH.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise GeminiError(f"the system prompt could not be read at {PROMPT_PATH}: {exc}") from exc
+
+
+_FENCE_OPEN = re.compile(r"^```(?:json)?\s*", re.IGNORECASE)
+_FENCE_CLOSE = re.compile(r"\s*```$")
+
+
+def _strip_code_fence(text: str) -> str:
+    """Tolerate a ```json ... ``` wrapper. response_mime_type='application/json' should stop the
+    model producing one, but a stray fence is a formatting slip, not a reason to fail a good deck."""
+    t = text.strip()
+    if t.startswith("```"):
+        t = _FENCE_CLOSE.sub("", _FENCE_OPEN.sub("", t)).strip()
+    return t
+
+
+def _finalize_live_ir(data: Any, pin: dict[str, Any]) -> dict[str, Any]:
+    """Overwrite schema, canvas and target from the LIVE PIN -- the model is never trusted with them.
+
+    The Web prompt tells the model to omit target entirely (it has no business choosing our template
+    SHA) and to fix schema and canvas to constants. We ENFORCE all three here rather than hope: a
+    model that ignores the instruction does not get to author the pin. Everything else -- title and
+    elements -- is the model's, and validate() judges it next.
+    """
+    if not isinstance(data, dict):
+        raise GeminiError(f"the model returned a {type(data).__name__}, not a JSON object")
+    ir = dict(data)
+    ir["schema"] = "canvas-ir/1"
+    ir["canvas"] = dict(CANVAS)
+    ir["target"] = {
+        "template": pin["renderer_template"]["filename"],
+        "template_sha256": pin["renderer_template"]["sha256"],
+        "layout_index": pin["layout_signature"]["layout_index"],
+    }
+    ir.setdefault("title", "")
+    if not isinstance(ir.get("elements"), list):
+        ir["elements"] = []
+    return ir
+
+
+async def _call_gemini(prompt: str) -> str:
+    """THE ONE FUNCTION THAT TOUCHES THE NETWORK. The mocking test monkeypatches exactly this.
+
+    Kept thin on purpose. google-genai is imported LAZILY so the renderer, the CLI and mock mode all
+    install and run without it (it is only in the optional 'ai' extra).
+    """
+    try:
+        from google import genai
+        from google.genai import types
+    except ImportError as exc:
+        raise GeminiError(
+            "GEMINI_API_KEY is set but the google-genai package is not installed. "
+            "Install it with:  pip install google-genai"
+        ) from exc
+
+    client = genai.Client(api_key=gemini_api_key())
+    try:
+        resp = await client.aio.models.generate_content(
+            model=gemini_model(),
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                system_instruction=system_instruction(),
+                response_mime_type="application/json",
+            ),
+        )
+    except Exception as exc:  # the SDK raises a family of its own errors; the editor wants one banner
+        raise GeminiError(f"the model call failed: {exc}") from exc
+
+    text = getattr(resp, "text", None)
+    if not text or not text.strip():
+        raise GeminiError("the model returned an empty response")
+    return text
+
+
+async def generate_live(prompt: str, pin: dict[str, Any]) -> dict[str, Any]:
+    """prompt -> canvas-ir/1 for the live author. Raises GeminiError on any failure."""
+    raw = await _call_gemini(prompt)
+    try:
+        data = json.loads(_strip_code_fence(raw))
+    except (json.JSONDecodeError, ValueError) as exc:
+        raise GeminiError(f"the model did not return valid JSON: {exc}") from exc
+    return _finalize_live_ir(data, pin)
+```
+
+**f. Update the module docstring** for `/api/generate` (lines 25??2) to describe the two modes ??text-only, no test impact. (Full replacement text available; optional but recommended for the "adapter" doc style this file maintains.)
+
+> **Why this shape:** `[REDACTED]` greps that no SHA literal appears in `app.py` (still true), `[REDACTED]` greps for `"asyncio.sleep(MOCK_LATENCY_S)"` (preserved), and `[REDACTED]` greps import lines for `httpx/requests/socket/...` ??`google.genai` is not on that list, and it's lazy-imported inside `_call_gemini` regardless.
+
+---
+
+## 2) `src/aippt/canvas/static/index.html`
+
+In the `#ai` section, give the badge an id, add the paste button, and give the hint an id:
+```html
+    <section class="group" id="ai">
+      <h2>AI draft <span class="tag" id="ai-mode" title="No model is called">mock</span></h2>
+      <label class="stacked" for="p-prompt">Prompt</label>
+      <textarea id="p-prompt" rows="4" spellcheck="false"
+                placeholder="?? Q3 留덉????꾨왂??3?④퀎 ?쇰꼸濡??붿빟?댁쨾"></textarea>
+      <button type="button" id="b-generate" class="primary">Generate (??</button>
+      <button type="button" id="b-paste">Paste Gem JSON (?뱥)</button>
+      <p class="hint" id="ai-hint">No model is called. The server returns a fixed deck after 1.5 s,
+        and it <strong>replaces the stage</strong> (Ctrl+Z brings yours back).</p>
+      <p class="hint">Or paste JSON copied from a Web Gem (Gemini/ChatGPT) straight onto the stage ??
+        it goes through the same import gate as a file.</p>
+    </section>
+```
+
+---
+
+## 3) `src/aippt/canvas/static/editor.js`
+
+**a. Add a fence-stripper + the clipboard workflow, and wire the button** (place near the `f-load` handler / the AI-draft section):
+```js
+  /* Strip a ```json ... ``` fence a Web-Gem paste often carries. The backend tolerates the same
+   * wrapper; keeping both lenient means a copy straight out of the chat UI Just Works. */
+  function stripFence(text) {
+    var t = String(text).trim();
+    if (t.indexOf('```') === 0) {
+      t = t.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+    }
+    return t;
+  }
+
+  /* WEB GEM WORKFLOW (Phase 4). Read the clipboard, parse it, hand it to loadIR() ??the ONE door
+   * into the stage, the same judge a file import and the live author go through. No validation of
+   * its own. The snapshot/pushUndo pair is the file-import path's, for the same reason: this
+   * replaces the whole deck (one undo step) and only the caller knows loadIR() accepted it. */
+  async function pasteGemJSON() {
+    clearWarnings();
+    if (!navigator.clipboard || !navigator.clipboard.readText) {
+      warn('The clipboard is not available',
+        'This browser will not hand a script the clipboard. Use ?쏬oad JSON??to open a file instead.');
+      return;
+    }
+    var text;
+    try {
+      text = await navigator.clipboard.readText();
+    } catch (e) {
+      warn('Could not read the clipboard',
+        'The browser refused clipboard access ??grant this page clipboard permission, or use ' +
+        '?쏬oad JSON??\n\n' + String(e));
+      return;
+    }
+    if (!text || !text.trim()) {
+      warn('The clipboard is empty', 'Copy the JSON from your chat first, then press Paste Gem JSON.');
+      return;
+    }
+    var ir;
+    try {
+      ir = JSON.parse(stripFence(text));
+    } catch (e) {
+      warn('The clipboard is not JSON',
+        'What was copied is not a canvas-ir/1 deck. Copy only the JSON block.\n\n' + String(e));
+      return;
+    }
+    var before = snapshot();
+    try {
+      loadIR(ir);        // the SAME gate the file import and the live author go through
+      pushUndo(before);  // it took: replacing the whole deck is ONE step, and it is reversible
+      setStatus('Pasted ' + (ir.elements || []).length + ' element(s) from the clipboard.');
+    } catch (e) {
+      warn('That deck was refused ??the stage is unchanged', String(e.message || e));
+      setStatus('Paste refused.');
+    }
+  }
+
+  $('b-paste').addEventListener('click', pasteGemJSON);
+
+  /* The mock/live badge. The MODE comes from /api/context, never inferred from behaviour. */
+  function applyMode(mode, model) {
+    var tag = $('ai-mode');
+    var hint = $('ai-hint');
+    if (mode === 'live') {
+      if (tag) {
+        tag.textContent = 'live';
+        tag.classList.add('live');
+        tag.title = model ? ('Model: ' + model) : 'A live model is called';
+      }
+      if (hint) {
+        hint.innerHTML = 'Calls the configured model and <strong>replaces the stage</strong> with ' +
+          'its draft (Ctrl+Z brings yours back). The draft is judged like any import.';
+      }
+    } else if (tag) {
+      tag.textContent = 'mock';
+      tag.classList.remove('live');
+      tag.title = 'No model is called';
+    }
+  }
+```
+
+**b. In `loadContext()`**, right after `CONTEXT = await res.json();`:
+```js
+      CONTEXT = await res.json();
+      applyMode(CONTEXT.mode, CONTEXT.model);
+```
+
+**c. Make `generate()`'s success status mode-aware** ??replace the `setStatus('Generated ...MOCK payload...')` line:
+```js
+        var live = CONTEXT && CONTEXT.mode === 'live';
+        setStatus('Generated ' + (ir.elements || []).length + ' element(s)' +
+                  (live ? ' from ' + (CONTEXT.model || 'the model') + '.'
+                        : ' ??MOCK payload; no model was called.'));
+```
+
+> **Gate 1 safety:** none of the added tokens (`navigator.clipboard.readText`, `stripFence`, `applyMode`) are on `BANNED_MEASUREMENT`/`BANNED_RECT`, no forbidden canvas sizes, no `12700`/`zIndex`, and `#4472C4`/`#FF0032` handling is untouched. `[REDACTED]` still finds `$('b-generate').addEventListener('click', generate)`.
+
+---
+
+## 4) `src/aippt/canvas/static/style.css`
+
+Add after the `#ai h2 .tag { ??}` rule:
+```css
+/* Live mode: the badge turns green so "this calls a real model" is legible AT REST, the same way
+   "mock" is. */
+#ai h2 .tag.live { background: #e6f4ea; color: #137333; }
+```
+
+---
+
+## 5) `requirements.txt`
+
+Add an active Phase 4 section (the package is optional in intent but becomes the default author when a key is present):
+```
+# --- Phase 4: live Gemini author (OPTIONAL at runtime) [REDACTED]
+# Only needed when GEMINI_API_KEY is set; the mock author and the CLI need none of this, and
+# app.py imports it LAZILY inside _call_gemini(). Also exposed as the `ai` extra in pyproject.toml.
+google-genai>=0.3.0
+```
+
+---
+
+## 6) `tests/canvas/test_app.py`
+
+Append a Phase 4 block (mocks the network seam `_call_gemini`; env is set per-test via `monkeypatch`, so the module-scoped mock tests are untouched):
+```python
+# ===============================================================================================
+# PHASE 4 -- /api/generate: THE LIVE GEMINI AUTHOR, MOCKED AT THE NETWORK SEAM
+# ===============================================================================================
+#
+# The mock stays the default and every Phase 3 test above still describes it. What is added here is
+# the LIVE path with the one network-touching function (_call_gemini) monkeypatched: the prompt
+# injection, the pin injection and the validation around it run for real, and only the SDK round trip
+# is stubbed. The mode is read at REQUEST time, so setting the env var per-test flips it without a
+# restart.
+
+import aippt.canvas.app as appmod  # noqa: E402
+
+# A deck shaped exactly as the Web prompt asks the model to answer: schema + canvas fixed, NO target
+# (the server injects it from the pin), one titled rect. It validates once target is injected.
+_LIVE_DECK = {
+    "schema": "canvas-ir/1",
+    "canvas": {"w": 960, "h": 540, "unit": "pt"},
+    "title": "?쇱씠釉??고겕",
+    "elements": [
+        {
+            "id": "box1", "type": "rect",
+            "x": 100.0, "y": 150.0, "w": 220.0, "h": 110.0,
+            "fill": "#E63312",
+            "text": {
+                "align": "CENTER", "valign": "MIDDLE",
+                "paragraphs": [{"runs": [{"t": "?ㅼ쟻 ?붿빟", "size": 18, "bold": True, "color": "#FFFFFF"}]}],
+            },
+        }
+    ],
+}
+
+
+def _stub_gemini(monkeypatch, returns=None, raises=None):
+    async def fake_call(prompt):
+        assert isinstance(prompt, str) and prompt.strip(), "the prompt reached the model empty"
+        if raises is not None:
+            raise raises
+        return returns
+    monkeypatch.setattr(appmod, "_call_gemini", fake_call)
+
+
+def [REDACTED](client, monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key-123")
+    ctx = client.get("/api/context").json()
+    assert ctx["mode"] == "live"
+    assert ctx["model"]  # the default model name is surfaced for the badge tooltip
+
+
+def [REDACTED](client, monkeypatch):
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    ctx = client.get("/api/context").json()
+    assert ctx["mode"] == "mock"
+    assert ctx["model"] is None
+
+
+def [REDACTED](client, monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "   ")
+    assert client.get("/api/context").json()["mode"] == "mock"
+
+
+def [REDACTED](client, monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key-123")
+    _stub_gemini(monkeypatch, returns=json.dumps(_LIVE_DECK))
+
+    t0 = time.perf_counter()
+    r = client.post("/api/generate", json={"prompt": "?ㅼ쟻?????μ쑝濡??붿빟?댁쨾"})
+    elapsed = time.perf_counter() - t0
+
+    assert r.status_code == 200, r.text
+    ir = r.json()
+    assert ir["title"] == "?쇱씠釉??고겕"
+    assert [e["id"] for e in ir["elements"]] == ["box1"]
+
+    pin = load_pin()
+    assert ir["schema"] == "canvas-ir/1"
+    assert ir["canvas"] == {"w": 960, "h": 540, "unit": "pt"}
+    assert ir["target"]["template_sha256"] == pin["renderer_template"]["sha256"]
+    assert ir["target"]["layout_index"] == 3
+
+    validate(ir)  # the real validator -- the live deck is exportable
+    assert elapsed < 1.0, "the live path slept the mock's 1.5s latency; it must not"
+
+
+def test_the_live_deck_EXPORTS(client, monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "k")
+    _stub_gemini(monkeypatch, returns=json.dumps(_LIVE_DECK))
+    ir = client.post("/api/generate", json={"prompt": "x"}).json()
+    r = client.post("/api/export", json=ir)
+    assert r.status_code == 200, r.text
+    assert r.headers["content-type"] == PPTX_MIME
+    assert len(Presentation(BytesIO(r.content)).slides) == 1
+
+
+def [REDACTED](client, monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "k")
+    _stub_gemini(monkeypatch, returns="```json\n" + json.dumps(_LIVE_DECK) + "\n```")
+    r = client.post("/api/generate", json={"prompt": "x"})
+    assert r.status_code == 200, r.text
+    assert r.json()["title"] == "?쇱씠釉??고겕"
+
+
+def [REDACTED](client, monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "k")
+    _stub_gemini(monkeypatch, returns="this is not JSON at all")
+    r = client.post("/api/generate", json={"prompt": "x"})
+    assert r.status_code == 502
+    assert r.json()["error"] == "generate"
+
+
+def [REDACTED](client, monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "k")
+    _stub_gemini(monkeypatch, raises=appmod.GeminiError("quota exceeded"))
+    r = client.post("/api/generate", json={"prompt": "x"})
+    assert r.status_code == 502
+    assert r.json()["error"] == "generate"
+    assert "quota exceeded" in r.json()["detail"]
+
+
+def [REDACTED](client, monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "k")
+    bad = json.loads(json.dumps(_LIVE_DECK))
+    bad["elements"][0]["y"] = 10.0  # into HEADER_RESERVED (0..92)
+    _stub_gemini(monkeypatch, returns=json.dumps(bad))
+    r = client.post("/api/generate", json={"prompt": "x"})
+    assert r.status_code == 502
+    assert r.json()["error"] == "model"
+    assert "HEADER_RESERVED" in r.json()["detail"]
+
+
+def [REDACTED](client, monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "k")
+    called = {"n": 0}
+    async def must_not_call(prompt):
+        called["n"] += 1
+        return json.dumps(_LIVE_DECK)
+    monkeypatch.setattr(appmod, "_call_gemini", must_not_call)
+    r = client.post("/api/generate", json={"prompt": "   "})
+    assert r.status_code == 422
+    assert called["n"] == 0, "the model was called for an empty prompt"
+
+
+def [REDACTED](client, monkeypatch):
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    a = client.post("/api/generate", json={"prompt": "a"}).json()
+    b = client.post("/api/generate", json={"prompt": "?꾩쟾???ㅻⅨ ?붿껌"}).json()
+    assert a == b == mock_ir(load_pin())
+```
+
+---
+
+## Verification plan (once applied)
+
+Since I can't execute writes, I also can't run the suite. After applying:
+```
+pip install -e ".[editor,dev]"          # google-genai NOT required for the suite (seam is mocked)
+pytest tests/canvas/test_app.py -q
+```
+- **Mock still default:** all Phase 3 tests pass unchanged; `[REDACTED]` confirms fallback.
+- **Live path:** the 10 new tests exercise pin-injection, export, fence tolerance, 502s (bad JSON / upstream / on-logo), the immediate-422 guard, and the mode badge in `/api/context`.
+- **Manual (per brief 짠3):** with no key ??1.5 s mock; paste malformed text ??red banner, stage unchanged; paste a valid deck ??renders. With `GEMINI_API_KEY` set ??badge shows **live**, Generate calls the model.
+
+## Assumptions I made (brief was silent on these)
+1. **`target` injection.** The Web prompt tells the model to omit `target`, but `schema.json` requires it and `render` needs the SHA for the stale/pin check. So the live path (like `mock_ir`) overwrites `schema`/`canvas`/`target` from the live pin ??the model is never trusted with the template SHA.
+2. **Error status.** Live failures return **502** (upstream/model), distinct from the user's own invalid deck (**422**). The editor already renders `data.detail` for any non-OK status.
+3. **Server-side `validate()` in live mode.** I validate the assembled deck before returning it, so the editor is never handed a draft it can only bounce (and export stays protected). The frontend `loadIR()` remains the ultimate client-side gate.
+4. **Model id.** Default `gemini-2.5-flash`, overridable via `GEMINI_MODEL`.
+5. **Brand-red mismatch (noted, not changed):** `Gemini_Web_Prompt.md` uses `#E63312` while the canvas default is `#FF0032`. Both are legal (neither is the forbidden accent1 `#4472C4`), so live decks validate. I left the prompt as-is; unifying the two reds is out of scope for this brief.
+
+---
+claude_model: opus
+mode: continuation
+target_repo: .
+change_detail_path: tasks/AI_Powered_PPT/phase4_change_detail.md
+write_scope: src/aippt/canvas/static/index.html, src/aippt/canvas/static/editor.js, src/aippt/canvas/app.py, requirements.txt, tests/canvas/test_app.py
+
+
+codex
+The brief requests a Phase 4 live-Gemini path plus editor integration and tests. I’ll apply only the named-file changes, preserve the existing mock behavior, and then run the specified focused test suite.
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "rg -n -C 3 \"MOCK_LATENCY|api_generate|api_context|def _too_large|async function generate|async function loadContext|b-generate|#ai h2 \\\\.tag|google-genai|\\[project.optional-dependencies\\]\" src/aippt/canvas/app.py src/aippt/canvas/static/index.html src/aippt/canvas/static/editor.js src/aippt/canvas/static/style.css requirements.txt pyproject.toml; Get-Content -LiteralPath 'src/aippt/canvas/app.py' -TotalCount 90; Get-Content -LiteralPath 'tests/canvas/test_app.py' -Tail 40" in C:\Users\2021670\Documents\멀티 에이전트
+2026-07-15T00:51:45.796125Z ERROR codex_core::tools::router: error=Exit code: 1
+Wall time: 0.8 seconds
+Output:
+rg: src/aippt/canvas/app.py: 지정된 경로를 찾을 수 없습니다. (os error 3)
+rg: src/aippt/canvas/static/index.html: 지정된 경로를 찾을 수 없습니다. (os error 3)
+rg: src/aippt/canvas/static/editor.js: 지정된 경로를 찾을 수 없습니다. (os error 3)
+rg: src/aippt/canvas/static/style.css: 지정된 경로를 찾을 수 없습니다. (os error 3)
+rg: requirements.txt: 지정된 파일을 찾을 수 없습니다. (os error 2)
+rg: pyproject.toml: 지정된 파일을 찾을 수 없습니다. (os error 2)
+Get-Content : 'src/aippt/canvas/app.py' 경로는 존재하지 않으므로 찾을 수 없습니다.
+위치 줄:2 문자:350
++ ... oject.toml; Get-Content -LiteralPath 'src/aippt/canvas/app.py' -Total ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : ObjectNotFound: (src/aippt/canvas/app.py:String) [Get-Content], ItemNotFoundException
+    + FullyQualifiedErrorId : PathNotFound,Microsoft.PowerShell.Commands.GetContentCommand
+ 
+Get-Content : 'tests/canvas/test_app.py' 경로는 존재하지 않으므로 찾을 수 없습니다.
+위치 줄:2 문자:417
++ ... alCount 90; Get-Content -LiteralPath 'tests/canvas/test_app.py' -Tail ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : ObjectNotFound: (tests/canvas/test_app.py:String) [Get-Content], ItemNotFoundException
+    + FullyQualifiedErrorId : PathNotFound,Microsoft.PowerShell.Commands.GetContentCommand
+ 
+
+ exited 1 in 840ms:
+rg: src/aippt/canvas/app.py: 지정된 경로를 찾을 수 없습니다. (os error 3)
+rg: src/aippt/canvas/static/index.html: 지정된 경로를 찾을 수 없습니다. (os error 3)
+rg: src/aippt/canvas/static/editor.js: 지정된 경로를 찾을 수 없습니다. (os error 3)
+rg: src/aippt/canvas/static/style.css: 지정된 경로를 찾을 수 없습니다. (os error 3)
+rg: requirements.txt: 지정된 파일을 찾을 수 없습니다. (os error 2)
+rg: pyproject.toml: 지정된 파일을 찾을 수 없습니다. (os error 2)
+Get-Content : 'src/aippt/canvas/app.py' 경로는 존재하지 않으므로 찾을 수 없습니다.
+위치 줄:2 문자:350
++ ... oject.toml; Get-Content -LiteralPath 'src/aippt/canvas/app.py' -Total ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : ObjectNotFound: (src/aippt/canvas/app.py:String) [Get-Content], ItemNotFoundException
+    + FullyQualifiedErrorId : PathNotFound,Microsoft.PowerShell.Commands.GetContentCommand
+ 
+Get-Content : 'tests/canvas/test_app.py' 경로는 존재하지 않으므로 찾을 수 없습니다.
+위치 줄:2 문자:417
++ ... alCount 90; Get-Content -LiteralPath 'tests/canvas/test_app.py' -Tail ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : ObjectNotFound: (tests/canvas/test_app.py:String) [Get-Content], ItemNotFoundException
+    + FullyQualifiedErrorId : PathNotFound,Microsoft.PowerShell.Commands.GetContentCommand
+ 
+
+codex
+The brief’s declared target (`.`) does not contain its named source paths. I’m locating the project within the workspace and will use that actual root while keeping the brief’s file scope unchanged.
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'Get-ChildItem -Force | Select-Object Name,Mode; rg --files -g app.py -g pyproject.toml -g requirements.txt -g test_app.py | Select-Object -First 80' in C:\Users\2021670\Documents\멀티 에이전트
+2026-07-15T00:51:51.221184Z ERROR codex_core::tools::router: error=Exit code: 1
+Wall time: 0.7 seconds
+Output:
+
+Name                                        Mode  
+----                                        ----  
+.agents                                     d-----
+.claude                                     d-----
+.git                                        d--h--
+.tmp-build                                  d-----
+Claude_Orchestrator                         d-----
+MultiAgent_Dev                              d-----
+tasks                                       d-----
+_backup_extracted                           d-----
+_local                                      d-----
+_shared                                     d-----
+_templates                                  d-----
+.gitignore                                  -a----
+ABT_Architecture_Flow_Analysis.md           -a----
+AGENTS.md                                   -a----
+apply_patch.py                              -a----
+call_worker_trace.log                       -a----
+CHANGELOG.md                                -a----
+[REDACTED].md -a----
+[REDACTED].md   -a----
+dummy_brief.md                              -a----
+[REDACTED].md        -a----
+KNOWN_ISSUES.md                             -a----
+log.md                                      -a----
+NOTICE                                      -a----
+raw-plan.md                                 -a----
+README.md                                   -a----
+result.json                                 -a----
+result.md                                   -a----
+result_vwmatrox_opt.md                      -a----
+resume.sh                                   -a----
+review_sonnet_output.json                   -a----
+scratch_dump.cs                             -a----
+scratch_dump.exe                            -a----
+scratch_dump2.cs                            -a----
+scratch_dump2.exe                           -a----
+temp_ref.html                               -a----
+temp_response.txt                           -a----
+ui_patch.diff                               -a----
+ui_patch_fixed.diff                         -a----
+VEO_Imaging_Migration_Plan.md               -a----
+~$드 프롬포트.docx                               -a-h--
+모드 프롬포트.docx                                -a----
+
+
+
+ exited 1 in 737ms:
+
+Name                                        Mode  
+----                                        ----  
+.agents                                     d-----
+.claude                                     d-----
+.git                                        d--h--
+.tmp-build                                  d-----
+Claude_Orchestrator                         d-----
+MultiAgent_Dev                              d-----
+tasks                                       d-----
+_backup_extracted                           d-----
+_local                                      d-----
+_shared                                     d-----
+_templates                                  d-----
+.gitignore                                  -a----
+ABT_Architecture_Flow_Analysis.md           -a----
+AGENTS.md                                   -a----
+apply_patch.py                              -a----
+call_worker_trace.log                       -a----
+CHANGELOG.md                                -a----
+[REDACTED].md -a----
+[REDACTED].md   -a----
+dummy_brief.md                              -a----
+[REDACTED].md        -a----
+KNOWN_ISSUES.md                             -a----
+log.md                                      -a----
+NOTICE                                      -a----
+raw-plan.md                                 -a----
+README.md                                   -a----
+result.json                                 -a----
+result.md                                   -a----
+result_vwmatrox_opt.md                      -a----
+resume.sh                                   -a----
+review_sonnet_output.json                   -a----
+scratch_dump.cs                             -a----
+scratch_dump.exe                            -a----
+scratch_dump2.cs                            -a----
+scratch_dump2.exe                           -a----
+temp_ref.html                               -a----
+temp_response.txt                           -a----
+ui_patch.diff                               -a----
+ui_patch_fixed.diff                         -a----
+VEO_Imaging_Migration_Plan.md               -a----
+~$드 프롬포트.docx                               -a-h--
+모드 프롬포트.docx                                -a----
+
+
+
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "Get-ChildItem -LiteralPath 'tasks\\AI_Powered_PPT' -Force | Select-Object Name,Mode,Length; Get-ChildItem -LiteralPath 'tasks\\AI_Powered_PPT' -Recurse -Directory | Select-Object -First 100 FullName; Get-ChildItem -LiteralPath '_local' -Force | Select-Object Name,Mode; Get-ChildItem -LiteralPath '_backup_extracted' -Force | Select-Object Name,Mode" in C:\Users\2021670\Documents\멀티 에이전트
+ succeeded in 652ms:
+
+Name                                        Mode   Length 
+----                                        ----   ------ 
+.pytest_cache                               d-----        
+artifacts                                   d-----        
+prompts                                     d-----        
+reference                                   d-----        
+src                                         d-----        
+tests                                       d-----        
+3D Logic 개발 테스트벤치 설계안_Ver2.html             -a---- 619449 
+approved_write_manifest.txt                 -a---- 145    
+critic_brief.md                             -a---- 1933   
+critic_review.md                            -a---- 12263  
+draft-brief.md                              -a---- 1887   
+extract_code.py                             -a---- 634    
+foundation_research.md                      -a---- 32221  
+Gemini_Web_Prompt.md                        -a---- 2237   
+HTML_to_PPTX_Plan.md                        -a---- 52625  
+HUMAN_VERIFICATION.md                       -a---- 7964   
+main_brief.md                               -a---- 7807   
+phase0_brief.md                             -a---- 2504   
+phase0_change_detail.md                     -a---- 9465   
+phase0_critic_brief.md                      -a---- 1682   
+phase0_draft_brief.md                       -a---- 1264   
+phase0_repair_brief.md                      -a---- 1043   
+phase0_repair_change_detail.md              -a---- 5987   
+phase1a_brief.md                            -a---- 23132  
+phase1a_change_detail.md                    -a---- 15198  
+phase1a_critic_brief.md                     -a---- 2313   
+phase1a_draft_brief.md                      -a---- 990    
+phase1a_repair_brief.md                     -a---- 15718  
+phase1a_repair_change_detail.md             -a---- 11919  
+phase1a_repair_draft_brief.md               -a---- 1928   
+phase1b_brief.md                            -a---- 34094  
+phase1b_change_detail.md                    -a---- 15750  
+phase1b_critic_brief.md                     -a---- 1950   
+phase1b_draft_brief.md                      -a---- 1624   
+phase1b_repair_brief.md                     -a---- 3238   
+phase1b_repair_change_detail.md             -a---- 14727  
+phase1b_repair_draft_brief.md               -a---- 1223   
+phase2_brief.md                             -a---- 3265   
+phase2_change_detail.md                     -a---- 15892  
+phase2_critic_brief.md                      -a---- 1424   
+phase2_draft_brief.md                       -a---- 1896   
+phase2_repair_brief.md                      -a---- 4985   
+phase2_repair_change_detail.md              -a---- 13599  
+phase2_repair_draft_brief.md                -a---- 1725   
+phase3_brief.md                             -a---- 30456  
+phase3_change_detail.md                     -a---- 16481  
+phase3_critic_brief.md                      -a---- 1686   
+phase3_draft_brief.md                       -a---- 1951   
+phase4_brief.md                             -a---- 25378  
+phase4_change_detail.md                     -a---- 6272   
+phase4_draft_brief.md                       -a---- 2482   
+plan_draft_brief.md                         -a---- 2065   
+plan_main_brief.md                          -a---- 1253   
+plan_review.md                              -a---- 18797  
+pyproject.toml                              -a---- 2034   
+Q3_Review_Report.md                         -a---- 21252  
+README.md                                   -a---- 7318   
+renderer_brief.md                           -a---- 6997   
+renderer_draft_brief.md                     -a---- 1719   
+requirements.txt                            -a---- 2991   
+result.json                                 -a---- 1604   
+result.md                                   -a---- 1279   
+review_brief.md                             -a---- 808    
+Slide Template.html                         -a---- 13648  
+temp_extracted_plan.md                      -a---- 4504   
+[REDACTED].html  -a---- 38636  
+Vieworks_R&D_ppt_Template.pptx              -a---- 1881082
+_permcheck.py                               -a---- 224    
+_verify_restore.py                          -a---- 7327   
+                                                          
+                                                          
+                                                          
+                                                          
+                                                          
+                                                          
+                                                          
+                                                          
+                                                          
+                                                          
+                                                          
+                                                          
+                                                          
+                                                          
+                                                          
+                                                          
+                                                          
+                                                          
+                                                          
+                                                          
+                                                          
+.gitkeep                                    -a----        
+learnings.md                                -a----        
+_local                                      d-----        
+_shared                                     d-----        
+_templates                                  d-----        
+.gitignore                                  -a----        
+AGENTS.md                                   -a----        
+CHANGELOG.md                                -a----        
+[REDACTED].md -a----        
+[REDACTED].md   -a----        
+log.md                                      -a----        
+[REDACTED].md  -a----        
+NOTICE                                      -a----        
+README.md                                   -a----        
+
+
+Get-ChildItem : 'C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\.pytest_cache' 경로에 대한 액세스가 거부되었습니다.
+위치 줄:2 문자:92
++ ... ode,Length; Get-ChildItem -LiteralPath 'tasks\AI_Powered_PPT' -Recurs ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : PermissionDenied: (C:\Users\202167...T\.pytest_cache:String) [Get-ChildItem], Unauthoriz 
+   edAccessException
+    + FullyQualifiedErrorId : DirUnauthorizedAccessError,Microsoft.PowerShell.Commands.GetChildItemCommand
+ 
+
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "rg -n -C 3 \"MOCK_LATENCY|api_generate|api_context|def _too_large|async function generate|async function loadContext|b-generate|#ai h2 \\\\.tag|google-genai|\\[project.optional-dependencies\\]\" src/aippt/canvas/app.py src/aippt/canvas/static/index.html src/aippt/canvas/static/editor.js src/aippt/canvas/static/style.css requirements.txt pyproject.toml; Get-Content -LiteralPath 'src/aippt/canvas/app.py' -TotalCount 100; Get-Content -LiteralPath 'tests/canvas/test_app.py' -Tail 55" in C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT
+ succeeded in 566ms:
+pyproject.toml-17-    "jsonschema==4.23.0",           # canvas/validate.py puts it on the REQUEST path, not the html extra
+pyproject.toml-18-]
+pyproject.toml-19-
+pyproject.toml:20:[project.optional-dependencies]
+pyproject.toml-21-html = [
+pyproject.toml-22-    "beautifulsoup4==4.12.3",
+pyproject.toml-23-]
+--
+pyproject.toml-31-ai = [
+pyproject.toml-32-    "anthropic>=0.40.0",
+pyproject.toml-33-    "openai>=1.50.0",
+pyproject.toml:34:    "google-genai>=0.3.0",
+pyproject.toml-35-]
+pyproject.toml-36-dev = [
+pyproject.toml-37-    "pytest>=8.0",
+--
+requirements.txt-35-# Install only the provider you use; all three satisfy the same LLMClient protocol.
+requirements.txt-36-# anthropic>=0.40.0
+requirements.txt-37-# openai>=1.50.0
+requirements.txt:38:# google-genai>=0.3.0
+requirements.txt-39-
+requirements.txt-40-# --- Phase 3: visual QA [REDACTED]
+requirements.txt-41-# Not pip-installable — these are system binaries. Document, don't pretend:
+--
+requirements.txt-46-# --- Phase 4: live Gemini author (OPTIONAL at runtime) [REDACTED]
+requirements.txt-47-# Only needed when GEMINI_API_KEY is set; the mock author and the CLI need none of this, and
+requirements.txt-48-# app.py imports it LAZILY inside _call_gemini(). Also exposed as the `ai` extra in pyproject.toml.
+requirements.txt:49:google-genai>=0.3.0
+--
+src/aippt/canvas/static/style.css-192-/* THE LOADING STATE. `aria-busy` is the state; this animation is only its costume, so a screen
+src/aippt/canvas/static/style.css-193-   reader is told what the eye is told. `disabled` is what actually stops a second POST — the pulse
+src/aippt/canvas/static/style.css-194-   just makes 1.5 s look like work rather than a hang. */
+src/aippt/canvas/static/style.css:195:#b-generate[aria-busy='true'] { animation: busy 1.1s ease-in-out infinite; }
+src/aippt/canvas/static/style.css-196-@keyframes busy { 50% { opacity: .5; } }
+src/aippt/canvas/static/style.css-197-
+src/aippt/canvas/static/style.css-198-/* [REDACTED] CONTRACT: the stage (5.2) */
+--
+src/aippt/canvas/static/editor.js-1626-   * loadIR() actually accepted the payload. loadIR() must not push for itself — it is lifted out by
+src/aippt/canvas/static/editor.js-1627-   * name and executed in Node against a stubbed stage, where snapshot() does not exist.
+src/aippt/canvas/static/editor.js-1628-   */
+src/aippt/canvas/static/editor.js:1629:  async function generate() {
+src/aippt/canvas/static/editor.js-1630-    if (!CONTEXT) return;   // the server is unreachable and the button is already disabled
+src/aippt/canvas/static/editor.js-1631-
+src/aippt/canvas/static/editor.js-1632-    var prompt = $('p-prompt').value.trim();
+--
+src/aippt/canvas/static/editor.js-1681-  /* aria-busy is the STATE; the CSS pulse is only its costume. `disabled` is what actually stops a
+src/aippt/canvas/static/editor.js-1682-   * second POST — a double press would race two loadIR()s and push two undo steps for one draft. */
+src/aippt/canvas/static/editor.js-1683-  function setBusy(on) {
+src/aippt/canvas/static/editor.js:1684:    var b = $('b-generate');
+src/aippt/canvas/static/editor.js-1685-    b.disabled = on;
+src/aippt/canvas/static/editor.js-1686-    b.setAttribute('aria-busy', String(on));
+src/aippt/canvas/static/editor.js-1687-    $('p-prompt').disabled = on;
+src/aippt/canvas/static/editor.js-1688-  }
+src/aippt/canvas/static/editor.js-1689-
+src/aippt/canvas/static/editor.js:1690:  $('b-generate').addEventListener('click', generate);
+src/aippt/canvas/static/editor.js-1691-
+src/aippt/canvas/static/editor.js-1692-  /* Strip a ```json ... ``` fence a Web-Gem paste often carries. The backend tolerates the same
+src/aippt/canvas/static/editor.js-1693-   * wrapper; keeping both lenient means a copy straight out of the chat UI Just Works. */
+--
+src/aippt/canvas/static/editor.js-1963-    $('b-json').disabled = true;
+src/aippt/canvas/static/editor.js-1964-    // The draft comes from the same server. Leaving it live would offer a button whose only possible
+src/aippt/canvas/static/editor.js-1965-    // outcome is the banner the user is already reading.
+src/aippt/canvas/static/editor.js:1966:    $('b-generate').disabled = true;
+src/aippt/canvas/static/editor.js-1967-    setStatus(why);
+src/aippt/canvas/static/editor.js-1968-  }
+src/aippt/canvas/static/editor.js-1969-
+src/aippt/canvas/static/editor.js:1970:  async function loadContext() {
+src/aippt/canvas/static/editor.js-1971-    try {
+src/aippt/canvas/static/editor.js-1972-      var res = await fetch('/api/context');
+src/aippt/canvas/static/editor.js-1973-      if (!res.ok) throw new Error('HTTP ' + res.status);
+--
+src/aippt/canvas/app.py-74-# real UI with a real failure mode (a button you can press twice), and a mock that answered
+src/aippt/canvas/app.py-75-# instantly would never exercise it. It is spent ONLY on the success path -- a malformed request is
+src/aippt/canvas/app.py-76-# refused immediately, because no model would have been called for that one either.
+src/aippt/canvas/app.py:77:MOCK_LATENCY_S = 1.5
+src/aippt/canvas/app.py-78-
+src/aippt/canvas/app.py-79-# Everything a filesystem, a Content-Disposition header or a shell could misread. The title is
+src/aippt/canvas/app.py-80-# author-controlled text and it NEVER reaches the filesystem -- but it does reach a header and then
+--
+src/aippt/canvas/app.py-137-
+src/aippt/canvas/app.py-138-
+src/aippt/canvas/app.py-139-@app.get("/api/context")
+src/aippt/canvas/app.py:140:async def api_context(request: Request) -> dict[str, Any]:
+src/aippt/canvas/app.py-141-    """Everything the editor must NOT hard-code.
+src/aippt/canvas/app.py-142-
+src/aippt/canvas/app.py-143-    Chiefly the template SHA. If the editor carried a literal SHA, re-pinning the template -- a
+--
+src/aippt/canvas/app.py-193-
+src/aippt/canvas/app.py-194-
+src/aippt/canvas/app.py-195-@app.post("/api/generate")
+src/aippt/canvas/app.py:196:async def api_generate(request: Request) -> Response:
+src/aippt/canvas/app.py-197-    """{"prompt": "..."} in, canvas-ir/1 out. MOCK without a key, LIVE Gemini with one (Phase 4).
+src/aippt/canvas/app.py-198-
+src/aippt/canvas/app.py-199-    Either way the editor hands what comes back straight to loadIR(), which judges every element
+--
+src/aippt/canvas/app.py-230-            log.exception("the MOCK payload does not validate -- a server bug, not a user error")
+src/aippt/canvas/app.py-231-            return JSONResponse({"error": "mock", "detail": str(exc)}, status_code=500)
+src/aippt/canvas/app.py-232-
+src/aippt/canvas/app.py:233:        await asyncio.sleep(MOCK_LATENCY_S)
+src/aippt/canvas/app.py-234-        return JSONResponse(ir)
+src/aippt/canvas/app.py-235-
+src/aippt/canvas/app.py-236-    # --- LIVE: a real Gemini call. The prompt IS read now. [REDACTED]
+--
+src/aippt/canvas/app.py-278-        )
+src/aippt/canvas/app.py-279-
+src/aippt/canvas/app.py-280-
+src/aippt/canvas/app.py:281:def _too_large() -> JSONResponse:
+src/aippt/canvas/app.py-282-    return JSONResponse(
+src/aippt/canvas/app.py-283-        {
+src/aippt/canvas/app.py-284-            "error": "too_large",
+--
+src/aippt/canvas/app.py-358-async def _call_gemini(prompt: str) -> str:
+src/aippt/canvas/app.py-359-    """THE ONE FUNCTION THAT TOUCHES THE NETWORK. The mocking test monkeypatches exactly this.
+src/aippt/canvas/app.py-360-
+src/aippt/canvas/app.py:361:    Kept thin on purpose. google-genai is imported LAZILY so the renderer, the CLI and mock mode all
+src/aippt/canvas/app.py-362-    install and run without it (it is only in the optional 'ai' extra).
+src/aippt/canvas/app.py-363-    """
+src/aippt/canvas/app.py-364-    try:
+--
+src/aippt/canvas/app.py-366-        from google.genai import types
+src/aippt/canvas/app.py-367-    except ImportError as exc:
+src/aippt/canvas/app.py-368-        raise GeminiError(
+src/aippt/canvas/app.py:369:            "GEMINI_API_KEY is set but the google-genai package is not installed. "
+src/aippt/canvas/app.py:370:            "Install it with:  pip install google-genai"
+src/aippt/canvas/app.py-371-        ) from exc
+src/aippt/canvas/app.py-372-
+src/aippt/canvas/app.py-373-    client = genai.Client(api_key=gemini_api_key())
+--
+src/aippt/canvas/static/index.html-61-      <label class="stacked" for="p-prompt">Prompt</label>
+src/aippt/canvas/static/index.html-62-      <textarea id="p-prompt" rows="4" spellcheck="false"
+src/aippt/canvas/static/index.html-63-                placeholder="예: Q3 마케팅 전략을 3단계 퍼널로 요약해줘"></textarea>
+src/aippt/canvas/static/index.html:64:      <button type="button" id="b-generate" class="primary">Generate (✨)</button>
+src/aippt/canvas/static/index.html-65-      <button type="button" id="b-paste">Paste Gem JSON (📋)</button>
+src/aippt/canvas/static/index.html-66-      <p class="hint" id="ai-hint">No model is called. The server returns a fixed deck after 1.5 s,
+src/aippt/canvas/static/index.html-67-        and it <strong>replaces the stage</strong> (Ctrl+Z brings yours back).</p>
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""The same-origin editor server. Plan Sec 9, Phase 1C tasks 3.1-3.3, pulled forward into 1B.
+
+    python -m aippt.canvas.app        # -> http://127.0.0.1:8000
+
+THIS IS AN ADAPTER, NOT A SECOND RENDERER. It owns exactly two things the CLI does not: it serves
+the editor's static files same-origin, and it hands a JSON body to render_canvas.render(). Every
+rule it appears to enforce -- the schema, the reserved regions, the accent1 ban, the template pin --
+is enforced by the frozen backend; this module only maps the resulting exception onto an HTTP status
+a browser can act on. If this file and the CLI ever disagree about the same payload, the bug is
+here.
+
+THE CLI STAYS FIRST-CLASS (task 3.3). Corporate IT blocks localhost servers often enough that
+`python -m aippt.canvas.render_canvas deck.json -o out.pptx` is the fallback that always works. So
+the dependency arrow points one way only: app.py imports the canvas package, and NOTHING under
+canvas/ imports app.py. FastAPI stays an OPTIONAL extra (`pip install -e ".[editor]"`) and the
+renderer installs and runs without it.
+
+THE SERVER WRITES NO FILES. prs.save() goes to a BytesIO. There is no temp directory, no output
+path, and no filename taken from the payload -- `target.template` is informational and is ignored
+(schema.json says so in as many words). Honouring a path from the body would be an arbitrary-file
+read, which is precisely the hole task 3.2 exists to close.
+
+/api/generate HAS TWO MODES, AND THE ENVIRONMENT PICKS ONE (Phase 4). With no GEMINI_API_KEY it is
+the Phase 3 MOCK: it calls no model, reaches no network, and reads nothing from the prompt -- one
+hardcoded canvas-ir/1 deck, 1.5 s late. With a key set it is the LIVE author: it reads the prompt,
+calls Gemini through the single _call_gemini() seam, and assembles the reply into a deck. Either way
+the editor's request shape, its loading state, its failure paths and its hand-off to loadIR() are
+identical, and either way the deck goes through validate() before it answers -- a mock that ships an
+invalid deck would prove the wiring works while quietly breaking the only thing the wiring carries,
+and a model is exactly the author most likely to put a box on the logo. The mode is read at REQUEST
+time (server_mode()), so the same process serves whichever the environment says.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import io
+import json
+import logging
+import os
+import re
+import unicodedata
+import urllib.parse
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from pathlib import Path
+from typing import Any
+
+from fastapi import FastAPI, Request, Response
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+
+from aippt.canvas.geometry import CANVAS
+from aippt.canvas.pin import TemplatePinError, load_pin, verify_pin
+from aippt.canvas.render_canvas import render
+from aippt.canvas.style import BRAND_RED, EA, FORBIDDEN, LATIN
+from aippt.canvas.validate import CanvasValidationError, StalePayloadError, validate
+
+log = logging.getLogger(__name__)
+
+STATIC_DIR = Path(__file__).with_name("static")
+
+PPTX_MIME = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+
+# A one-slide deck of boxes and arrows is a few KB of JSON. Anything approaching a megabyte is a
+# mistake or an attack, and either way the renderer should not be the thing that discovers it.
+MAX_BODY_BYTES = 2 * 1024 * 1024
+
+DEFAULT_STEM = "deck"
+
+# The latency an LLM call would cost, simulated. It is not padding: the editor's loading state is
+# real UI with a real failure mode (a button you can press twice), and a mock that answered
+# instantly would never exercise it. It is spent ONLY on the success path -- a malformed request is
+# refused immediately, because no model would have been called for that one either.
+MOCK_LATENCY_S = 1.5
+
+# Everything a filesystem, a Content-Disposition header or a shell could misread. The title is
+# author-controlled text and it NEVER reaches the filesystem -- but it does reach a header and then
+# a browser's Save dialog, so it is sanitized on the way out regardless.
+_UNSAFE_STEM = re.compile(r'[\x00-\x1f\x7f"\\/:*?<>|]+')
+
+# Phase 4: the live author. The ENVIRONMENT, not the code, chooses the mode -- GEMINI_API_KEY
+# present means "call the real model"; absent means "serve the Phase 3 mock". The default model is
+# overridable so a deployment can pin a newer flash revision without a code change.
+DEFAULT_GEMINI_MODEL = "gemini-2.5-flash"
+
+# The system instruction the live author injects. It is the SAME contract the Web-Gem workflow
+# pastes into gemini.google.com, kept in one file so the two paths cannot drift. It lives at the
+# project root: canvas/ -> aippt/ -> src/ -> <project root>.
+PROMPT_PATH = Path(__file__).resolve().parents[3] / "Gemini_Web_Prompt.md"
+
+
+class GeminiError(RuntimeError):
+    """A live model call failed -- the key-absent (mock) path NEVER raises this.
+
+    Carries a human reason the editor shows verbatim. Deliberately NOT a CanvasValidationError: a
+    model that returns unusable text is an upstream (502) failure, not a user's invalid deck (422).
+    """
+
+
+def [REDACTED](client, monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "k")
+    _stub_gemini(monkeypatch, returns="```json\n" + json.dumps(_LIVE_DECK) + "\n```")
+    r = client.post("/api/generate", json={"prompt": "x"})
+    assert r.status_code == 200, r.text
+    assert r.json()["title"] == "?쇱씠釉??고겕"
+
+
+def [REDACTED](client, monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "k")
+    _stub_gemini(monkeypatch, returns="this is not JSON at all")
+    r = client.post("/api/generate", json={"prompt": "x"})
+    assert r.status_code == 502
+    assert r.json()["error"] == "generate"
+
+
+def [REDACTED](client, monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "k")
+    _stub_gemini(monkeypatch, raises=appmod.GeminiError("quota exceeded"))
+    r = client.post("/api/generate", json={"prompt": "x"})
+    assert r.status_code == 502
+    assert r.json()["error"] == "generate"
+    assert "quota exceeded" in r.json()["detail"]
+
+
+def [REDACTED](client, monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "k")
+    bad = json.loads(json.dumps(_LIVE_DECK))
+    bad["elements"][0]["y"] = 10.0  # into HEADER_RESERVED (0..92)
+    _stub_gemini(monkeypatch, returns=json.dumps(bad))
+    r = client.post("/api/generate", json={"prompt": "x"})
+    assert r.status_code == 502
+    assert r.json()["error"] == "model"
+    assert "HEADER_RESERVED" in r.json()["detail"]
+
+
+def [REDACTED](client, monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "k")
+    called = {"n": 0}
+    async def must_not_call(prompt):
+        called["n"] += 1
+        return json.dumps(_LIVE_DECK)
+    monkeypatch.setattr(appmod, "_call_gemini", must_not_call)
+    r = client.post("/api/generate", json={"prompt": "   "})
+    assert r.status_code == 422
+    assert called["n"] == 0, "the model was called for an empty prompt"
+
+
+def [REDACTED](client, monkeypatch):
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    a = client.post("/api/generate", json={"prompt": "a"}).json()
+    b = client.post("/api/generate", json={"prompt": "?꾩쟾???ㅻⅨ ?붿껌"}).json()
+    assert a == b == mock_ir(load_pin())
+
+codex
+The implementation described by the brief is already present in the task’s actual project root, including the dependency declaration and Phase 4 tests. I’m checking the focused suite now; it uses a mocked SDK seam, so it will not call a live model.
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'pytest tests/canvas/test_app.py -q' in C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT
+2026-07-15T00:52:14.715644Z ERROR codex_core::tools::router: error=Exit code: 1
+Wall time: 0.6 seconds
+Output:
+pytest : 'pytest' 용어가 cmdlet, 함수, 스크립트 파일 또는 실행할 수 있는 프로그램 이름으로 인식되지 않습니다. 이름이 정확한지 확인하고 경로가 포함된 경우 경로가 올바른지 검증한 다음 다시 
+시도하십시오.
+위치 줄:2 문자:1
++ pytest tests/canvas/test_app.py -q
++ ~~~~~~
+    + CategoryInfo          : ObjectNotFound: (pytest:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+
+ exited 1 in 587ms:
+pytest : 'pytest' 용어가 cmdlet, 함수, 스크립트 파일 또는 실행할 수 있는 프로그램 이름으로 인식되지 않습니다. 이름이 정확한지 확인하고 경로가 포함된 경우 경로가 올바른지 검증한 다음 다시 
+시도하십시오.
+위치 줄:2 문자:1
++ pytest tests/canvas/test_app.py -q
++ ~~~~~~
+    + CategoryInfo          : ObjectNotFound: (pytest:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+
+codex
+The `pytest` executable is not on PATH. I’ll try the same suite through the active Python interpreter before treating the environment as the blocker.
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'python --version; python -m pytest tests/canvas/test_app.py -q' in C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT
+2026-07-15T00:52:20.006699Z ERROR codex_core::tools::router: error=Exit code: 1
+Wall time: 0.8 seconds
+Output:
+'python.exe' 프로그램을 실행하지 못했습니다. 지정한 로그온 세션이 없습니다. 이미 종료되었을 수도 있습니다위치 줄:2 문자:1
++ python --version; python -m pytest tests/canvas/test_app.py -q
++ ~~~~~~~~~~~~~~~~.
+위치 줄:2 문자:1
++ python --version; python -m pytest tests/canvas/test_app.py -q
++ ~~~~~~~~~~~~~~~~
+    + CategoryInfo          : ResourceUnavailable: (:) [], ApplicationFailedException
+    + FullyQualifiedErrorId : NativeCommandFailed
+ 
+'python.exe' 프로그램을 실행하지 못했습니다. 지정한 로그온 세션이 없습니다. 이미 종료되었을 수도 있습니다위치 줄:2 문자:19
++ python --version; python -m pytest tests/canvas/test_app.py -q
++                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~.
+위치 줄:2 문자:19
++ python --version; python -m pytest tests/canvas/test_app.py -q
++                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : ResourceUnavailable: (:) [], ApplicationFailedException
+    + FullyQualifiedErrorId : NativeCommandFailed
+ 
+
+ exited 1 in 839ms:
+'python.exe' 프로그램을 실행하지 못했습니다. 지정한 로그온 세션이 없습니다. 이미 종료되었을 수도 있습니다위치 줄:2 문자:1
++ python --version; python -m pytest tests/canvas/test_app.py -q
++ ~~~~~~~~~~~~~~~~.
+위치 줄:2 문자:1
++ python --version; python -m pytest tests/canvas/test_app.py -q
++ ~~~~~~~~~~~~~~~~
+    + CategoryInfo          : ResourceUnavailable: (:) [], ApplicationFailedException
+    + FullyQualifiedErrorId : NativeCommandFailed
+ 
+'python.exe' 프로그램을 실행하지 못했습니다. 지정한 로그온 세션이 없습니다. 이미 종료되었을 수도 있습니다위치 줄:2 문자:19
++ python --version; python -m pytest tests/canvas/test_app.py -q
++                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~.
+위치 줄:2 문자:19
++ python --version; python -m pytest tests/canvas/test_app.py -q
++                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : ResourceUnavailable: (:) [], ApplicationFailedException
+    + FullyQualifiedErrorId : NativeCommandFailed
+ 
+
+codex
+The focused tests cannot run because this session has neither a usable Python interpreter nor a `pytest` command. I’ll still perform read-only structural checks on the implemented files and report that environmental limitation precisely.
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "git status --short -- 'tasks/AI_Powered_PPT'; git diff --check -- 'tasks/AI_Powered_PPT/src/aippt/canvas/app.py' 'tasks/AI_Powered_PPT/src/aippt/canvas/static/index.html' 'tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js' 'tasks/AI_Powered_PPT/src/aippt/canvas/static/style.css' 'tasks/AI_Powered_PPT/requirements.txt' 'tasks/AI_Powered_PPT/tests/canvas/test_app.py'; Get-Command node,py,python,python3 -ErrorAction SilentlyContinue | Select-Object Name,Source; if (Get-Command node -ErrorAction SilentlyContinue) { node --check 'src/aippt/canvas/static/editor.js' }; rg -n \"def (gemini_api_key|gemini_model|server_mode|system_instruction|_strip_code_fence|_finalize_live_ir|_call_gemini|generate_live)|async def api_generate|mode.: server_mode|id=\\\"(ai-mode|b-paste|ai-hint)\\\"|function (stripFence|applyMode)|async function pasteGemJSON|applyMode\\(CONTEXT.mode|#ai h2 \\.tag\\.live|google-genai>=0\\.3\\.0|def test_live_generate\" src/aippt/canvas/app.py src/aippt/canvas/static/index.html src/aippt/canvas/static/editor.js src/aippt/canvas/static/style.css requirements.txt tests/canvas/test_app.py" in C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT
+2026-07-15T00:52:34.322279Z ERROR codex_core::tools::router: error=Exit code: 1
+Wall time: 0.9 seconds
+Output:
+
+Name        Source                                                          
+----        ------                                                          
+node.exe    C:\Program Files\nodejs\node.exe                                
+python.exe  C:\Users\2021670\AppData\Local\Microsoft\WindowsApps\python.exe 
+python3.exe C:\Users\2021670\AppData\Local\Microsoft\WindowsApps\python3.exe
+
+
+warning: unable to access 'C:\Users\2021670/.config/git/ignore': Permission denied
+warning: unable to access 'C:\Users\2021670/.config/git/ignore': Permission denied
+ai-mode : 'ai-mode' 용어가 cmdlet, 함수, 스크립트 파일 또는 실행할 수 있는 프로그램 이름으로 인식되지 않습니다. 이름이 정확한지 확인하고 경로가 포함된 경우 경로가 올바른지 검증한 다음 다
+시 시도하십시오.
+위치 줄:2 문자:758
++ ... live)|async def api_generate|mode.: server_mode|id=\"(ai-mode|b-paste ...
++                                                           ~~~~~~~
+    + CategoryInfo          : ObjectNotFound: (ai-mode:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+
+ exited 1 in 881ms:
+
+Name        Source                                                          
+----        ------                                                          
+node.exe    C:\Program Files\nodejs\node.exe                                
+python.exe  C:\Users\2021670\AppData\Local\Microsoft\WindowsApps\python.exe 
+python3.exe C:\Users\2021670\AppData\Local\Microsoft\WindowsApps\python3.exe
+
+
+warning: unable to access 'C:\Users\2021670/.config/git/ignore': Permission denied
+warning: unable to access 'C:\Users\2021670/.config/git/ignore': Permission denied
+ai-mode : 'ai-mode' 용어가 cmdlet, 함수, 스크립트 파일 또는 실행할 수 있는 프로그램 이름으로 인식되지 않습니다. 이름이 정확한지 확인하고 경로가 포함된 경우 경로가 올바른지 검증한 다음 다
+시 시도하십시오.
+위치 줄:2 문자:758
++ ... live)|async def api_generate|mode.: server_mode|id=\"(ai-mode|b-paste ...
++                                                           ~~~~~~~
+    + CategoryInfo          : ObjectNotFound: (ai-mode:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "node --check 'src/aippt/canvas/static/editor.js'; rg -n 'def (gemini_api_key|gemini_model|server_mode|system_instruction|_strip_code_fence|_finalize_live_ir|_call_gemini|generate_live)|async def api_generate|\"mode\": server_mode|id=\"(ai-mode|b-paste|ai-hint)\"|function (stripFence|applyMode)|async function pasteGemJSON|applyMode\\(CONTEXT.mode|#ai h2 \\.tag\\.live|google-genai>=0\\.3\\.0|def test_live_generate' src/aippt/canvas/app.py src/aippt/canvas/static/index.html src/aippt/canvas/static/editor.js src/aippt/canvas/static/style.css requirements.txt tests/canvas/test_app.py" in C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT
+ succeeded in 567ms:
+tests/canvas/test_app.py:1551:def [REDACTED](client, monkeypatch):
+tests/canvas/test_app.py:1584:def [REDACTED](client, monkeypatch):
+tests/canvas/test_app.py:1592:def [REDACTED](client, monkeypatch):
+tests/canvas/test_app.py:1600:def [REDACTED](client, monkeypatch):
+tests/canvas/test_app.py:1609:def [REDACTED](client, monkeypatch):
+tests/canvas/test_app.py:1620:def [REDACTED](client, monkeypatch):
+requirements.txt:38:# google-genai>=0.3.0
+requirements.txt:49:google-genai>=0.3.0
+src/aippt/canvas/static/style.css:172:#ai h2 .tag.live { background:#e6f4ea; color:#137333; }
+src/aippt/canvas/static/editor.js:1694:  function stripFence(text) {
+src/aippt/canvas/static/editor.js:1706:  async function pasteGemJSON() {
+src/aippt/canvas/static/editor.js:1748:  function applyMode(mode, model) {
+src/aippt/canvas/static/editor.js:1975:      applyMode(CONTEXT.mode, CONTEXT.model);
+src/aippt/canvas/app.py:196:async def api_generate(request: Request) -> Response:
+src/aippt/canvas/app.py:297:def gemini_api_key() -> str | None:
+src/aippt/canvas/app.py:304:def gemini_model() -> str:
+src/aippt/canvas/app.py:308:def server_mode() -> str:
+src/aippt/canvas/app.py:314:def system_instruction() -> str:
+src/aippt/canvas/app.py:325:def _strip_code_fence(text: str) -> str:
+src/aippt/canvas/app.py:334:def _finalize_live_ir(data: Any, pin: dict[str, Any]) -> dict[str, Any]:
+src/aippt/canvas/app.py:358:async def _call_gemini(prompt: str) -> str:
+src/aippt/canvas/app.py:392:async def generate_live(prompt: str, pin: dict[str, Any]) -> dict[str, Any]:
+
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "Get-Content -LiteralPath 'src/aippt/canvas/app.py' | Select-Object -Skip 136 -First 137; Get-Content -LiteralPath 'src/aippt/canvas/static/index.html' | Select-Object -Skip 56 -First 19; Get-Content -LiteralPath 'src/aippt/canvas/static/editor.js' | Select-Object -Skip 1625 -First 155; Get-Content -LiteralPath 'src/aippt/canvas/static/style.css' | Select-Object -Skip 162 -First 16" in C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT
+ succeeded in 608ms:
+
+
+@app.get("/api/context")
+async def api_context(request: Request) -> dict[str, Any]:
+    """Everything the editor must NOT hard-code.
+
+    Chiefly the template SHA. If the editor carried a literal SHA, re-pinning the template -- a
+    deliberate, reviewed act (Sec 4.3) -- would turn into a silent 409 for every user of every
+    stale browser tab, and the fix would be "hard-refresh", which nobody would guess. Serving it
+    keeps reference/template_pin.json the single source of truth on both sides of the wire.
+    """
+    pin = request.app.state.pin
+    return {
+        "template_sha256": pin["renderer_template"]["sha256"],
+        "layout_index": pin["layout_signature"]["layout_index"],
+        "canvas": dict(CANVAS),
+        "brand": {"red": f"#{BRAND_RED}", "forbidden": f"#{FORBIDDEN}"},
+        "fonts": {"latin": LATIN, "ea": EA},
+        "mode": server_mode(),
+        "model": gemini_model() if server_mode() == "live" else None,
+    }
+
+
+@app.post("/api/export")
+async def api_export(request: Request) -> Response:
+    """canvas-ir/1 in, .pptx bytes out. In memory, start to finish.
+
+    The error mapping is the whole job, and the ORDER of the except clauses is the load-bearing
+    part: StalePayloadError SUBCLASSES CanvasValidationError, so catching the parent first would
+    report every stale payload as a 422 and tell the user to fix a deck that is perfectly fine. It
+    is caught first, and it stays first.
+    """
+    ir, err = await _read_json(request)
+    if err is not None:
+        return err
+
+    try:
+        prs = render(ir)  # validates, checks the pin, checks the SHA, draws
+    except StalePayloadError as exc:  # MUST precede CanvasValidationError -- it is a subclass
+        return JSONResponse({"error": "stale", "detail": str(exc)}, status_code=409)
+    except CanvasValidationError as exc:
+        return JSONResponse({"error": "validation", "detail": str(exc)}, status_code=422)
+    except TemplatePinError as exc:
+        # Unreachable if the startup gate ran -- the template cannot drift mid-process without
+        # someone editing it underneath us. Log it loudly rather than pretend it cannot happen.
+        log.exception("template pin failed at REQUEST time; the startup gate should have caught it")
+        return JSONResponse({"error": "template", "detail": str(exc)}, status_code=500)
+
+    buf = io.BytesIO()
+    prs.save(buf)  # in memory. No temp file, no output directory, nothing on disk.
+
+    return Response(
+        content=buf.getvalue(),
+        media_type=PPTX_MIME,
+        headers={"Content-Disposition": content_disposition(ir["title"])},
+    )
+
+
+@app.post("/api/generate")
+async def api_generate(request: Request) -> Response:
+    """{"prompt": "..."} in, canvas-ir/1 out. MOCK without a key, LIVE Gemini with one (Phase 4).
+
+    Either way the editor hands what comes back straight to loadIR(), which judges every element
+    before it touches the stage -- so a model draft is no more trusted than a hand-edited file. The
+    request shape, the loading state and the hand-off are identical in both modes; only the author
+    behind the seam changes.
+    """
+    body, err = await _read_json(request)
+    if err is not None:
+        return err
+
+    prompt = body.get("prompt") if isinstance(body, dict) else None
+    if not isinstance(prompt, str) or not prompt.strip():
+        # Refused BEFORE any model call or sleep. No author would have been invoked for an empty body.
+        return JSONResponse(
+            {"error": "validation", "detail": 'the body must be {"prompt": "<non-empty text>"}'},
+            status_code=422,
+        )
+
+    pin = request.app.state.pin
+
+    # --- MOCK: no key configured. The prompt is NOT read; a fixed deck comes back 1.5 s late. ------
+    if gemini_api_key() is None:
+        # Logged BY LENGTH, never by content: this is an unauthenticated local endpoint and the deck
+        # text is the user's, not ours.
+        log.info("mock generate: %d-char prompt (not read -- no model is called)", len(prompt))
+        ir = mock_ir(pin)
+
+        # THE MOCK IS VALIDATED BEFORE IT IS SERVED, by the same validator the export path runs. It
+        # cannot fail because of anything the caller sent -- so if it fails, it is OUR bug: a 500.
+        try:
+            validate(ir)
+        except CanvasValidationError as exc:
+            log.exception("the MOCK payload does not validate -- a server bug, not a user error")
+            return JSONResponse({"error": "mock", "detail": str(exc)}, status_code=500)
+
+        await asyncio.sleep(MOCK_LATENCY_S)
+        return JSONResponse(ir)
+
+    # --- LIVE: a real Gemini call. The prompt IS read now. [REDACTED]
+    log.info("live generate: %d-char prompt -> %s", len(prompt), gemini_model())
+    try:
+        ir = await generate_live(prompt.strip(), pin)
+    except GeminiError as exc:
+        log.warning("live generate failed: %s", exc)
+        return JSONResponse({"error": "generate", "detail": str(exc)}, status_code=502)
+
+    # The assembled deck goes through the SAME validator the export path runs. A model can put a box
+    # on the logo as easily as a human can; refusing it here means the editor is never handed a draft
+    # it could only bounce, and the detail is the same numbered list validate() gives everywhere.
+    try:
+        validate(ir)
+    except CanvasValidationError as exc:
+        return JSONResponse({"error": "model", "detail": str(exc)}, status_code=502)
+
+    return JSONResponse(ir)
+
+
+async def _read_json(request: Request) -> tuple[Any, JSONResponse | None]:
+    """The body guard both POST routes share. Returns (payload, None) or (None, error).
+
+    Both size checks are needed and both are here: a chunked body declares no Content-Length, so the
+    header check alone can be walked straight past, and the real-length check alone would have us
+    buffer a megabyte before objecting to it.
+    """
+    declared = request.headers.get("content-length")
+    if declared is not None and declared.isdigit() and int(declared) > MAX_BODY_BYTES:
+        return None, _too_large()
+
+    raw = await request.body()
+    if len(raw) > MAX_BODY_BYTES:  # chunked bodies declare no length; check the real thing too
+        return None, _too_large()
+
+    try:
+        return json.loads(raw.decode("utf-8")), None
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        # str(exc) is json's own "Expecting ',' delimiter: line 3 column 9" -- useful, and it leaks
+         hand-edited. It is, in fact, the author most likely to put a box on the Vieworks logo.
+         GENERATE REPLACES THE WHOLE STAGE. That is one undo step, and the caller pushes it. -->
+    <section class="group" id="ai">
+      <h2>AI draft <span class="tag" id="ai-mode" title="No model is called">mock</span></h2>
+      <label class="stacked" for="p-prompt">Prompt</label>
+      <textarea id="p-prompt" rows="4" spellcheck="false"
+                placeholder="?? Q3 留덉????꾨왂??3?④퀎 ?쇰꼸濡??붿빟?댁쨾"></textarea>
+      <button type="button" id="b-generate" class="primary">Generate (??</button>
+      <button type="button" id="b-paste">Paste Gem JSON (?뱥)</button>
+      <p class="hint" id="ai-hint">No model is called. The server returns a fixed deck after 1.5 s,
+        and it <strong>replaces the stage</strong> (Ctrl+Z brings yours back).</p>
+      <p class="hint">Or paste JSON copied from a Web Gem (Gemini/ChatGPT) straight onto the stage ??        it goes through the same import gate as a file.</p>
+    </section>
+
+    <section class="group">
+      <h2>Export</h2>
+      <button type="button" id="b-json"   class="primary">Download JSON</button>
+      <button type="button" id="b-load">Load JSON</button>
+      <input type="file" id="f-load" accept="application/json,.json" hidden>
+   * name and executed in Node against a stubbed stage, where snapshot() does not exist.
+   */
+  async function generate() {
+    if (!CONTEXT) return;   // the server is unreachable and the button is already disabled
+
+    var prompt = $('p-prompt').value.trim();
+    if (!prompt) {
+      setStatus('Type a prompt first.');
+      $('p-prompt').focus();
+      return;
+    }
+
+    clearWarnings();
+    setBusy(true);
+    setStatus('Generating??);
+    try {
+      var res = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: prompt }),
+      });
+      if (!res.ok) {
+        var data = {};
+        try { data = await res.json(); } catch (e) { /* a non-JSON error body */ }
+        warn('Generate failed (HTTP ' + res.status + ')', data.detail || res.statusText);
+        setStatus('Generate failed.');
+        return;
+      }
+
+      var ir = await res.json();
+      var before = snapshot();
+      try {
+        loadIR(ir);        // the SAME gate the file import goes through: it judges, then it commits
+        pushUndo(before);  // it took: replacing the whole deck is ONE step, and it is reversible
+        var live = CONTEXT && CONTEXT.mode === 'live';
+        setStatus('Generated ' + (ir.elements || []).length + ' element(s)' +
+                  (live ? ' from ' + (CONTEXT.model || 'the model') + '.'
+                        : ' ??MOCK payload; no model was called.'));
+      } catch (e) {
+        // The stage is UNCHANGED ??loadIR() judges the whole payload before it touches anything ??        // and nothing was pushed, so a refused draft costs no undo step either.
+        warn('That draft was refused ??the stage is unchanged', String(e.message || e));
+        setStatus('Generate refused.');
+      }
+    } catch (e) {
+      warn('Could not reach the server', String(e));
+      setStatus('Generate failed.');
+    } finally {
+      // In a `finally`, because every path above returns from somewhere, and the one thing worse
+      // than a slow button is a button that never comes back.
+      setBusy(false);
+    }
+  }
+
+  /* aria-busy is the STATE; the CSS pulse is only its costume. `disabled` is what actually stops a
+   * second POST ??a double press would race two loadIR()s and push two undo steps for one draft. */
+  function setBusy(on) {
+    var b = $('b-generate');
+    b.disabled = on;
+    b.setAttribute('aria-busy', String(on));
+    $('p-prompt').disabled = on;
+  }
+
+  $('b-generate').addEventListener('click', generate);
+
+  /* Strip a ```json ... ``` fence a Web-Gem paste often carries. The backend tolerates the same
+   * wrapper; keeping both lenient means a copy straight out of the chat UI Just Works. */
+  function stripFence(text) {
+    var t = String(text).trim();
+    if (t.indexOf('```') === 0) {
+      t = t.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+    }
+    return t;
+  }
+
+  /* WEB GEM WORKFLOW (Phase 4). Read the clipboard, parse it, hand it to loadIR() ??the ONE door
+   * into the stage, the same judge a file import and the live author go through. No validation of
+   * its own. The snapshot/pushUndo pair is the file-import path's, for the same reason: this
+   * replaces the whole deck (one undo step) and only the caller knows loadIR() accepted it. */
+  async function pasteGemJSON() {
+    clearWarnings();
+    if (!navigator.clipboard || !navigator.clipboard.readText) {
+      warn('The clipboard is not available',
+        'This browser will not hand a script the clipboard. Use ?쏬oad JSON??to open a file instead.');
+      return;
+    }
+    var text;
+    try {
+      text = await navigator.clipboard.readText();
+    } catch (e) {
+      warn('Could not read the clipboard',
+        'The browser refused clipboard access ??grant this page clipboard permission, or use ' +
+        '?쏬oad JSON??\n\n' + String(e));
+      return;
+    }
+    if (!text || !text.trim()) {
+      warn('The clipboard is empty', 'Copy the JSON from your chat first, then press Paste Gem JSON.');
+      return;
+    }
+    var ir;
+    try {
+      ir = JSON.parse(stripFence(text));
+    } catch (e) {
+      warn('The clipboard is not JSON',
+        'What was copied is not a canvas-ir/1 deck. Copy only the JSON block.\n\n' + String(e));
+      return;
+    }
+    var before = snapshot();
+    try {
+      loadIR(ir);        // the SAME gate the file import and the live author go through
+      pushUndo(before);  // it took: replacing the whole deck is ONE step, and it is reversible
+      setStatus('Pasted ' + (ir.elements || []).length + ' element(s) from the clipboard.');
+    } catch (e) {
+      warn('That deck was refused ??the stage is unchanged', String(e.message || e));
+      setStatus('Paste refused.');
+    }
+  }
+
+  $('b-paste').addEventListener('click', pasteGemJSON);
+
+  /* The mock/live badge. The MODE comes from /api/context, never inferred from behaviour. */
+  function applyMode(mode, model) {
+    var tag = $('ai-mode');
+    var hint = $('ai-hint');
+    if (mode === 'live') {
+      if (tag) {
+        tag.textContent = 'live';
+        tag.classList.add('live');
+        tag.title = model ? ('Model: ' + model) : 'A live model is called';
+      }
+      if (hint) {
+        hint.innerHTML = 'Calls the configured model and <strong>replaces the stage</strong> with ' +
+          'its draft (Ctrl+Z brings yours back). The draft is judged like any import.';
+      }
+    } else if (tag) {
+      tag.textContent = 'mock';
+      tag.classList.remove('live');
+      tag.title = 'No model is called';
+    }
+  }
+
+  /* Ctrl+Z inside the PROMPT is the browser's undo, not ours.
+   *
+   * The global handler runs undo/redo in FRONT of its editingText() guard on purpose ??so that undo
+   * still works with the focus in the size box, which is exactly where the focus is right after the
+   * edit you want to undo. This textarea is the one control where that is wrong: the user is typing
+   * prose, they expect their keystrokes back, and what they would get instead is their whole deck
+   * rolled back. Stop the event here rather than widen the global exception: the exception belongs
+   * to this box, not to <input> at large. */
+  $('p-prompt').addEventListener('keydown', function (ev) {
+    var k = String(ev.key || '').toLowerCase();
+    if ((ev.ctrlKey || ev.metaKey) && (k === 'z' || k === 'y')) ev.stopPropagation();
+  });
+
+  /* An IR element -> editor state.
+   *
+#ai h2 .tag {
+  margin-left: 6px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: #eceef1;
+  color: #6b727c;
+  font-size: 10px;
+  letter-spacing: 0;
+}
+#ai h2 .tag.live { background:#e6f4ea; color:#137333; }
+
+/* #toolbar label is a flex ROW (label left, control right); a textarea in one would be squeezed to
+   a slit. This is the only stacked control in the toolbar, and it opts in by name. */
+#toolbar label.stacked { display: block; margin-bottom: 4px; }
+
+#p-prompt {
+
+codex
+Phase 4 is already implemented in the requested task project:
+
+- Live/mock Gemini backend, context mode metadata, clipboard paste, UI badge, dependency, and Phase 4 tests are present.
+- JavaScript syntax check passed (`node --check`).
+- No live Gemini request was made.
+
+Verification caveat: the focused pytest suite could not run because this session has no usable Python interpreter or `pytest` executable. No files were changed.
+tokens used
+41,768

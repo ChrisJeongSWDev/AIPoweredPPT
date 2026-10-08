@@ -1,0 +1,193 @@
+diff --git a/tasks/AI_Powered_PPT/src/aippt/canvas/app.py b/tasks/AI_Powered_PPT/src/aippt/canvas/app.py
+index a14c807a..f989ee89 100644
+--- a/tasks/AI_Powered_PPT/src/aippt/canvas/app.py
++++ b/tasks/AI_Powered_PPT/src/aippt/canvas/app.py
+@@ -42,6 +42,8 @@ time (server_mode()), so the same process serves whichever the environment says.
+ from __future__ import annotations
+ 
+ import asyncio
++import base64
++import binascii
+ import io
+ import json
+ import logging
+@@ -95,6 +97,20 @@ _UNSAFE_STEM = re.compile(r'[\x00-\x1f\x7f"\\/:*?<>|]+')
+ # overridable so a deployment can pin a newer flash revision without a code change.
+ DEFAULT_GEMINI_MODEL = "gemini-3.5-flash"
+ 
++# Phase 5: model selection. The allowlist a request's "model" field is checked against -- an id
++# outside it is a 422, never silently coerced to the default. Both sides of each pair are the same
++# string: once validated, the id IS what the SDK is called with.
++MODEL_CHOICES: dict[str, str] = {
++    "gemini-3.5-flash": "gemini-3.5-flash",
++    "gemini-3.5-flash-extended": "gemini-3.5-flash-extended",
++}
++
++# Display labels for the same allowlist, surfaced to the editor's model picker via /api/context.
++MODEL_LABELS: dict[str, str] = {
++    "gemini-3.5-flash": "Gemini 3.5 Flash",
++    "gemini-3.5-flash-extended": "Gemini 3.5 Flash Extended",
++}
++
+ # The system instruction the live author injects. It is the SAME contract the Web-Gem workflow
+ # pastes into gemini.google.com, kept in one file so the two paths cannot drift. It lives at the
+ # project root: canvas/ -> aippt/ -> src/ -> <project root>.
+@@ -163,6 +179,7 @@ async def api_context(request: Request) -> dict[str, Any]:
+         "fonts": {"latin": LATIN, "ea": EA},
+         "mode": server_mode(),
+         "model": gemini_model() if server_mode() == "live" else None,
++        "models": [{"id": mid, "label": MODEL_LABELS[mid]} for mid in MODEL_CHOICES],
+     }
+ 
+ 
+@@ -249,12 +266,19 @@ async def api_download(request: Request) -> Response:
+ 
+ @app.post("/api/generate")
+ async def api_generate(request: Request) -> Response:
+-    """{"prompt": "..."} in, canvas-ir/1 out. MOCK without a key, LIVE Gemini with one (Phase 4).
++    """{"prompt": "...", "model": "...", "images": [...]} in, canvas-ir/1 out. MOCK without a key,
++    LIVE Gemini with one (Phase 4).
+ 
+     Either way the editor hands what comes back straight to loadIR(), which judges every element
+     before it touches the stage -- so a model draft is no more trusted than a hand-edited file. The
+     request shape, the loading state and the hand-off are identical in both modes; only the author
+     behind the seam changes.
++
++    "model" and "images" (Phase 5) are LIVE-ONLY. The mock does not read either field -- not even to
++    validate it -- so a caller that sends them while the server is in mock mode sees no change at
++    all, same as if it had sent neither. Only once a value will actually reach the network is it
++    worth rejecting: the allowlist and base64 checks below run in the LIVE branch, after the mode is
++    known, not before.
+     """
+     body, err = await _read_json(request)
+     if err is not None:
+@@ -289,9 +313,24 @@ async def api_generate(request: Request) -> Response:
+         return JSONResponse(ir)
+ 
+     # --- LIVE: a real Gemini call. The prompt IS read now. -----------------------------------------
++    model = body.get("model") if isinstance(body, dict) else None
++    if model is not None and (not isinstance(model, str) or model not in MODEL_CHOICES):
++        return JSONResponse(
++            {
++                "error": "validation",
++                "detail": f"unknown model {model!r}; choose one of {sorted(MODEL_CHOICES)}",
++            },
++            status_code=422,
++        )
++
++    images_raw = body.get("images") if isinstance(body, dict) else None
++    images, images_err = _decode_images(images_raw)
++    if images_err is not None:
++        return images_err
++
+     log.info("live generate: %d-char prompt -> %s", len(prompt), gemini_model())
+     try:
+-        ir = await generate_live(prompt.strip(), pin)
++        ir = await generate_live(prompt.strip(), pin, model=model, images=images)
+     except GeminiError as exc:
+         log.warning("live generate failed: %s", exc)
+         return JSONResponse({"error": "generate", "detail": str(exc)}, status_code=502)
+@@ -343,6 +382,46 @@ def _too_large() -> JSONResponse:
+     )
+ 
+ 
++def _decode_images(
++    images_raw: Any,
++) -> tuple[list[dict[str, Any]] | None, JSONResponse | None]:
++    """Validate and base64-decode /api/generate's optional "images" field. Returns (images, None) or
++    (None, error). Called ONLY from the LIVE branch -- see api_generate's docstring for why a
++    malformed value is never this function's problem in mock mode.
++    """
++    if images_raw is None:
++        return None, None
++    if not isinstance(images_raw, list):
++        return None, JSONResponse(
++            {"error": "validation", "detail": '"images" must be a list of {"mime", "data"} objects'},
++            status_code=422,
++        )
++
++    decoded: list[dict[str, Any]] = []
++    for i, img in enumerate(images_raw):
++        if (
++            not isinstance(img, dict)
++            or not isinstance(img.get("mime"), str)
++            or not isinstance(img.get("data"), str)
++        ):
++            return None, JSONResponse(
++                {
++                    "error": "validation",
++                    "detail": f'images[{i}] must be {{"mime": "<type>", "data": "<base64>"}}',
++                },
++                status_code=422,
++            )
++        try:
++            data = base64.b64decode(img["data"], validate=True)
++        except binascii.Error as exc:
++            return None, JSONResponse(
++                {"error": "validation", "detail": f"images[{i}].data is not valid base64: {exc}"},
++                status_code=422,
++            )
++        decoded.append({"mime": img["mime"], "data": data})
++    return decoded, None
++
++
+ # --- the live author (Phase 4) -----------------------------------------------------------------
+ #
+ # The environment picks the mode. Everything here is ordinary, testable code EXCEPT _call_gemini(),
+@@ -416,11 +495,18 @@ def _finalize_live_ir(data: Any, pin: dict[str, Any]) -> dict[str, Any]:
+     return ir
+ 
+ 
+-async def _call_gemini(prompt: str) -> str:
++async def _call_gemini(
++    prompt: str, model: str | None = None, images: list[dict[str, Any]] | None = None
++) -> str:
+     """THE ONE FUNCTION THAT TOUCHES THE NETWORK. The mocking test monkeypatches exactly this.
+ 
+     Kept thin on purpose. google-genai is imported LAZILY so the renderer, the CLI and mock mode all
+     install and run without it (it is only in the optional 'ai' extra).
++
++    `model` is a key of MODEL_CHOICES (already validated by the caller) or None, resolved here
++    against DEFAULT_GEMINI_MODEL. `images` is already-decoded {"mime", "data": bytes} dicts
++    (_decode_images did the base64 work) -- when present, each becomes a types.Part.from_bytes()
++    part alongside the text prompt; when absent, the call is text-only, exactly as before Phase 5.
+     """
+     try:
+         from google import genai
+@@ -432,10 +518,17 @@ async def _call_gemini(prompt: str) -> str:
+         ) from exc
+ 
+     client = genai.Client(api_key=gemini_api_key())
++
++    contents: Any = prompt
++    if images:
++        parts = [types.Part.from_bytes(data=img["data"], mime_type=img["mime"]) for img in images]
++        parts.append(prompt)
++        contents = parts
++
+     try:
+         resp = await client.aio.models.generate_content(
+-            model=gemini_model(),
+-            contents=prompt,
++            model=MODEL_CHOICES.get(model, DEFAULT_GEMINI_MODEL),
++            contents=contents,
+             config=types.GenerateContentConfig(
+                 system_instruction=system_instruction(),
+                 response_mime_type="application/json",
+@@ -450,9 +543,14 @@ async def _call_gemini(prompt: str) -> str:
+     return text
+ 
+ 
+-async def generate_live(prompt: str, pin: dict[str, Any]) -> dict[str, Any]:
++async def generate_live(
++    prompt: str,
++    pin: dict[str, Any],
++    model: str | None = None,
++    images: list[dict[str, Any]] | None = None,
++) -> dict[str, Any]:
+     """prompt -> canvas-ir/1 for the live author. Raises GeminiError on any failure."""
+-    raw = await _call_gemini(prompt)
++    raw = await _call_gemini(prompt, model=model, images=images)
+     try:
+         data = json.loads(_strip_code_fence(raw))
+     except (json.JSONDecodeError, ValueError) as exc:

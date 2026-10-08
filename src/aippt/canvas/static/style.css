@@ -1,0 +1,706 @@
+/* Canvas editor styling.
+ *
+ * THE BLOCKS MARKED "CONTRACT" ARE NOT STYLING PREFERENCES. Every declaration in them has a
+ * counterpart in canvas/style.py (plan Sec 6.6) and they change together or not at all:
+ *
+ *     .el .txt inset 7.2 / 3.6   <->  style_text_frame: margin_left/right Pt(7.2), top/bottom Pt(3.6)
+ *     .el .txt line-height 1.2   <->  p.line_spacing = 1.2
+ *     .el .txt white-space       <->  tf.word_wrap = True
+ *     .el .txt flex centring     <->  vertical_anchor MIDDLE / PP_ALIGN.CENTER
+ *     .el .txt overflow: visible <->  MSO_AUTO_SIZE.NONE   (show overflow; never hide it)
+ *     .el transform: rotate()    <->  shape.rotation       (centre origin, degrees CW, no conversion)
+ *
+ * Do not tidy them, do not switch to rem, and do not add a CSS reset that alters them. The margin
+ * trap in particular reads like a coordinate bug: if the browser wraps at padding 0 while
+ * PowerPoint keeps its 0.1in/0.05in defaults, the two wrap at DIFFERENT WIDTHS and you get an
+ * off-by-one-line overflow that looks like bad geometry.
+ */
+
+/* ---------------------------------------------------------------- app chrome (not a contract) */
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: system-ui, 'Segoe UI', 'Malgun Gothic', sans-serif;
+  font-size: 13px;
+  color: #1a1a1a;
+  background: #eceef1;
+}
+
+/* The property panel's column is `auto`, so when #props is hidden it collapses to nothing and the
+   stage takes the width back. No JS touches this: the panel's `hidden` attribute is the only input,
+   and the grid does the rest. */
+#app {
+  display: grid;
+  grid-template-columns: 232px 1fr auto;
+  grid-template-rows: 1fr auto auto;
+  grid-template-areas:
+    'toolbar stage    props'
+    'toolbar composer composer'
+    'toolbar status   status';
+  height: 100vh;
+}
+
+#warnings {
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 10;
+  max-height: 45vh;
+  overflow: auto;
+  padding: 10px 14px;
+  background: #FFF3F5;
+  border-bottom: 2px solid #FF0032;
+  color: #6b0016;
+  white-space: pre-wrap;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.45;
+}
+#warnings[hidden] { display: none; }
+#warnings .w-title { font-weight: 700; font-family: inherit; }
+#warnings .w-item { margin-top: 6px; }
+#warnings .w-close {
+  position: absolute; top: 6px; right: 10px;
+  border: 0; background: transparent; cursor: pointer;
+  font-size: 18px; line-height: 1; color: #6b0016;
+}
+
+/* The two side panels are the same furniture, so they are styled once. */
+#toolbar, #props {
+  overflow-y: auto;
+  padding: 12px;
+  background: #fff;
+}
+#toolbar { grid-area: toolbar; border-right: 1px solid #d6dae0; }
+#props   { grid-area: props; width: 232px; border-left: 1px solid #d6dae0; }
+
+#toolbar .group, #props .group { margin-bottom: 18px; }
+#toolbar h2, #props h2 {
+  margin: 0 0 6px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: #6b727c;
+}
+#toolbar label, #props label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: #334155;
+}
+#toolbar label.stacked, #props label.stacked {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+}
+#toolbar label.stacked input, #toolbar label.stacked select {
+  width: 100%;
+  box-sizing: border-box;
+}
+#toolbar .pair, #props .pair { display: flex; align-items: center; gap: 6px; }
+#toolbar .row, #props .row { display: flex; gap: 6px; margin-bottom: 6px; width: 100%; }
+#toolbar .row button, #props .row button { flex: 1; min-width: 0; width: auto; margin-bottom: 0; }
+#toolbar .tools { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+
+.mb-1 { margin-bottom: 4px !important; }
+.mb-2 { margin-bottom: 8px !important; }
+
+/* The hiding rules */
+#props[hidden] { display: none; }
+#props [hidden] { display: none; }
+
+/* The selection's identity, at the top of the panel. */
+#p-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e3e6ea;
+}
+#p-head h2 {
+  margin: 0;
+  font-size: 13px;
+  letter-spacing: 0;
+  text-transform: capitalize;
+  color: #1a1a1a;
+}
+#p-head code { font-size: 11px; color: #6b727c; font-family: ui-monospace, Consolas, monospace; }
+
+button, select, input[type='number'], input[type='text'] {
+  padding: 6px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 5px;
+  background: #fff;
+  font: inherit;
+  font-size: 12px;
+  color: #1e293b;
+  cursor: pointer;
+  box-sizing: border-box;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+input[type='number'], input[type='text'] { cursor: text; }
+button:hover { background: #f8fafc; border-color: #94a3b8; }
+button[aria-pressed='true'] { background: #FF0032; border-color: #FF0032; color: #fff; }
+button.primary { width: 100%; margin-bottom: 0; background: #1e293b; border-color: #1e293b; color: #fff; font-weight: 500; }
+button.primary:hover { background: #334155; border-color: #334155; }
+button:disabled, button.primary:disabled { opacity: .45; cursor: not-allowed; }
+
+/* Scoped layout containers for the sidebar action groups (JSON & Data / Export Deck / Server
+   Templates). Deliberately separate from `.row` (still used, unchanged, by History/Media/Arrange/
+   Align) so retuning one group's layout can never regress the others. */
+.action-stack { display: flex; flex-direction: column; gap: 6px; }
+.action-stack > label.stacked { margin-bottom: 0; }
+.action-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+
+.sidebar-action {
+  width: 100%;
+  min-height: 34px;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 5px;
+  margin-bottom: 0;
+}
+.sidebar-action:focus-visible {
+  outline: 2px solid #1e88ff;
+  outline-offset: 2px;
+}
+/* The featured JSON action and the dark-primary actions (Export Deck, Save Template) share the
+   same coordinated slate treatment -- the featured control is visually distinguished by weight/
+   size, not by a separate off-system colour (the prior bright-blue inline style this replaces). */
+.sidebar-action--primary,
+.sidebar-action--featured {
+  background: #1e293b;
+  border-color: #1e293b;
+  color: #fff;
+}
+.sidebar-action--primary:hover,
+.sidebar-action--featured:hover {
+  background: #334155;
+  border-color: #334155;
+}
+.sidebar-action--featured { font-weight: 700; font-size: 13px; }
+.sidebar-action--danger {
+  background: #ef4444;
+  border-color: #ef4444;
+  color: #fff;
+}
+.sidebar-action--danger:hover { background: #dc2626; border-color: #dc2626; }
+
+#stage-wrap {
+  grid-area: stage;
+  overflow: auto;
+  padding: 24px;
+  /* Sized FROM the zoom variable so the scrollbars track the scaled stage. CSS derived from state
+     is fine; reading CSS back into state is what the Prime Directive forbids. */
+  --zoom: 1;
+}
+
+#status {
+  grid-area: status;
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  padding: 8px 14px;
+  background: #fff;
+  border-top: 1px solid #d6dae0;
+}
+#status-msg { font-weight: 600; white-space: nowrap; }
+#status .note { color: #6b727c; font-size: 12px; }
+
+/* ---------------------------------------------------------- the AI draft composer (Phase 2/3) */
+
+/* It is a mock and the UI says so AT REST, not only in the change log. An "AI" affordance that
+   looks production-ready while returning a canned deck is the one thing this panel must not be.
+
+   Phase 2 (AI_PPT_v2): `grid-area: composer` is what actually seats this in the bottom grid row
+   `#app` declares above -- without it the box would render at its in-DOM position (after `#props`)
+   instead of the fixed row above `#status`. Rounded, elevated card so it reads as a distinct
+   composer, not another toolbar section that happens to have moved. */
+#ai {
+  grid-area: composer;
+  justify-self: center;
+  margin: 12px 0 16px;
+  width: 720px;
+  max-width: calc(100% - 32px);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 16px;
+  background: #ffffff;
+  border: 1px solid #e1e4e8;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.02);
+}
+
+/* A label with no visible text still needs to occupy no space and not clip in a screen reader --
+   the standard clip-rect pattern, not `display: none` (which VoiceOver/NVDA also ignore). The
+   composer is a compact bottom bar with no room for a visible "Prompt" caption above the field, so
+   the accessible name travels through this label instead of a caption; `#p-prompt`'s
+   `aria-describedby="ai-hint"` (index.html) carries the submission guidance the same way. Replaces
+   the old `#toolbar label.stacked` rule, which only ever styled this one label and has no other
+   caller left now that it is hidden rather than stacked. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* The attachment strip: a bounded, horizontally-scrolling row of thumbnails -- "attachment previews
+   do not enlarge the composer without a bound" (acceptance criteria) is `max-height` plus
+   `overflow-x: auto`, not a promise the strip stays short. Empty and `[hidden]` until a later
+   phase's file-picking JS appends `.attachment-item`s (see index.html's comment on
+   `#ai-attachments`) -- these rules describe the shape that JS is expected to fill in, not anything
+   rendered in THIS phase. */
+#ai-attachments.attachments {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-height: 64px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 2px;
+}
+#ai-attachments:empty,
+#ai-attachments[hidden] { display: none; }
+
+.attachment-item {
+  position: relative;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 140px;
+  padding: 3px 20px 3px 3px;
+  background: #eceef1;
+  border-radius: 8px;
+}
+.attachment-thumb {
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex: 0 0 auto;
+  background: #d6dae0;
+}
+.attachment-name {
+  font-size: 11px;
+  color: #1a1a1a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.attachment-remove {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border-radius: 50%;
+  border: 0;
+  background: rgba(0, 0, 0, .55);
+  color: #fff;
+  font-size: 10px;
+  line-height: 1;
+  cursor: pointer;
+}
+.attachment-remove:hover { background: rgba(0, 0, 0, .75); }
+
+.composer-field { width: 100%; }
+
+#p-prompt {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 4px;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 1.5;
+  color: #1a1a1a;
+  min-height: 44px;
+  max-height: 160px;
+  resize: none;
+  overflow-y: auto;
+}
+#p-prompt:focus { outline: none; }
+#p-prompt::placeholder { color: #9ca3af; }
+#p-prompt:disabled { background: transparent; color: #6b727c; }
+
+.composer-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+}
+
+.toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #6b727c;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+.icon-btn:hover { background: #f1f5f9; color: #1e293b; }
+
+.model-select-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  color: #6b727c;
+}
+.model-select-wrapper select {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 4px 20px 4px 4px;
+  font-size: 13px;
+  font-weight: 500;
+  color: inherit;
+  cursor: pointer;
+  outline: none;
+}
+.model-select-wrapper select:hover { background: #f1f5f9; border-radius: 6px; }
+.model-select-wrapper svg {
+  position: absolute;
+  right: 4px;
+  pointer-events: none;
+}
+
+.submit-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 8px;
+  background: #1e293b;
+  color: #ffffff;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  padding: 0;
+}
+.submit-btn:hover { background: #334155; }
+.submit-btn[aria-busy='true'] { animation: busy 1.1s ease-in-out infinite; }
+
+#ai .hint { margin: 0; color: #6b727c; font-size: 11px; line-height: 1.45; }
+
+/* THE LOADING STATE. `aria-busy` is the state; this animation is only its costume, so a screen
+   reader is told what the eye is told. `disabled` is what actually stops a second POST — the pulse
+   just makes 1.5 s look like work rather than a hang. */
+#b-generate[aria-busy='true'] { animation: busy 1.1s ease-in-out infinite; }
+@keyframes busy { 50% { opacity: .5; } }
+
+/* Narrow windows: stack the head and the input row instead of letting the model picker or the
+   action buttons squeeze the field to nothing. This only changes layout INSIDE the composer's own
+   grid row -- it is still `grid-area: composer`, so it can never overlap `#status` or `#stage-wrap`
+   ("without covering the status bar or stage controls", brief item 8). */
+@media (max-width: 720px) {
+  .composer-toolbar { flex-direction: column; align-items: stretch; gap: 8px; }
+  .toolbar-left { justify-content: space-between; }
+  .toolbar-right { justify-content: flex-end; }
+}
+
+/* ------------------------------------------------------------------- CONTRACT: the stage (5.2) */
+
+/* Modal overlay styling for Notepad / View JSON */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+.modal-overlay[hidden] { display: none; }
+.modal-box {
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+  width: 650px;
+  max-width: 90vw;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  gap: 12px;
+}
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.modal-header h3 {
+  margin: 0;
+  font-size: 15px;
+  color: #1a1a1a;
+  font-weight: 600;
+}
+.modal-close-btn {
+  background: transparent;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: #6b727c;
+}
+#json-modal-text {
+  width: 100%;
+  height: 350px;
+  font-family: Consolas, Monaco, "Andale Mono", monospace;
+  font-size: 12px;
+  background: #1e1e1e;
+  color: #d4d4d4;
+  padding: 12px;
+  border-radius: 6px;
+  border: 1px solid #333;
+  resize: vertical;
+  box-sizing: border-box;
+}
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+#stage {
+  position: relative;
+  width: 960px;                       /* 1 CSS px == 1 logical unit at zoom = 1 */
+  height: 540px;
+  transform: scale(var(--zoom));
+  transform-origin: 0 0;
+  background: #FFFFFF;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, .14);
+}
+
+/* The stage is `transform`ed, which does not affect layout, so the wrapper would still reserve the
+   unscaled 960x540 and the scrollbars would lie. Reserve the SCALED size explicitly -- derived
+   from the same --zoom the JS writes. */
+#stage-sizer {
+  width: calc(960px * var(--zoom));
+  height: calc(540px * var(--zoom));
+}
+
+/* --------------------------------------------------- CONTRACT: the editor-only chrome (5.3) */
+
+/* The red divider line. An evidence-based approximation of the gradient's visible CENTRE
+   (audited y 68.88-75.12, x 46.41-788.68) -- NOT the divider picture's outer box. PowerPoint draws
+   the real gradient; this is a flat red line and the header is deliberately not WYSIWYG. */
+#stage::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  left: 46.4px;
+  top: 71px;
+  width: 742.3px;
+  height: 2px;
+  background: #FF0032;
+}
+
+/* TITLE_LOCKED. Not movable, not resizable, and never an element. */
+#stage::before {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  left: 45.55px;
+  top: 26.75px;
+  width: 725.29px;
+  height: 37.25px;
+  outline: 1px dashed rgba(0, 0, 0, .25);
+}
+
+/* The title FIELD -- the `title` string, not an element. Sits on TITLE_LOCKED. The renderer sets
+   the run to 30 pt / black / left-aligned (render_canvas.TITLE_RUN), so the preview says the same. */
+#title-field {
+  position: absolute;
+  left: 45.55px;
+  top: 26.75px;
+  width: 725.29px;
+  height: 37.25px;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  font-family: 'Century Gothic', 'Malgun Gothic', sans-serif;
+  font-size: 30px;                    /* == render_canvas.TITLE_SIZE_PT */
+  line-height: 1.2;
+  color: #000000;                     /* == style.INK */
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: keep-all;
+  outline: none;
+  cursor: text;
+}
+#title-field:empty::before {
+  content: attr(data-placeholder);
+  color: #b6bcc4;
+}
+
+/* ---------------------------------------------------- CONTRACT: elements and rotation (5.4/5.5) */
+
+.el {
+  position: absolute;
+  /* Centre origin, degrees CLOCKWISE -- identical to shape.rotation in python-pptx and to
+     DrawingML a:xfrm/@rot. No conversion anywhere. */
+  transform: rotate(var(--rot, 0deg));
+  transform-origin: 50% 50%;
+}
+
+/* Editor-only affordances use OUTLINE, never BORDER. A border participates in the box model and
+   would drift the element's geometry by border/2 -- a coordinate bug wearing a styling hat. */
+.el.selected { outline: 1px solid #1e88ff; outline-offset: 0; }
+
+/* Reject-and-hold: an illegal frame is not committed, and the element flashes instead of moving. */
+.el.blocked { outline: 2px solid #FF0032; animation: blocked .18s ease-out 2; }
+@keyframes blocked { 50% { outline-color: transparent; } }
+
+/* The handles come AFTER the <svg> and the .txt in DOM order, and positioned siblings paint in DOM
+   order, so they land on top without a z-index. That is not a coincidence being relied on -- it is
+   the same rule the elements themselves use. NOTHING INSIDE #stage CARRIES A z-index, on purpose:
+   z-order is DOM order and nothing else, and a second source of truth would desync. (The only
+   z-index in this file is on #warnings, which is app chrome outside the stage and is never
+   serialized.) */
+.el .handle {
+  position: absolute;
+  display: none;                       /* only the selected element wears handles */
+  width: 8px;
+  height: 8px;
+  background: #fff;
+  outline: 1px solid #1e88ff;
+}
+.el.selected .handle { display: block; }
+.el .handle[data-h='nw'] { left: -4px;              top: -4px;               cursor: nwse-resize; }
+.el .handle[data-h='n']  { left: calc(50% - 4px);   top: -4px;               cursor: ns-resize;   }
+.el .handle[data-h='ne'] { right: -4px;             top: -4px;               cursor: nesw-resize; }
+.el .handle[data-h='e']  { right: -4px;             top: calc(50% - 4px);    cursor: ew-resize;   }
+.el .handle[data-h='se'] { right: -4px;             bottom: -4px;            cursor: nwse-resize; }
+.el .handle[data-h='s']  { left: calc(50% - 4px);   bottom: -4px;            cursor: ns-resize;   }
+.el .handle[data-h='sw'] { left: -4px;              bottom: -4px;            cursor: nesw-resize; }
+.el .handle[data-h='w']  { left: -4px;              top: calc(50% - 4px);    cursor: ew-resize;   }
+
+.el .handle[data-h='rot'] {
+  left: calc(50% - 4px);
+  top: -22px;
+  border-radius: 50%;
+  cursor: grab;
+}
+/* The endpoint handles of a connector. */
+.el .handle[data-h='p1'], .el .handle[data-h='p2'] { border-radius: 50%; cursor: move; }
+
+/* ------------------------------------------------------- CONTRACT: the text box (5.6) VERBATIM */
+
+.el .txt {
+  position: absolute;
+  /* PowerPoint's default text-frame insets: 0.1in L/R, 0.05in T/B = 7.2 / 3.6 logical units.
+     Hard-coded on both sides. This is the trap that reads like a coordinate bug. */
+  left: 7.2px; right: 7.2px; top: 3.6px; bottom: 3.6px;
+  box-sizing: border-box;
+  padding: 0; margin: 0; border: 0;
+
+  font-family: 'Century Gothic', 'Malgun Gothic', sans-serif;  /* mirrors latin/ea split */
+  font-size: 14px;              /* == 14 pt in the model */
+  line-height: 1.2;             /* must equal renderer line_spacing */
+  white-space: pre-wrap;        /* word_wrap = True */
+  overflow-wrap: break-word;
+  word-break: keep-all;         /* Korean: break at spaces, not mid-word */
+
+  display: flex;                /* autoshape default is anchor="ctr" + algn="ctr" */
+  align-items: center;          /* valign ctr  -> tf.vertical_anchor = MSO_ANCHOR.MIDDLE */
+  justify-content: center;      /* align  ctr  -> p.alignment = PP_ALIGN.CENTER */
+  text-align: center;
+  overflow: visible;            /* show overflow; do NOT hide the problem */
+
+  outline: none;
+
+  /* The text box covers almost the whole element, so if it swallowed pointer events the user could
+     never DRAG a textbox -- every grab would land a caret instead. Click selects and drags;
+     DOUBLE-click opens the text for editing (editor.js adds .editing). This is the conventional
+     bargain and it is the only one that leaves a no-fill textbox movable at all. */
+  pointer-events: none;
+}
+.el.editing .txt { pointer-events: auto; cursor: text; }
+
+/* CONTRACT: run.bold / run.italic.
+ *
+ *     .el[data-bold='1']   <->  style.py: run.font.bold   = True   (every run in the element)
+ *     .el[data-italic='1'] <->  style.py: run.font.italic = True
+ *
+ * These are ELEMENT-level flags over a PER-RUN property: normalizeText() OR-s them into every run
+ * on the way out, because run.bold is the only place the IR can carry them. A <b> inside .body still
+ * bolds its own run by itself -- so these rules are the preview of the FLAG, not of the tags, and
+ * the two are additive exactly as they are in the serializer.
+ *
+ * The value is the string '1'. dataset writes strings, so a false flag is '' -- never 'false',
+ * which would be truthy on the way back in and match nothing on the way down here. */
+.el[data-bold='1'] .txt   { font-weight: 700; }
+.el[data-italic='1'] .txt { font-style: italic; }
+
+/* valign / align are written from state onto these data-* hooks, never read back out of CSS. */
+.el .txt[data-valign='TOP']    { align-items: flex-start; }
+.el .txt[data-valign='MIDDLE'] { align-items: center; }
+.el .txt[data-valign='BOTTOM'] { align-items: flex-end; }
+.el .txt[data-align='LEFT']    { justify-content: flex-start; text-align: left; }
+.el .txt[data-align='CENTER']  { justify-content: center;     text-align: center; }
+.el .txt[data-align='RIGHT']   { justify-content: flex-end;   text-align: right; }
+
+/* THE single flex item. The Sec 5.6 contract above puts `display: flex` on .txt, and its
+   align-items/justify-content mapping (valign/align) is only correct when there is exactly ONE
+   flex item. A contenteditable that holds several paragraphs produces several block children --
+   which, as direct flex items, would lay out SIDE BY SIDE in a row. So .txt is the anchor box and
+   .body is the contenteditable: one flex item, paragraphs stacking normally inside it, and the
+   contract preserved exactly as written. */
+.el .txt > .body { width: 100%; outline: none; }
+
+.el svg { overflow: visible; position: absolute; inset: 0; }
+
+/* A connector is a line: it has no text frame and its SVG must be free to draw its stroke and
+   arrowheads outside the endpoints' AABB. */
+.el[data-type='connector'] { overflow: visible; }
+
+/* -------------------------------------------------------------- Phase 6: image / video elements */
+
+/* Geometrically an image/video is a rect (position/size come from .el, same as everything else);
+   the tag itself just fills the box. object-fit: fill matches add_picture()/add_movie(), which
+   stretch to the given width/height with no letterboxing of their own. pointer-events stays AUTO
+   (unlike .txt) -- there is no separate overlay here for a click to fall through to, so the drag
+   handler on .el (which listens on .el itself and sees the bubbled event) needs nothing special. */
+.el .media { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; }
+
+/* --------------------------------------------------------------- Phase 6: multi-select (align) */
+
+/* A second, additive selection outline for Shift+Click's alignment set -- distinct from
+   .el.selected (the single `selected` element the property panel describes) so both can be worn
+   at once without one visually swallowing the other. Outline, never border, for the same reason
+   .el.selected uses one: a border participates in the box model and would drift the geometry. */
+.el.multi-selected { outline: 1px dashed #1e88ff; outline-offset: 2px; }

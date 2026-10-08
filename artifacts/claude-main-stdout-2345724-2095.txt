@@ -1,0 +1,4 @@
+Done. The worker brief at the given temp path was applied to the staged repo (`/c/Users/2021670/.ma-stg/stg.udYsrVHY`):
+
+- `tasks/AI_Powered_PPT/src/aippt/canvas/app.py` — `MAX_BODY_BYTES` changed from `2 * 1024 * 1024` to `10 * 1024 * 1024`, and its preceding comment rewritten to explain the 4×1.4MB-images-at-4:3-base64-inflation ≈7.5MB rationale for the new value.
+- `tasks/AI_Powered_PPT/body_limit_change_detail.md` — created, documenting the edit, a verification plan (not executed — no commands were run this session), and two caveats: a now-stale "2 MB"/"~1.5 MB decoded" aside elsewhere in the same file (around line 116) that was left untouched since it was out of the brief's stated scope, and that the referenced `approved_write_manifest` file didn't exist in the staged repo and wasn't created since the brief didn't ask for one.

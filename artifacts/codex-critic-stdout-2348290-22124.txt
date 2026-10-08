@@ -1,0 +1,11 @@
+VERDICT: WARNING
+
+The diff is syntactically valid and correctly implements the requested asynchronous image compression flow without changing video handling.
+
+Material caveats:
+
+- A 1920×1080 JPEG at quality 0.8 can still exceed the effective ~1.5 MB binary budget after Base64 expansion, especially with multiple images. Thus, export can still breach the 2 MB request limit.
+- Compression failure falls back to the original potentially oversized file, also leaving the limit unprotected.
+- Converting every image to JPEG removes transparency, visibly affecting PNG/WebP images.
+
+VERDICT: WARNING

@@ -1,0 +1,88 @@
+{
+  "schema": "canvas-ir/1",
+  "canvas": {"w": 960, "h": 540, "unit": "pt"},
+  "target": {
+    "template": "reference/renderer_template.pptx",
+    "template_sha256": "60fe35466ed2bb477d592603d0eab9d8748521e54ae0632c9f6a94d0b02a855a",
+    "layout_index": 3
+  },
+  "title": "Rich text — 서식 있는 텍스트",
+  "elements": [
+    {
+      "id": "rich",
+      "type": "textbox",
+      "x": 45.6,
+      "y": 100,
+      "w": 420,
+      "h": 200,
+      "fill": null,
+      "stroke": {"color": "#000000", "width": 1},
+      "text": {
+        "align": "LEFT",
+        "valign": "TOP",
+        "paragraphs": [
+          {
+            "runs": [
+              {"t": "Vieworks ", "size": 18, "bold": true, "color": "#000000"},
+              {"t": "3D Logic", "size": 18, "italic": true, "color": "#FF0032"}
+            ]
+          },
+          {
+            "runs": [
+              {"t": "개발 테스트벤치 설계안 Rev 2", "size": 14, "color": "#000000"}
+            ]
+          },
+          {
+            "runs": [
+              {"t": "line one\nline two", "size": 14, "color": "#000000"}
+            ]
+          },
+          {
+            "runs": [
+              {"t": "nbsp:  kept", "size": 12, "color": "#000000"}
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "centered",
+      "type": "rect",
+      "x": 500,
+      "y": 100,
+      "w": 400,
+      "h": 120,
+      "fill": "#FF0032",
+      "text": {
+        "align": "CENTER",
+        "valign": "MIDDLE",
+        "paragraphs": [
+          {"runs": [{"t": "CENTER / MIDDLE", "size": 16, "bold": true, "color": "#FFFFFF"}]}
+        ]
+      }
+    },
+    {
+      "id": "right_bottom",
+      "type": "rect",
+      "x": 500,
+      "y": 260,
+      "w": 400,
+      "h": 120,
+      "fill": "#FFFFFF",
+      "stroke": {"color": "#FF0032", "width": 2},
+      "text": {
+        "align": "RIGHT",
+        "valign": "BOTTOM",
+        "paragraphs": [
+          {"runs": [{"t": "RIGHT / BOTTOM", "size": 16, "color": "#000000"}]},
+          {
+            "runs": [
+              {"t": "혼합 ", "size": 12, "color": "#000000"},
+              {"t": "mixed KO/EN", "size": 12, "italic": true, "color": "#FF0032"}
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

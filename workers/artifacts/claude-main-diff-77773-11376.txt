@@ -1,0 +1,25 @@
+diff --git a/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js b/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js
+index babfc37..0caf958 100644
+--- a/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js
++++ b/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js
+@@ -2506,10 +2506,19 @@
+     setBusy(true);
+     setStatus('Generating…');
+     try {
++      // #p-model (index.html) is the server's own MODEL_PROFILES allowlist, echoed back into the
++      // request. The server, not the client, is the authority on what a profile id maps to
++      // (_resolve_profile() in app.py 422s on anything not a MODEL_PROFILES key) -- this is only
++      // telling it which allowlisted profile the user picked.
++      var modelSel = $('p-model');
++      var selectedModel = modelSel ? modelSel.value : '';
++      var payload = { prompt: prompt };
++      if (selectedModel) payload.model = selectedModel;
++
+       var res = await fetch('/api/generate', {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+-        body: JSON.stringify({ prompt: prompt }),
++        body: JSON.stringify(payload),
+       });
+       if (!res.ok) {
+         var data = {};

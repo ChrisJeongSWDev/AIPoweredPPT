@@ -1,0 +1,56 @@
+{
+  "schema": "canvas-ir/1",
+  "canvas": {"w": 960, "h": 540, "unit": "pt"},
+  "target": {
+    "template_sha256": "60fe35466ed2bb477d592603d0eab9d8748521e54ae0632c9f6a94d0b02a855a",
+    "layout_index": 3
+  },
+  "title": "Rejected: #4472C4 (theme accent1) in all four places it can hide",
+  "elements": [
+    {
+      "id": "bad_fill",
+      "type": "rect",
+      "x": 45.6,
+      "y": 120,
+      "w": 200,
+      "h": 100,
+      "fill": "#4472C4"
+    },
+    {
+      "id": "bad_stroke",
+      "type": "rect",
+      "x": 265.6,
+      "y": 120,
+      "w": 200,
+      "h": 100,
+      "fill": "#FFFFFF",
+      "stroke": {"color": "#4472c4", "width": 2}
+    },
+    {
+      "id": "bad_run",
+      "type": "rect",
+      "x": 485.6,
+      "y": 120,
+      "w": 200,
+      "h": 100,
+      "fill": "#FFFFFF",
+      "text": {
+        "align": "CENTER",
+        "valign": "MIDDLE",
+        "paragraphs": [{"runs": [{"t": "office blue", "size": 14, "color": "#4472C4"}]}]
+      }
+    },
+    {
+      "id": "bad_connector",
+      "type": "connector",
+      "kind": "straight",
+      "x1": 60,
+      "y1": 300,
+      "x2": 300,
+      "y2": 300,
+      "color": "#4472C4",
+      "width": 2,
+      "arrow": "none"
+    }
+  ]
+}

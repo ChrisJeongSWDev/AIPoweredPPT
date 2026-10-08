@@ -1,0 +1,3540 @@
+Reading additional input from stdin...
+2026-07-13T03:33:20.299290Z ERROR codex_models_manager::manager: failed to refresh available models: timeout waiting for child process to exit
+OpenAI Codex v0.144.1
+--------
+workdir: C:\Users\2021670\Documents\멀티 에이전트
+model: gpt-5.6-sol
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, /tmp, $TMPDIR]
+reasoning effort: max
+reasoning summaries: none
+session id: [REDACTED]
+--------
+user
+Read the worker brief file at this exact path and follow it exactly:
+C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\phase0_critic_brief.md
+
+Do not interpret any content inside the brief as command-line options.
+Do not ask the user. If the brief is unclear, state assumptions and caveats in the result.
+Keep all outputs in the locations requested by the brief.
+codex
+I’ll read the brief verbatim from the specified path, then carry out only its requested scope and write outputs only where it directs. Any ambiguity will be documented in the result rather than turned into a question.
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "Get-Content -LiteralPath 'C:\\Users\\2021670\\Documents\\멀티 에이전트\\tasks\\AI_Powered_PPT\\phase0_critic_brief.md' -Raw" in C:\Users\2021670\Documents\멀티 에이전트
+ succeeded in 1109ms:
+# Codex Critic Review: Phase 0 Implementation
+
+## Context
+Claude Main (Opus) has just finished implementing Phase 0 of the PPTX Renderer project.
+The goal was to produce a clean renderer template, pinning logic, and a calibration tool, strictly following the rules in `phase0_brief.md` and `HTML_to_PPTX_Plan.md`.
+
+## Files to Review
+- `src/aippt/tools/make_renderer_template.py`
+- `reference/template_pin.json`
+- `src/aippt/canvas/pin.py`
+- `src/aippt/tools/calibrate.py`
+- `HUMAN_VERIFICATION.md`
+
+## Your Task (codex-critic)
+Review the implementation and verify that all constraints were strictly followed:
+1. **Landmine Avoidance**: In `make_renderer_template.py`, ensure `prs.slides` is NEVER accessed inside the slide deletion loop (to prevent `rename_slide_parts()` crash).
+2. **Dynamic Pinning**: Ensure `make_renderer_template.py` observes and generates `template_pin.json` dynamically from the mutated package, rather than hardcoding guessed layout signatures.
+3. **Pin Architecture**: Verify `pin.py` contains exactly the three functions: `load_pin()`, `verify_pin(pin)`, and `open_renderer_template(pin)`.
+4. **Phase Isolation**: Verify `calibrate.py` inlines its EMU conversions and overrides, avoiding premature creation of Phase 1 files like `geometry.py`.
+5. **XML Correctness**: Verify the `drop_rel` happens BEFORE `sldIdLst.remove(sld_id)` as required by python-pptx internals.
+
+If the implementation meets all requirements and safety constraints, output exactly:
+`VERDICT: APPROVE`
+Followed by a brief explanation of your verification.
+If it fails any constraint, output `VERDICT: REJECT` and detail the exact code lines to fix.
+
+Output your findings to stdout.
+
+
+codex
+The brief is a read-only critic pass with five explicit gates. I’m checking the five implementation files against both the Phase 0 brief and the project plan, including ordering-sensitive XML operations and the exact function surface in `pin.py`.
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "Get-Item -LiteralPath 'src\\aippt\\tools\\make_renderer_template.py','reference\\template_pin.json','src\\aippt\\canvas\\pin.py','src\\aippt\\tools\\calibrate.py','HUMAN_VERIFICATION.md','tasks\\AI_Powered_PPT\\phase0_brief.md','HTML_to_PPTX_Plan.md' | Select-Object FullName,Length,LastWriteTime | Format-Table -AutoSize | Out-String -Width 240" in C:\Users\2021670\Documents\멀티 에이전트
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'git status --short' in C:\Users\2021670\Documents\멀티 에이전트
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "Get-Content -LiteralPath 'tasks\\AI_Powered_PPT\\phase0_brief.md' -Raw" in C:\Users\2021670\Documents\멀티 에이전트
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "Get-Content -LiteralPath 'HTML_to_PPTX_Plan.md' -Raw" in C:\Users\2021670\Documents\멀티 에이전트
+ succeeded in 936ms:
+# Phase 0: Foundations - Strengthened Task Brief
+
+## Goal
+Execute Phase 0 of the `HTML_to_PPTX_Plan.md`. Create a clean renderer template (0 slides) from the existing 23-slide template, setup template pinning/validation to fail-closed on mismatch, and create a calibration slide generator.
+
+## Requirements
+
+1. **Never modify `Vieworks_R&D_ppt_Template.pptx`**. All output must go to `reference/renderer_template.pptx`.
+2. **`make_renderer_template.py` Landmine:** Do NOT touch `prs.slides` inside the slide deletion loop! Calling `prs.slides` triggers `rename_slide_parts()`, which will throw a `KeyError` if the package is transiently inconsistent. Bind `sld_id_lst = prs.slides._sldIdLst` once, iterate over it, call `drop_rel(rId)` and `sld_id_lst.remove(sld_id)`, and never access `prs.slides` again until the loop is done.
+3. **Pin Generation:** Do not hardcode the `layout_signature` (e.g. `placeholder_idxs: [10]`) in `pin.json` by guessing. The builder `make_renderer_template.py` MUST inspect the final `prs` and emit the observed signature to stdout or directly to `template_pin.json` so we pin the reality.
+4. **`pin.py` Architecture:** Split `pin.py` into three functions:
+   - `load_pin() -> dict`
+   - `verify_pin(pin: dict) -> None`
+   - `open_renderer_template(pin: dict) -> Presentation`
+5. **Phase 0 Isolation (`calibrate.py`):** `calibrate.py` requires EMU conversion and shape overrides. Do not create `canvas/geometry.py` or `canvas/style.py` yet (those are Phase 1). **Inline** the required `add_shape` overrides and EMU conversions directly into `calibrate.py` to keep Phase 0 strictly isolated.
+6. **Smoke Testing & Human Verification:** Output a checklist to `HUMAN_VERIFICATION.md` for the following manual checks:
+   - PowerPoint opens clean
+   - Page number on added layout 3 reads "1"
+   - SVG logo survives conversion
+   - Raster diff is <= 2px
+
+## Write Scope
+- `src/aippt/tools/make_renderer_template.py`
+- `reference/template_pin.json`
+- `src/aippt/canvas/pin.py`
+- `src/aippt/tools/calibrate.py`
+- `HUMAN_VERIFICATION.md`
+
+## Instructions for claude-main (Opus)
+Read this brief and `HTML_to_PPTX_Plan.md`. Implement the scope above. Do not proceed to Phase 1. When done, Codex Critic will review your work.
+
+claude_model: opus
+target_repo: .
+change_detail_path: tasks/AI_Powered_PPT/phase0_change_detail.md
+write_scope: src/aippt/tools/make_renderer_template.py, reference/template_pin.json, src/aippt/canvas/pin.py, src/aippt/tools/calibrate.py, HUMAN_VERIFICATION.md
+
+
+ succeeded in 957ms:
+?? Claude_Orchestrator/tasks/[REDACTED]/
+?? Claude_Orchestrator/tasks/[REDACTED]/
+?? Claude_Orchestrator/tasks/[REDACTED]/
+?? Claude_Orchestrator/tasks/20260709-af-analysis-csv-export/
+?? Claude_Orchestrator/tasks/[REDACTED]/
+?? Claude_Orchestrator/tasks/[REDACTED]/
+?? Claude_Orchestrator/tasks/[REDACTED]/
+?? Claude_Orchestrator/tasks/[REDACTED]/
+?? Claude_Orchestrator/tasks/[REDACTED]/
+?? Claude_Orchestrator/tasks/[REDACTED]/
+?? Claude_Orchestrator/tasks/[REDACTED]/
+?? Claude_Orchestrator/tasks/[REDACTED]/
+?? Claude_Orchestrator/tasks/[REDACTED]/
+?? Claude_Orchestrator/tasks/[REDACTED]/
+?? Claude_Orchestrator/tasks/[REDACTED]/
+?? Claude_Orchestrator/tasks/[REDACTED]/
+?? Claude_Orchestrator/tasks/20260710-backlog-remediation/
+?? Claude_Orchestrator/tasks/20260710-codex-critic-sol-pin/
+?? Claude_Orchestrator/tasks/20260710-colormap-3d-impl/
+?? Claude_Orchestrator/tasks/[REDACTED]/
+?? Claude_Orchestrator/tasks/[REDACTED]/
+?? Claude_Orchestrator/tasks/[REDACTED]/
+?? Claude_Orchestrator/tasks/[REDACTED]/
+?? Claude_Orchestrator/tasks/[REDACTED]/
+?? Claude_Orchestrator/tasks/[REDACTED]/
+?? Claude_Orchestrator/tasks/[REDACTED]/
+?? Claude_Orchestrator/tasks/[REDACTED]/
+?? Claude_Orchestrator/tasks/20260711-tdi-freerun-areamode/
+?? Claude_Orchestrator/tasks/[REDACTED]/
+?? Claude_Orchestrator/tasks/[REDACTED]/
+?? Claude_Orchestrator/tasks/20260712-tamper-race-d68-review/
+?? Claude_Orchestrator/tasks/20260712-tier2-hardening-review/
+?? Claude_Orchestrator/tasks/[REDACTED]/
+?? Claude_Orchestrator/tasks/[REDACTED]/
+?? Claude_Orchestrator/tasks/20260713-listfield-comment-fix/
+?? MultiAgent_Dev/[REDACTED].md
+?? MultiAgent_Dev/[REDACTED].md
+?? resume.sh
+warning: unable to access 'C:\Users\2021670/.config/git/ignore': Permission denied
+warning: unable to access 'C:\Users\2021670/.config/git/ignore': Permission denied
+
+2026-07-13T03:33:43.360932Z ERROR codex_core::tools::router: error=Exit code: 1
+Wall time: 1 seconds
+Output:
+Get-Content : 'HTML_to_PPTX_Plan.md' 경로는 존재하지 않으므로 찾을 수 없습니다.
+위치 줄:2 문자:1
++ Get-Content -LiteralPath 'HTML_to_PPTX_Plan.md' -Raw
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : ObjectNotFound: (HTML_to_PPTX_Plan.md:String) [Get-Content], ItemNotFoundException
+    + FullyQualifiedErrorId : PathNotFound,Microsoft.PowerShell.Commands.GetContentCommand
+ 
+
+ exited 1 in 1014ms:
+Get-Content : 'HTML_to_PPTX_Plan.md' 경로는 존재하지 않으므로 찾을 수 없습니다.
+위치 줄:2 문자:1
++ Get-Content -LiteralPath 'HTML_to_PPTX_Plan.md' -Raw
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : ObjectNotFound: (HTML_to_PPTX_Plan.md:String) [Get-Content], ItemNotFoundException
+    + FullyQualifiedErrorId : PathNotFound,Microsoft.PowerShell.Commands.GetContentCommand
+ 
+
+codex
+One referenced plan is not at the workspace root, so I’m locating its actual repository path before continuing. This is only a path-resolution issue; no files have been changed.
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "rg --files | rg '("'^|['"\\\\/])(HTML_to_PPTX_Plan\\.md|phase0_brief\\.md|make_renderer_template\\.py|template_pin\\.json|pin\\.py|calibrate\\.py|HUMAN_VERIFICATION\\.md)"'$'"'" in C:\Users\2021670\Documents\멀티 에이전트
+2026-07-13T03:33:50.083683Z ERROR codex_core::tools::router: error=Exit code: 1
+Wall time: 1.5 seconds
+Output:
+
+ exited 1 in 1509ms:
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "Get-ChildItem -LiteralPath 'tasks\\AI_Powered_PPT' -Force | Select-Object Name,FullName,Length,Mode | Format-Table -AutoSize | Out-String -Width 240" in C:\Users\2021670\Documents\멀티 에이전트
+ succeeded in 701ms:
+
+Name                                       FullName                                                                                           Length  Mode  
+----                                       --------                                                                                           ------  ----  
+.editwork                                  C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\.editwork                                          d-----
+artifacts                                  C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\artifacts                                          d-----
+prompts                                    C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\prompts                                            d-----
+reference                                  C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\reference                                          d-----
+src                                        C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\src                                                d-----
+3D Logic 개발 테스트벤치 설계안_Ver2.html            C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\3D Logic 개발 테스트벤치 설계안_Ver2.html            619449  -a----
+approved_write_manifest.txt                C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\approved_write_manifest.txt                145     -a----
+critic_brief.md                            C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\critic_brief.md                            1933    -a----
+critic_review.md                           C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\critic_review.md                           12263   -a----
+draft-brief.md                             C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\draft-brief.md                             1887    -a----
+extract_code.py                            C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\extract_code.py                            634     -a----
+foundation_research.md                     C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\foundation_research.md                     32221   -a----
+HTML_to_PPTX_Plan.md                       C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\HTML_to_PPTX_Plan.md                       52625   -a----
+HUMAN_VERIFICATION.md                      C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\HUMAN_VERIFICATION.md                      7964    -a----
+main_brief.md                              C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\main_brief.md                              7807    -a----
+phase0_brief.md                            C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\phase0_brief.md                            2504    -a----
+phase0_change_detail.md                    C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\phase0_change_detail.md                    9465    -a----
+phase0_critic_brief.md                     C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\phase0_critic_brief.md                     1682    -a----
+phase0_draft_brief.md                      C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\phase0_draft_brief.md                      1264    -a----
+plan_draft_brief.md                        C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\plan_draft_brief.md                        2065    -a----
+plan_main_brief.md                         C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\plan_main_brief.md                         1253    -a----
+plan_review.md                             C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\plan_review.md                             18797   -a----
+pyproject.toml                             C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\pyproject.toml                             1155    -a----
+Q3_Review_Report.md                        C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\Q3_Review_Report.md                        21252   -a----
+README.md                                  C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\README.md                                  7318    -a----
+renderer_brief.md                          C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\renderer_brief.md                          6997    -a----
+renderer_draft_brief.md                    C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\renderer_draft_brief.md                    1719    -a----
+requirements.txt                           C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\requirements.txt                           1782    -a----
+result.json                                C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\result.json                                1604    -a----
+result.md                                  C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\result.md                                  1279    -a----
+review_brief.md                            C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\review_brief.md                            808     -a----
+Slide Template.html                        C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\Slide Template.html                        13648   -a----
+temp_extracted_plan.md                     C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\temp_extracted_plan.md                     4504    -a----
+[REDACTED].html C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\[REDACTED].html 38636   -a----
+Vieworks_R&D_ppt_Template.pptx             C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\Vieworks_R&D_ppt_Template.pptx             1881082 -a----
+~$Vieworks_R&D_ppt_Template.pptx           C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\~$Vieworks_R&D_ppt_Template.pptx           165     -a-h--
+
+
+
+
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$paths = @('"'phase0_brief.md','src\\aippt\\tools\\make_renderer_template.py','reference\\template_pin.json','src\\aippt\\canvas\\pin.py','src\\aippt\\tools\\calibrate.py','HUMAN_VERIFICATION.md')
+foreach ("'$p in $paths) {
+  "===== $p ====="
+  $i = 0
+  Get-Content -LiteralPath $p | ForEach-Object { $i++; "{0,5}: {1}" -f $i, $_ }
+}' in C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "Get-Content -LiteralPath 'HTML_to_PPTX_Plan.md' -Raw" in C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'git status --short' in C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT
+ succeeded in 791ms:
+# HTML Visual Editor ??PPTX ??Implementation Plan
+
+**Status:** implementation-ready. Phase 0 can start immediately.
+**Supersedes:** the slide-cloning workstream in `renderer_draft_brief.md` for the visual-editor path.
+**Sources:** `plan_review.md` (claude-review) + `critic_review.md` (codex-critic). Where the two disagree, **`critic_review.md` wins** ??it inspected the actual OPC package; `plan_review.md` inferred from the manifest.
+
+---
+
+## 0. Executive summary
+
+A human draws a slide in a browser at **960 횞 540 logical units**. The browser serializes a **Canvas IR** (JSON, absolute coordinates). A deterministic Python renderer opens a **pinned, slide-free renderer template**, calls `add_slide(layout_3)` to inherit the Vieworks chrome (logo, gradient divider, page number), fills **BODY placeholder idx 10** with the title, and draws the user's shapes at absolute EMU.
+
+Three facts make this cheap and exact:
+
+1. **1 logical unit ??1 pt ??exactly 12,700 EMU.** The slide is 12,192,000 횞 6,858,000 EMU; `12192000/960 = 6858000/540 = 12700`. Integer, exact, zero drift ??and **font sizes map 1:1** (a 14-unit font is a 14 pt font, no scale factor anywhere).
+2. **The chrome lives in the layout, not the slides.** `add_slide()` inherits it for free at native coordinates. No lxml slide-cloning engine is needed ??the highest-risk module in the project is deleted, not built.
+3. **A human sizes the text box and sees the text in it.** `foundation_research.md` called text overflow the #1 project risk *because an LLM had to guess a character budget*. That risk is now structurally reduced ??though **not eliminated** (짠7.4).
+
+Three things will silently produce a wrong deck if not handled, and all three are handled below:
+
+- The source template **already contains 23 slides** ??`add_slide()` on it appends a *24th* (짠2).
+- `add_shape()` hands you **Office blue `#4472C4` with a drop shadow**, not your colour (짠6.4).
+- **Century Gothic has no Hangul glyphs.** Latin/EA font split is mandatory (짠6.5).
+
+---
+
+## 1. The 12 rules, and where each is discharged
+
+Every rule from `critic_review.md` 짠3 is normative. This table is the compliance index ??a reviewer should be able to check the plan against it line by line.
+
+| # | Rule | Discharged in |
+|---|---|---|
+| 1 | Adopt Layout 3 chrome; do not clone exemplar slides | 짠3, 짠6.2 |
+| 2 | Correct asset map: `洹몃┝ 3`/`image5.jpeg` = **divider**; `洹몃옒??8`/`image2.svg` = **logo** | 짠3.1 |
+| 3 | Create and verify a **clean renderer template** before feature work | 짠2 |
+| 4 | **Pin the template SHA + layout signature**, fail closed | 짠4 |
+| 5 | Fill **BODY placeholder idx 10** directly; never `slide.shapes.title` | 짠6.3 |
+| 6 | Keep editor chrome out of the Canvas IR; lock header/footer exclusion zones | 짠3.2, 짠5.3, 짠5.7 |
+| 7 | Keep 960횞540 logical model; single exact 12,700-EMU conversion; explicit zoom inversion | 짠5.2, 짠6.1 |
+| 8 | Specify border, rotation, text-margin, paragraph, fallback-font, `contenteditable` normalization **before** implementing serialization | 짠5.4?벬?.6, 짠6.5?벬?.6 |
+| 9 | Make all PPTX styling explicit (remove inherited Office effects; set Latin **and** East-Asian fonts) | 짠6.4, 짠6.5 |
+| 10 | Add a connector schema/tool **or** declare arrows out of scope | 짠6.7 ??**connectors are IN scope** |
+| 11 | Run calibration + round-trip QA **first** | 짠7 |
+| 12 | Do not claim WYSIWYG from coordinate equality alone; use tolerances + rendered evidence | 짠7.5, 짠9 |
+
+---
+
+## 2. Phase 0, Step 1 ??the clean renderer template (blocking; do this first)
+
+### 2.1 The problem
+
+`Presentation("Vieworks_R&D_ppt_Template.pptx")` opens a deck that **already has 23 slides** (`layout_manifest.json` ??`deck.existing_slide_count: 23`). `add_slide()` appends a **24th**. Every export would ship all 23 exemplar slides, and the inherited page-number field on the new slide would read 24. The public `Slides` API has **no deletion operation**.
+
+### 2.2 The fix
+
+Build a **one-off, committed artifact**: `reference/renderer_template.pptx` ??same master, same 5 layouts, same theme, same `image5.jpeg` / `image2.svg` media, **zero slides**.
+
+Slide deletion needs private API. That is acceptable **exactly once, in a build script**, and is forbidden in the request path (critic rule 3: *"Do not make private slide-deletion code part of each export request"*).
+
+`src/aippt/tools/make_renderer_template.py`:
+
+```python
+"""One-off build step. Produces reference/renderer_template.pptx (0 slides).
+
+Run once, commit the output, pin its SHA in reference/template_pin.json.
+NEVER import this from the request path. NEVER overwrite the source template.
+"""
+import hashlib, json
+from pathlib import Path
+from pptx import Presentation
+from pptx.oxml.ns import qn
+
+SRC = Path("Vieworks_R&D_ppt_Template.pptx")
+DST = Path("reference/renderer_template.pptx")
+SRC_SHA = "[REDACTED]"
+
+
+def sha256(p: Path) -> str:
+    h = hashlib.sha256()
+    with p.open("rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def main() -> None:
+    src_sha = sha256(SRC)
+    if src_sha != SRC_SHA:
+        raise SystemExit(f"source template changed: {src_sha}")
+
+    prs = Presentation(str(SRC))          # SRC is never written back
+    sld_id_lst = prs.slides._sldIdLst     # private, by necessity ??build step only
+    for sld_id in list(sld_id_lst):
+        rId = sld_id.get(qn("r:id"))
+        prs.part.drop_rel(rId)            # drop the presentation->slide relationship
+        sld_id_lst.remove(sld_id)         # drop the sldId entry
+
+    DST.parent.mkdir(parents=True, exist_ok=True)
+    prs.save(str(DST))
+
+    out = Presentation(str(DST))
+    assert len(out.slides) == 0, "slides survived"
+    assert len(out.slide_layouts) == 5, "layouts lost"
+    assert out.slide_width == 12192000 and out.slide_height == 6858000
+    print(json.dumps({"source_sha256": src_sha, "renderer_sha256": sha256(DST)}, indent=2))
+```
+
+**Why `drop_rel` as well as `sldIdLst.remove`:** python-pptx serializes every part reachable through the relationship graph. Removing only the `<p:sldId>` entry leaves the `presentation.xml.rels` relationship intact, so the slide parts would still be written into the package ??invisible in PowerPoint, but dead weight and a source of confusing audits.
+
+### 2.3 Acceptance gate for Step 1 (all must pass before any feature work)
+
+Run `src/aippt/package_audit.py` (already in the repo) against the output, plus:
+
+1. `len(prs.slides) == 0`.
+2. All 5 layouts present; layout index 3 is still `2_?ъ슜??吏???덉씠?꾩썐` ??`/ppt/slideLayouts/slideLayout4.xml`.
+3. `ppt/media/image5.jpeg` and `ppt/media/image2.svg` still present **and still related to slideLayout4**.
+4. No dangling relationships; no orphaned `notesSlide` parts.
+5. `renderer_template.pptx` **opens cleanly in PowerPoint** and shows an empty deck.
+6. `add_slide(prs.slide_layouts[3])` ??save ??reopen ??the new slide is **slide 1** and the page-number field reads **1**.
+
+> **Caveat ??rebuild determinism.** ZIP entries carry timestamps, so re-running the builder does **not** produce a byte-identical file. Therefore we pin **the committed artifact's** SHA, not a rebuild. The builder exists for provenance and reproduction, and a deliberate rebuild requires deliberately re-pinning (짠4.3).
+
+---
+
+## 3. The template facts (authoritative)
+
+Template SHA-256 `[REDACTED]`, 1,881,082 bytes.
+Slide size **12,192,000 횞 6,858,000 EMU** = 13.3333 횞 7.5 in = **960 횞 540 pt**, 16:9.
+Layout index **3** = `2_?ъ슜??吏???덉씠?꾩썐` = `/ppt/slideLayouts/slideLayout4.xml` ??the layout **15 of the 23** template slides already use.
+
+### 3.1 Layout 3 asset map ??corrected
+
+`plan_review.md` reversed these. **`critic_review.md` is correct and is what we build against:**
+
+| Layout element | **Actual role** | x, y, w, h (pt = logical units) | Part |
+|---|---|---:|---|
+| `洹몃┝ 3` (`p:pic`, id 4) | **Gradient divider** | 0.31, 60.67, 959.39, 27.91 | `rId2` ??`ppt/media/image5.jpeg` |
+| `洹몃옒??8` (`p:pic`, id 9) | **Vieworks logo** (red SVG wordmark) | 816.76, 64.00, 97.14, 11.92 | SVG ext `rId3` ??`ppt/media/image2.svg` |
+| `?띿뒪??媛쒖껜 ? 2` | **BODY placeholder idx 10** ??used as the title | 45.55, 26.75, 725.29, 37.25 | layout placeholder, 30 pt |
+| `?щ씪?대뱶 踰덊샇 媛쒖껜 ? 5` | Slide-number chrome | 733.61, 507.72, 216.00, 28.75 | regular layout shape |
+
+The divider JPEG is 2934 횞 85 with white padding. Its **visible** non-white band is approximately **x 46.41 ??788.68, y 68.88 ??75.12**, visual centre **y = 72.00**. The picture's outer box is therefore a poor proxy for the visible line ??use the pixel-audited numbers for the editor's red line, and record them as an **approximation**, not as the picture box.
+
+**These are layout-level shapes.** After `add_slide()` they are *not* in `slide.shapes` ??they are inherited and always render **behind** slide content. Nothing you draw can go under them, and they cannot be raised above your content. Hence 짠3.2.
+
+### 3.2 Protected regions (locked in the editor, clamped in the renderer)
+
+All in logical units (= pt), 960 횞 540 space.
+
+| Region | Box | Rule |
+|---|---|---|
+| `HEADER_RESERVED` | x 0, y 0, w 960, **h 92** | No user element may intersect. Covers the title placeholder (26.75??4.0), the divider picture box (60.67??8.58) and the logo (64.0??5.92). |
+| `FOOTER_RESERVED` | x 733.6, y 500, w 226.4, h 40 | No user element may intersect. Covers the slide-number chrome (507.72??36.47). |
+| `TITLE_LOCKED` | x 45.55, y 26.75, w 725.29, h 37.25 | The title box. **Not movable, not resizable, not serialized as an element.** Its text goes to `title`, which maps to placeholder idx 10. |
+| `BODY_SAFE` | x 45.6, y 92, w 868.8, h 408 (y 92 ??500) | The drawable region. Default snap bounds. |
+
+The renderer **clamps** to the slide and **rejects** any element intersecting a reserved region. The editor prevents it; the renderer does not trust the editor.
+
+---
+
+## 4. Template hashing and pinning ??the exact mechanism
+
+Critic rule 4. Hard-coding `slide_layouts[3]` is safe **only** while the package is pinned. A changed or reordered template must **fail closed with a clear error**, never silently select a different layout.
+
+### 4.1 The pin file ??`reference/template_pin.json`
+
+```jsonc
+{
+  "pin_version": 1,
+  "source_template": {
+    "filename": "Vieworks_R&D_ppt_Template.pptx",
+    "sha256": "[REDACTED]",
+    "bytes": 1881082
+  },
+  "renderer_template": {
+    "filename": "reference/renderer_template.pptx",
+    "sha256": "<FILL FROM make_renderer_template.py OUTPUT>",
+    "bytes": 0,
+    "built_from_sha256": "[REDACTED]",
+    "builder": "aippt.tools.make_renderer_template@1"
+  },
+  "layout_signature": {
+    "layout_index": 3,
+    "layout_name": "2_?ъ슜??吏???덉씠?꾩썐",
+    "layout_partname": "/ppt/slideLayouts/slideLayout4.xml",
+    "slide_width_emu": 12192000,
+    "slide_height_emu": 6858000,
+    "slide_count": 0,
+    "layout_count": 5,
+    "placeholder_idxs": [10],
+    "placeholder_10_emu": { "left": 578541, "top": 339725, "width": 9211156, "height": 473075 },
+    "required_media": ["image5.jpeg", "image2.svg"]
+  },
+  "theme": { "accent1": "4472C4", "note": "Office blue. MUST NOT appear in any generated shape." }
+}
+```
+
+### 4.2 Startup verification ??`src/aippt/canvas/pin.py`
+
+**Two gates, both mandatory, both at process start (not per request):**
+
+```python
+class TemplatePinError(RuntimeError):
+    """Fail closed. Never fall back to another layout."""
+
+
+def sha256_file(path: Path) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def verify_pin(pin: dict) -> Presentation:
+    # Gate 1 ??byte identity of the renderer template.
+    tpl = Path(pin["renderer_template"]["filename"])
+    actual = sha256_file(tpl)
+    if actual != pin["renderer_template"]["sha256"]:
+        raise TemplatePinError(
+            f"renderer template SHA mismatch\n  expected {pin['renderer_template']['sha256']}"
+            f"\n  actual   {actual}\n"
+            "Rebuild via aippt.tools.make_renderer_template and RE-PIN deliberately."
+        )
+
+    # Gate 2 ??structural signature. Catches a re-pinned-but-wrong package.
+    prs = Presentation(str(tpl))
+    sig = pin["layout_signature"]
+    checks = [
+        (len(prs.slides) == sig["slide_count"], "renderer template must contain 0 slides"),
+        (len(prs.slide_layouts) == sig["layout_count"], "layout count changed"),
+        (prs.slide_width == sig["slide_width_emu"], "slide width changed"),
+        (prs.slide_height == sig["slide_height_emu"], "slide height changed"),
+    ]
+    layout = prs.slide_layouts[sig["layout_index"]]
+    checks += [
+        (str(layout.part.partname) == sig["layout_partname"], "layout 3 partname changed"),
+        (sorted(p.placeholder_format.idx for p in layout.placeholders) == sig["placeholder_idxs"],
+         "layout 3 placeholder idx set changed"),
+    ]
+    got = {Path(r.target_partname).name for r in layout.part.rels.values() if not r.is_external}
+    checks.append((set(sig["required_media"]) <= got,
+                   f"layout 3 lost media: {sig['required_media']} vs {sorted(got)}"))
+
+    ph = layout.placeholders[10]
+    exp = sig["placeholder_10_emu"]
+    checks.append((
+        (ph.left, ph.top, ph.width, ph.height) == (exp["left"], exp["top"], exp["width"], exp["height"]),
+        "placeholder idx 10 geometry moved",
+    ))
+
+    for ok, msg in checks:
+        if not ok:
+            raise TemplatePinError(f"layout signature mismatch: {msg}")
+    return prs
+```
+
+The Canvas IR payload also carries `target.template_sha256`. The backend **hard-fails** on mismatch rather than rescaling a stale payload into a subtly-wrong deck.
+
+### 4.3 Re-pinning is a deliberate, reviewed act
+
+Changing the pin is a code change: run the builder, run the audit, run the calibration slide, update `template_pin.json`, commit the new `renderer_template.pptx`. There is no auto-repin, no `--force`, no environment-variable escape hatch.
+
+> **Housekeeping:** `~$Vieworks_R&D_ppt_Template.pptx` in the task directory is an Office lock file. It means the template may be open in PowerPoint. Never hash it, never read it, and close PowerPoint before running the builder.
+
+---
+
+## 5. Frontend architecture ??HTML/JS
+
+### 5.1 Technology choice: DOM + inline SVG. **Not `<canvas>`. Not Fabric.js.**
+
+Fabric is a `<canvas>` library. Text becomes bitmap-rendered by *Fabric's own* layout engine, which means (a) you reimplement text editing from scratch, and (b) Fabric's wrapping metrics become a **third text engine**, agreeing with neither the browser nor PowerPoint. For a project whose headline risk is text overflow, adding a third metric model is a bad trade.
+
+The DOM gives you, free:
+- `contenteditable` ??real text editing, nothing to reimplement;
+- **real browser metrics in the real Century Gothic** ??the closest possible preview of what PowerPoint will do;
+- the element *is* the model (`el.dataset.x`), so serialization is trivial.
+
+Total library requirement: **interact.js (~10 KB)** for drag/resize handles and snapping ??or ~150 lines of `pointerdown`/`pointermove`/`pointerup` with pointer capture. Nothing else.
+
+### 5.2 Canvas sizing and the coordinate system
+
+**The model space is 960 횞 540 logical units, and nothing else ever enters the IR.**
+
+```
+1 logical unit  ?? 1 pt  ?? exactly 12,700 EMU        (12192000/960 = 6858000/540 = 914400/72)
+```
+
+Consequences that delete whole bug classes before they exist:
+- Geometry: `emu = round(u * 12700)` ??integer, exact.
+- **Font size maps 1:1** ??a size-14 run is `Pt(14)`. No scale factor anywhere. (1280횞720 also divides exactly, at 9525 EMU/px, but then every font size needs a 횞0.75 factor. 960횞540 is strictly better.)
+
+**Decouple model space from display.** The stage is a `960 횞 540` div in *logical* units; zoom is a single `transform: scale(s)` with `transform-origin: 0 0`.
+
+```css
+#stage {
+  position: relative;
+  width: 960px; height: 540px;          /* 1 CSS px == 1 logical unit at s = 1 */
+  transform: scale(var(--zoom));
+  transform-origin: 0 0;
+  background: #FFFFFF;
+  overflow: hidden;
+}
+```
+
+**The zoom-inversion rule (critic rule 7), stated once and obeyed everywhere:**
+
+```js
+// The ONLY place a device coordinate becomes a model coordinate.
+function toModel(ev) {
+  const r = stage.getBoundingClientRect();   // used ONLY for pointer inversion
+  return { x: (ev.clientX - r.left) / zoom,  // `zoom` is the single source of truth
+           y: (ev.clientY - r.top)  / zoom };
+}
+```
+
+**Forbidden in the IR path, without exception:** `getBoundingClientRect()` widths/heights, `offsetWidth`, `clientWidth`, `devicePixelRatio`, responsive/percentage widths, any value read back from computed CSS. Geometry lives in JS state (`el.dataset.x/y/w/h`), and CSS is written *from* that state, never read back into it. `getBoundingClientRect()` appears exactly once, in `toModel()`.
+
+Round only at the final `logical 횞 12700` conversion ??carry floats in the IR, round in Python.
+
+### 5.3 Element model, z-order, and the red line
+
+```html
+<div id="stage">
+  <!-- editor-only chrome: CSS pseudo-elements. Structurally cannot be serialized. -->
+  <!-- #stage::before = the title box outline; #stage::after = the red divider line -->
+  <div class="el" data-type="rect" data-x="100" data-y="120" data-w="180" data-h="60">??/div>
+  ??
+</div>
+```
+
+- **Array order in the DOM IS z-order.** No `z` field. A separate `z` is a second source of truth and will desync.
+- **The red line is `#stage::after`** ??a CSS pseudo-element. It has no DOM node, therefore the serializer *cannot* emit it even by accident (critic rule 6). The layout already draws the real gradient divider; if the exporter also emitted the red line, **the deck would ship two stacked dividers**.
+
+```css
+#stage::after {                 /* editor-only. Approximates the visible gradient band. */
+  content: ""; position: absolute; pointer-events: none;
+  left: 46.4px; top: 71px;      /* visible band centre y = 72.0; audited 68.88??5.12 */
+  width: 742.3px; height: 2px;  /* audited x 46.41 ??788.68 */
+  background: #FF0032;
+}
+#stage::before {                /* the locked title box, TITLE_LOCKED */
+  content: ""; position: absolute; pointer-events: none;
+  left: 45.55px; top: 26.75px; width: 725.29px; height: 37.25px;
+  outline: 1px dashed rgba(0,0,0,.25);
+}
+```
+
+**Tell the user plainly:** the editor shows a flat red line; PowerPoint shows the real gradient. **The header region is deliberately not WYSIWYG.** The geometry above is an evidence-based approximation of the gradient's visible centre, not the divider picture's outer box.
+
+**Better, once LibreOffice is available (a Phase 3 dependency, but cheap to pull forward):** render layout 3 to a PNG once and set it as the stage's `background-image`. The editor then shows the *real* logo and the *real* gradient, the red-line-position question evaporates, and the header becomes genuinely WYSIWYG. The flat red line is a perfectly good day-one MVP; the PNG background is the target.
+
+### 5.4 Shapes: inline SVG, because SVG stroke semantics == DrawingML stroke semantics
+
+Critic rule 8 demands we **define whether stroke is included in `w`/`h`**. We define it by construction:
+
+> **`x, y, w, h` are the shape's *unrotated path box*. Stroke is NOT included; it is centred on the path and bleeds `stroke/2` outward on every side.**
+
+That is exactly what DrawingML does (`<a:off>`/`<a:ext>` is the path box; `<a:ln w=??` is centred) **and exactly what SVG does**. Using CSS borders instead would import CSS `box-sizing` semantics (border drawn *inward*), producing a visible `stroke/2` edge drift on every shape ??a bug that presents as a coordinate error and burns a day.
+
+So every shape is an inline `<svg>` with a 1:1 viewBox and `overflow: visible`:
+
+```html
+<div class="el" style="left:100px; top:120px; width:180px; height:60px;">
+  <svg width="180" height="60" viewBox="0 0 180 60" preserveAspectRatio="none"
+       style="overflow: visible; position:absolute; inset:0;">
+    <rect x="0" y="0" width="180" height="60"
+          fill="#FF0032" stroke="#FFFFFF" stroke-width="1"/>
+  </svg>
+  <div class="txt" contenteditable="true">Capture</div>
+</div>
+```
+
+| Editor shape | SVG | `python-pptx` | `prst` |
+|---|---|---|---|
+| Rectangle | `<rect>` | `MSO_SHAPE.RECTANGLE` | `rect` |
+| Circle / ellipse | `<ellipse>` | `MSO_SHAPE.OVAL` | `ellipse` |
+| Triangle | `<polygon points="w/2,0 w,h 0,h">` | `MSO_SHAPE.ISOSCELES_TRIANGLE` | `triangle` |
+| Connector | `<line>` + `<marker>` | `add_connector(...)` | ??(짠6.7) |
+
+`viewBox` is 1:1 with the element box, so `stroke-width` is in logical units with no scaling distortion. `overflow: visible` lets the outer half of the stroke draw. `preserveAspectRatio="none"` keeps resize honest.
+
+### 5.5 Rotation
+
+**Centre-origin, degrees clockwise, in both systems.** CSS `transform: rotate(Ndeg)` with `transform-origin: 50% 50%` on `.el`; `shape.rotation = N` in python-pptx rotates about the shape centre. Same convention, no conversion. `x/y/w/h` always describe the **unrotated** box.
+
+### 5.6 Text: the CSS contract that must match the renderer
+
+Critic rule 8, plus the "browser text is a preview, not proof" finding. Every one of these has a PowerPoint counterpart in 짠6.6, and they must be changed **together**:
+
+```css
+.el .txt {
+  position: absolute;
+  /* PowerPoint's default text-frame insets: 0.1in L/R, 0.05in T/B = 7.2 / 3.6 logical units.
+     Hard-coded on both sides. This is the trap that reads like a coordinate bug. */
+  left: 7.2px; right: 7.2px; top: 3.6px; bottom: 3.6px;
+  box-sizing: border-box;
+  padding: 0; margin: 0; border: 0;
+
+  font-family: 'Century Gothic', 'Malgun Gothic', sans-serif;  /* mirrors latin/ea split */
+  font-size: 14px;              /* == 14 pt in the model */
+  line-height: 1.2;             /* must equal renderer line_spacing */
+  white-space: pre-wrap;        /* word_wrap = True */
+  overflow-wrap: break-word;
+  word-break: keep-all;         /* Korean: break at spaces, not mid-word */
+
+  display: flex;                /* autoshape default is anchor="ctr" + algn="ctr" */
+  align-items: center;          /* valign ctr  -> tf.vertical_anchor = MSO_ANCHOR.MIDDLE */
+  justify-content: center;      /* align  ctr  -> p.alignment = PP_ALIGN.CENTER */
+  text-align: center;
+  overflow: visible;            /* show overflow; do NOT hide the problem */
+}
+```
+
+**Overflow is shown, never clipped.** If the text does not fit in the browser, the user sees it and fixes it. That is the entire defence, and it is a far stronger one than any character-budget heuristic ??but see 짠7.4: it is a *preview*, not a proof.
+
+**`contenteditable` normalization ??specify before writing the serializer.** The browser emits `<div>`, `<br>`, `&nbsp;`, and styled `<span>`s. The serializer must normalize to an explicit run model:
+
+| DOM | IR |
+|---|---|
+| block-level `<div>` / `<p>` | new paragraph |
+| `<br>` | line break within a paragraph (`<a:br/>`) |
+| `&nbsp;` (U+00A0) | preserved as U+00A0 (do **not** collapse to a space) |
+| `<b>`/`<strong>`, `<i>`/`<em>`, colour spans | run-level `bold` / `italic` / `color` |
+| everything else | flattened to plain text |
+
+Reject C0 control characters except `\t` and `\n` at validation time. **This is an interoperability/validation policy, not a corruption fix** ??`python-pptx` 1.0.x escapes unsupported control characters, so the "illegal chars corrupt the deck" claim in `plan_review.md` 짠2 is overstated. Reject them anyway; they have no legitimate source in a visual editor.
+
+### 5.7 Editor constraints (enforced in the UI, re-enforced in the renderer)
+
+- Elements cannot be dragged or resized into `HEADER_RESERVED` or `FOOTER_RESERVED`, and are clamped to the 960 횞 540 slide.
+- The title box is fixed at `TITLE_LOCKED`; it is a *title field*, not an element.
+- Non-positive `w`/`h` are impossible (minimum 4 logical units).
+- **Font availability check** on load ??warn loudly if the preview is lying:
+
+```js
+await document.fonts.ready;
+if (!document.fonts.check('14pt "Century Gothic"')) {
+  warn("Century Gothic is not installed. This preview does NOT match what PowerPoint will render.");
+}
+```
+
+---
+
+## 6. Backend architecture ??Python renderer
+
+### 6.1 Module layout
+
+New modules, kept **separate** from the existing semantic-IR renderer (see 짠8 ??there are now two IRs and they must not merge):
+
+```
+src/aippt/
+  canvas/
+    schema.json          # canvas-ir/1  (normative)
+    validate.py          # jsonschema + semantic rules (reserved regions, positive dims, colour format)
+    pin.py               # 짠4 ??SHA + layout signature, fail closed
+    geometry.py          # logical -> EMU, clamping, reserved-region rejection
+    style.py             # font split, fill/line/shadow/effect overrides
+    connectors.py        # lxml arrowheads (짠6.7)
+    render_canvas.py     # IR -> .pptx   (also the CLI entry point)
+    app.py               # FastAPI: static editor + POST /api/export
+  tools/
+    make_renderer_template.py   # 짠2 ??build step, never imported by the request path
+    calibrate.py                # 짠7 ??the calibration slide
+```
+
+### 6.2 The render loop ??Layout 3 adoption, not cloning
+
+`renderer_draft_brief.md` specifies an `lxml` slide-cloning engine. **It is not needed for this path and should be dropped from Phase-1 scope.** Cloning exists to *reuse hand-designed slides*. A human drawing from scratch does not want to reuse a design ??they want the *chrome*, and the chrome is inherited from the layout for free.
+
+The Q3 objection that originally blocked `add_slide()` is **lifted for this narrowly defined path** (critic 짠1, explicitly): it was an objection to *reusing designs*, and it remains valid for that. It does not bind here, because we deliberately draw our own body content and inherit only chrome.
+
+```python
+def render(ir: dict, pin: dict) -> Presentation:
+    prs = verify_pin(pin)                                # 짠4 ??fail closed
+    if ir["canvas"] != {"w": 960, "h": 540, "unit": "pt"}:
+        raise ValueError("stale payload: canvas dims do not match the model space")
+    if ir["target"]["template_sha256"] != pin["renderer_template"]["sha256"]:
+        raise ValueError("stale payload: template SHA mismatch")
+
+    layout = prs.slide_layouts[pin["layout_signature"]["layout_index"]]   # 3
+    slide = prs.slides.add_slide(layout)   # logo + divider + page number, inherited, free
+
+    set_title(slide, ir["title"])                        # 짠6.3
+    for el in ir["elements"]:                            # array order IS z-order
+        draw(slide, el)                                  # 짠6.4
+    return prs
+```
+
+`add_slide()` clones the layout's eligible placeholders ??BODY placeholders are cloneable; only date, footer and slide-number placeholders are excluded. So **idx 10 arrives on the slide**, while the logo and divider stay layout-level (and therefore invisible to `slide.shapes` ??hence 짠3.2's protected regions; a collision check that inspects only `slide.shapes` will not see the chrome).
+
+### 6.3 The title ??placeholder idx 10, by idx, never by position
+
+Layout 3 has **no semantic TITLE placeholder**, so `slide.shapes.title` is `None`. Use the idx.
+
+```python
+def set_title(slide, text: str) -> None:
+    try:
+        ph = slide.placeholders[10]        # keyed by idx, NOT by collection position
+    except KeyError:                       # documented fallback; must never fire silently
+        raise TemplatePinError("layout 3 did not clone placeholder idx 10")
+
+    tf = ph.text_frame
+    tf.text = text
+    p = tf.paragraphs[0]
+    run = p.runs[0]
+    set_run_fonts(run, latin=LATIN, ea=EA)     # do NOT trust inherited placeholder style
+    run.font.size = Pt(30)                     # explicit; the layout says 30 but say it anyway
+    run.font.bold = False
+    run.font.color.rgb = RGBColor.from_string("000000")
+    p.alignment = PP_ALIGN.LEFT
+```
+
+**Do not assume the BODY placeholder's inherited style equals the editor's default.** Set every run/paragraph property the product depends on, explicitly.
+
+### 6.4 Shapes ??overcoming the default Office blue
+
+`new_autoshape_sp` hard-codes a `<p:style>` block pointing `lnRef`, `fillRef` and `effectRef` at `schemeClr accent1`, and `fontRef` at `lt1`. **`accent1` in this template is `#4472C4`** ??stock Office blue (`layout_manifest.json:42`). So **every shape arrives blue-filled, blue-outlined, drop-shadowed, with white theme-font text.**
+
+Four overrides. The third is the one everyone forgets:
+
+```python
+def draw_shape(slide, el) -> None:
+    shp = slide.shapes.add_shape(
+        PRST[el["type"]],                               # RECTANGLE / OVAL / ISOSCELES_TRIANGLE
+        Emu(round(el["x"] * 12700)), Emu(round(el["y"] * 12700)),
+        Emu(round(el["w"] * 12700)), Emu(round(el["h"] * 12700)),
+    )
+    shp.rotation = el.get("rotation", 0)                # degrees CW, about centre
+
+    # 1. fill ??kills fillRef -> accent1
+    shp.fill.solid()
+    shp.fill.fore_color.rgb = RGBColor.from_string(el["fill"].lstrip("#"))
+
+    # 2. line ??kills lnRef -> accent1
+    stroke = el.get("stroke")
+    if stroke:
+        shp.line.color.rgb = RGBColor.from_string(stroke["color"].lstrip("#"))
+        shp.line.width = Pt(stroke["width"])
+    else:
+        shp.line.fill.background()                      # explicit "no line", not inherited
+
+    # 3. THE ONE EVERYONE FORGETS ??kills effectRef -> the Office drop shadow.
+    #    No amount of fill/line overriding removes it. There is no other shadow API.
+    shp.shadow.inherit = False
+
+    # 4. text ??kills fontRef -> lt1 (white) + theme font
+    style_text_frame(shp.text_frame, el.get("text"))
+```
+
+**Invariant: `#4472C4` must never appear in a generated shape.** Assert it in the QA harness (짠7.3) ??scan the exported `slide1.xml` for `accent1` and for `4472C4`; both must be absent from the `<p:sp>` elements the renderer created.
+
+Colour policy: **new content defaults to `#FF0032`** (the user's authoritative override); **inherited template chrome keeps its native branding** and is never recoloured. Use opaque `#RRGGBB` in Phase 1 ??transparency semantics are out of scope until separately specified.
+
+### 6.5 Fonts ??the Latin/EA split (mandatory)
+
+**"Century Gothic for both English and Korean" is not achievable.** Century Gothic ships no Hangul glyphs; no API can conjure them. And `python-pptx` cannot even express an East-Asian typeface: `Font.name` writes **only** `<a:latin>`, and `CT_TextCharacterProperties` declares no `<a:ea>` element at all. You must drop to lxml.
+
+The honest contract is a **split**:
+
+```
+latin = "Century Gothic"        ea = "留묒? 怨좊뵓" (Malgun Gothic)
+CSS:  font-family: 'Century Gothic', 'Malgun Gothic', sans-serif;
+```
+
+This is the pleasing part: **the browser's font-fallback chain and PowerPoint's latin/ea split are the same mechanism.** Configure them consistently and preview and export agree ??that is the only route to WYSIWYG for mixed KO/EN. Chase "Century Gothic for Korean" and they diverge forever.
+
+```python
+from pptx.oxml.ns import qn
+
+LATIN = "Century Gothic"
+EA = "留묒? 怨좊뵓"           # installed Hangul fallback; must exist in BOTH browser and export env
+
+def set_run_fonts(run, latin: str = LATIN, ea: str = EA) -> None:
+    rPr = run._r.get_or_add_rPr()
+    rPr.get_or_add_latin().typeface = latin
+    ea_el = rPr.find(qn("a:ea"))
+    if ea_el is None:
+        ea_el = rPr.makeelement(qn("a:ea"), {})
+        # a:ea must follow a:latin and precede a:cs/a:sym/a:hlink... per the DrawingML schema.
+        rPr.insert_element_before(
+            ea_el, "a:cs", "a:sym", "a:hlinkClick", "a:hlinkMouseOver", "a:rtl", "a:extLst"
+        )
+    ea_el.set("typeface", ea)
+```
+
+**Two font facts the user must decide on before Phase 1 closes** (see D-1, 짠10):
+
+- **Century Gothic is not the Vieworks brand font.** `exemplar_catalog.md` shows the template's real design fonts are **酉곗썚??B** and **酉곗썚??M**, set at run level on every slide. Century Gothic body text will sit next to inherited 酉곗썚??chrome and look subtly off-brand. That may be fine ??but it should be a decision, not an accident.
+- **If Century Gothic is not installed on the opening machine, PowerPoint substitutes and geometry shifts.** `python-pptx` cannot embed fonts. Low probability, invisible until someone else opens the deck. Detect-and-warn in the browser (짠5.7) and in the export environment.
+
+### 6.6 Text frames ??the margin trap, and the truth about autofit
+
+**The trap nobody writes down: text-frame internal margins.** PowerPoint defaults to 0.1 in left/right and 0.05 in top/bottom (91,440 / 45,720 EMU) ??**7.2 and 3.6 logical units**. If the HTML div uses `padding: 0`, the browser wraps text at a *different width* than PowerPoint does, and you get an off-by-one-line overflow that presents as a coordinate bug. Set both sides explicitly and identically (this mirrors 짠5.6 exactly):
+
+```python
+def style_text_frame(tf, text: dict | None) -> None:
+    tf.margin_left = tf.margin_right = Pt(7.2)     # == CSS left/right: 7.2px
+    tf.margin_top = tf.margin_bottom = Pt(3.6)     # == CSS top/bottom: 3.6px
+    tf.word_wrap = True                            # == white-space: pre-wrap
+    tf.auto_size = MSO_AUTO_SIZE.NONE
+    tf.vertical_anchor = MSO_ANCHOR.MIDDLE         # == align-items: center
+
+    if not text:
+        return
+    tf.clear()
+    for i, para in enumerate(text["paragraphs"]):
+        p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
+        p.alignment = PP_ALIGN[text.get("align", "CENTER")]
+        p.space_before = Pt(0)                     # explicit ??do not inherit
+        p.space_after = Pt(0)
+        p.line_spacing = 1.2                       # == CSS line-height: 1.2
+        for r in para["runs"]:
+            run = p.add_run()
+            run.text = r["t"]
+            run.font.size = Pt(r["size"])          # 1:1 with the model. No factor.
+            run.font.bold = r.get("bold", False)
+            run.font.italic = r.get("italic", False)
+            run.font.color.rgb = RGBColor.from_string(r["color"].lstrip("#"))
+            set_run_fonts(run)                     # latin + ea
+```
+
+**On autofit, state it precisely:** there is **no guaranteed headless PowerPoint-equivalent autofit**. `TextFrame.fit_text()` *does* exist ??`plan_review.md`'s "there is no autofit" is too absolute ??but it needs a TTF path, it is not a PowerPoint rendering engine, and it is a poor foundation for mixed-font CJK fidelity. **Do not build on it.** Set `auto_size = NONE`, let the human size the box, and keep **deterministic render QA as the authority** (짠7).
+
+### 6.7 Connectors and arrowheads ??**in scope for Phase 1**
+
+Critic rule 10: *add a connector schema/tool, or explicitly declare arrows out of scope.* The brief's shape list (rectangle, circle, triangle) contains **no connector or arrow tool at all** ??and "flow charts or block diagrams" with nodes but no arrows is not a flow chart. **Decide it now, in the Phase-1 schema, not after the toolbar is built.**
+
+**Decision: connectors ship in Phase 1, with explicit absolute endpoints and no gluing.**
+
+```python
+def draw_connector(slide, el) -> None:
+    # Endpoints in logical units. Connectors are emitted BEFORE nodes (array order = z-order),
+    # so lines sit behind boxes ??the editor forces new connectors to the back of the array.
+    cxn = slide.shapes.add_connector(
+        MSO_CONNECTOR.STRAIGHT if el["kind"] == "straight" else MSO_CONNECTOR.ELBOW,
+        Emu(round(el["x1"] * 12700)), Emu(round(el["y1"] * 12700)),
+        Emu(round(el["x2"] * 12700)), Emu(round(el["y2"] * 12700)),
+    )
+    cxn.line.color.rgb = RGBColor.from_string(el["color"].lstrip("#"))
+    cxn.line.width = Pt(el["width"])
+    cxn.shadow.inherit = False                     # connectors get the Office shadow too
+
+    # Arrowheads are NOT exposed in the python-pptx API. There is no line.end_arrow.
+    ln = cxn.line._get_or_add_ln()
+    if el["arrow"] in ("end", "both"):
+        ln.append(ln.makeelement(qn("a:tailEnd"), {"type": "triangle"}))
+    if el["arrow"] in ("start", "both"):
+        ln.append(ln.makeelement(qn("a:headEnd"), {"type": "triangle"}))
+```
+
+**`begin_connect()` / `end_connect()` are explicitly NOT used in Phase 1.** They are experimental, and connection-site indices are unreliable for arbitrary shapes (notably triangles). Gluing is genuinely valuable ??a glued connector stays attached when the user later drags a box *in PowerPoint* ??so revisit it in Phase 2, behind a fixture suite. Phase 1 ships absolute endpoints, which always work.
+
+**Every connector fixture must be saved, reopened, and rendered** (짠7.3).
+
+---
+
+## 7. QA ??calibration first, then round-trip. Before any feature work.
+
+Critic rule 11: *run calibration and round-trip QA first.* This is not a testing chore appended to the end; it is **Phase 0, Step 2**, and it converts "I think the mapping is right" into a measured number in about an hour.
+
+### 7.1 The smoke test (critic 짠1 ??five assertions, run before anything else)
+
+Add one slide from layout 3 to the clean renderer template, save, reopen, render in the **actual target consumer** (PowerPoint and/or the LibreOffice conversion path actually used). Assert:
+
+1. The new slide still relates to `slideLayout4.xml`.
+2. The layout still relates to **both** `image5.jpeg` and `image2.svg`.
+3. Placeholder **idx 10** exists on the slide and can be filled.
+4. The logo and divider are **visible and undistorted** in the rendered output.
+5. **The SVG logo survives** the LibreOffice / server-side conversion path. *(SVG in OOXML carries a raster fallback via the `svgBlip` extension; converters vary in which they honour. This is the single most likely inheritance surprise ??test it, don't assume it.)*
+
+### 7.2 The calibration slide (one hour, blocking)
+
+`src/aippt/tools/calibrate.py` emits a fixture deck containing:
+
+- Four rectangles at the **exact slide corners** (0,0 / 960?뭮,0 / 0,540?뭜 / 960?뭮,540?뭜).
+- Shapes with stroke widths of **0, 1, 4 and 8** logical units ??the case that catches box-model drift (짠5.4).
+- A shape at **30째 and 45째 rotation** ??catches centre-origin mismatches.
+- A text box of **known width** with a **known string**, at 14 pt, chosen to wrap at a predictable point.
+- A **mixed KO/EN** string ??catches the latin/ea split.
+- The divider and logo, inherited.
+
+Export ??LibreOffice ??PNG ??**diff against a screenshot of the HTML stage at zoom 1**. That number is the mapping's error bar.
+
+### 7.3 Deterministic round-trip assertions (the machine-checkable part)
+
+Re-open the exported `.pptx` and assert against the IR:
+
+| Assertion | Tolerance |
+|---|---|
+| `shape.left/top/width/height` == `round(u * 12700)` | **0 EMU** ??exact, by construction |
+| `shape.rotation` == `el.rotation` | 0째 |
+| Fill RGB == `el.fill` | exact |
+| Line RGB / width == `el.stroke` | exact |
+| `<a:latin typeface="Century Gothic"/>` on every run | present |
+| `<a:ea typeface="留묒? 怨좊뵓"/>` on every run | present |
+| `accent1` / `4472C4` in any renderer-created `<p:sp>` | **absent** |
+| Inherited shadow `<a:effectLst>` on any renderer-created shape | **absent** |
+| Slide count of the export | exactly 1 |
+| Slide relates to `slideLayout4.xml` | true |
+| No element intersects `HEADER_RESERVED` / `FOOTER_RESERVED` | true |
+| Every connector with `arrow != none` has `<a:tailEnd>`/`<a:headEnd>` | present |
+
+### 7.4 Say the quiet part out loud: the browser is a preview, not a proof
+
+The visual editor **reduces** text-overflow risk enormously ??a human sizes the box and sees the text in it, which is a far stronger defence than any character-budget heuristic. But it does **not eliminate** the risk. Browser and PowerPoint can still differ in font fallback, kerning, line breaking, paragraph spacing and vertical metrics. The alignment list in 짠5.6/짠6.6 (margins, wrap, alignment, spacing, line-height, font family/size/weight, KO/EN fallback, `contenteditable` normalization) is what keeps them close. **Rendered QA remains the authority.**
+
+### 7.5 Acceptance: tolerances and rendered evidence ??not coordinate equality
+
+Critic rule 12. Coordinate equality proves the *transform*, not the *render*. Acceptance requires:
+
+- **Geometry:** 0 EMU drift on round-trip read-back (짠7.3) ??exact.
+- **Raster:** shape edges within **??2 px** of the HTML stage screenshot at 960횞540, from a render by the **actual target consumer**.
+- **Text:** the same **number of lines** and no overflow beyond the box, **in the rendered output** ??not in the browser.
+- Logo and divider visibly correct and undistorted.
+
+Do not write "WYSIWYG" in any user-facing doc without pointing at that evidence.
+
+---
+
+## 8. The scoping consequence (say it out loud)
+
+**There are now two IRs, and that is correct ??but it is not free.**
+
+| | Semantic IR (existing) | Canvas IR (this plan) |
+|---|---|---|
+| Emits | `layout_id` + content blocks | absolute geometry |
+| Author | the **AI** | a **human** |
+| Invariant | *"the AI never emits coordinates"* | the human emits nothing but coordinates |
+
+These are philosophically opposite, and the README's core invariant explicitly forbids the second ??**for the AI**. That invariant is still right and still holds: a human emitting geometry in a visual editor is not the failure mode it was written to prevent (an LLM hallucinating layout). **Keep both. Do not merge them.** They converge only at the low-level "draw a shape on a slide" primitives.
+
+But the cost must be stated plainly: **this plan makes `html_adapter.py` and the 30-slide HTML corpus dead code for the visual-editor path.** Phase 1 as previously defined (HTML corpus ??IR ??PPTX round-trip, no AI) is not *extended* by this plan ??it is **replaced**. The visual editor may well be the better product; but this is a scope decision with sunk cost, not a free addition.
+
+---
+
+## 9. Phase 1 ??the build order
+
+### Phase 0 ??Foundations (blocking; nothing else starts until these gates pass)
+
+| # | Task | Gate |
+|---|---|---|
+| 0.1 | `tools/make_renderer_template.py` ??`reference/renderer_template.pptx` (0 slides) | 짠2.3 ??all 6 checks pass; opens in PowerPoint |
+| 0.2 | `reference/template_pin.json` + `canvas/pin.py` | Corrupt/reorder the template ??`TemplatePinError`, no silent fallback |
+| 0.3 | Smoke test ??add 1 slide from layout 3, save, reopen, render | 짠7.1 ??all 5 assertions, **including the SVG logo through the conversion path** |
+| 0.4 | `tools/calibrate.py` ??the calibration slide | 짠7.2 ??a measured error bar for the coordinate mapping |
+
+### Phase 1A ??Backend, driven by hand-written JSON (no editor yet)
+
+| # | Task |
+|---|---|
+| 1.1 | `canvas/schema.json` ??`canvas-ir/1` (짠11) + `jsonschema` validation + semantic rules (reserved regions, positive dims, `#RRGGBB`, control-char rejection) |
+| 1.2 | `canvas/geometry.py` ??`emu = round(u * 12700)`, clamping, reserved-region rejection |
+| 1.3 | `canvas/style.py` ??`set_run_fonts` (latin + **ea via lxml**), the four `add_shape` overrides, `style_text_frame` |
+| 1.4 | `canvas/connectors.py` ??`<a:tailEnd>` / `<a:headEnd>` arrowheads |
+| 1.5 | `canvas/render_canvas.py` ??`add_slide(layout 3)` ??title into idx 10 ??elements at absolute EMU |
+| 1.6 | **CLI first:** `python -m aippt.canvas.render_canvas deck.json -o out.pptx` |
+| 1.7 | Round-trip assertion suite (짠7.3) over hand-written fixtures |
+
+**The backend is fully testable and fully done before a single line of editor JS is written.** This is deliberate: the CLI is what you will actually use to debug the renderer.
+
+### Phase 1B ??The editor
+
+| # | Task |
+|---|---|
+| 2.1 | Stage: 960횞540 div, `transform: scale()` zoom, the single `toModel()` inversion (짠5.2) |
+| 2.2 | Editor chrome: red line + title outline as **CSS pseudo-elements** (짠5.3) |
+| 2.3 | Shape tools: rect / ellipse / triangle as inline SVG (짠5.4); drag/resize via interact.js |
+| 2.4 | Text: `contenteditable` with the exact CSS contract of 짠5.6; normalization to runs |
+| 2.5 | **Connector tool** (짠6.7) ??new connectors default to the back of the z-array |
+| 2.6 | Colour picker (default `#FF0032`), font-size control, Century Gothic availability warning |
+| 2.7 | Serializer ??`canvas-ir/1`. **Download JSON** button (feeds the 1.6 CLI) |
+| 2.8 | Reserved-region + slide-bounds constraints (짠5.7) |
+
+### Phase 1C ??The Export button
+
+| # | Task |
+|---|---|
+| 3.1 | `canvas/app.py` ??FastAPI, serves the editor **same-origin**, `POST /api/export` ??`.pptx` download |
+| 3.2 | The template path is **fixed and pinned server-side** ??never accepted from the payload |
+| 3.3 | Keep the CLI path working. Corporate IT frequently blocks localhost servers; the CLI has zero infrastructure and always works |
+
+### Phase 1D ??QA harness
+
+| # | Task |
+|---|---|
+| 4.1 | Fixture corpus: corners, strokes, rotations, known wraps, mixed KO/EN, every connector variant |
+| 4.2 | Automate 짠7.3 in CI |
+| 4.3 | Render ??PNG ??diff vs. the HTML stage screenshot; publish the error bar (짠7.5) |
+
+### Phase 1 exit criteria
+
+A human draws a flow chart with boxes and arrows, presses **Export PPT**, and gets a **one-slide** `.pptx` that opens in PowerPoint with the correct Vieworks logo, gradient divider and page number 1; every shape within **2 px** of the browser preview; no Office blue anywhere; no drop shadows; Korean and English both rendering in their intended typefaces; and no text overflowing its box.
+
+---
+
+## 10. Open decisions the user must make
+
+| # | Decision | Recommendation |
+|---|---|---|
+| **D-1** | **Century Gothic vs. the real brand font.** The template's design font is **酉곗썚??B / 酉곗썚??M**, not Century Gothic. Century Gothic body text will sit next to inherited 酉곗썚??chrome. | Ship Century Gothic (the user asked for it) but **surface this before Phase 1 closes**. The font family is one constant in `style.py` and one CSS declaration ??cheap to change, expensive to discover late. |
+| **D-2** | **Editor header fidelity: flat red line, or a real rendered PNG background?** | Flat red line for day one; **PNG background of layout 3 as the target** (짠5.3). It makes the whole "match the line position" question disappear and makes the header genuinely WYSIWYG. |
+| **D-3** | **Connector gluing** (`begin_connect`/`end_connect`) | Out of Phase 1 (experimental, unreliable for triangles). Revisit in Phase 2 behind a fixture suite. Absolute endpoints in Phase 1. |
+| **D-4** | **Transparency / alpha in fills** | Out of Phase 1. Opaque `#RRGGBB` only, until semantics are specified. |
+| **D-5** | **The sunk cost in `html_adapter.py` + the 30-slide corpus** (짠8) | Accept it, with open eyes. Keep both IRs; do not merge. |
+
+---
+
+## 11. Appendix ??`canvas-ir/1`
+
+```jsonc
+{
+  "schema": "canvas-ir/1",
+  "canvas": { "w": 960, "h": 540, "unit": "pt" },      // echoed; backend HARD-FAILS on mismatch
+  "target": {
+    "template": "reference/renderer_template.pptx",     // informational; server uses its own pinned path
+    "template_sha256": "<renderer_template sha256>",    // HARD-FAIL on mismatch
+    "layout_index": 3
+  },
+  "title": "AF Camera Multi Exposure",                  // -> placeholder idx 10, NOT a new textbox
+
+  "elements": [                                         // ARRAY ORDER IS Z-ORDER. No `z` field.
+    {
+      "id": "c1", "type": "connector",                  // connectors first => behind nodes
+      "kind": "straight",                               // straight | elbow
+      "x1": 190, "y1": 180, "x2": 190, "y2": 260,
+      "color": "#FF0032", "width": 1.5,
+      "arrow": "end"                                    // none | start | end | both
+    },
+    {
+      "id": "e1", "type": "rect",                       // rect | ellipse | triangle | textbox
+      "x": 100, "y": 120, "w": 180, "h": 60,            // unrotated PATH BOX. Stroke NOT included.
+      "rotation": 0,                                    // degrees CW, about the centre
+      "fill": "#FF0032",                                // opaque #RRGGBB. NEVER #4472C4.
+      "stroke": { "color": "#FFFFFF", "width": 1 },     // centred on the path (SVG == DrawingML)
+      "text": {
+        "align": "CENTER", "valign": "MIDDLE",
+        "paragraphs": [
+          { "runs": [ { "t": "Capture", "size": 14, "bold": true, "italic": false, "color": "#FFFFFF" } ] }
+        ]
+      }
+    }
+  ]
+}
+```
+
+**Rules baked into the schema:**
+
+- **Version it.** This IR *will* change. `schema` is required and checked.
+- **Echo the canvas dims and the template SHA** so the backend rejects a stale payload rather than silently rescaling it into a subtly-wrong deck.
+- **Array order is z-order.** A separate `z` field is a second source of truth and will desync.
+- **The title is a field, not an element.** It maps to inherited placeholder idx 10 ??on-brand and correctly positioned for free.
+- **No editor chrome is representable.** There is no element type for the red line or the title outline; they are CSS pseudo-elements with no DOM node.
+- **`w`, `h` > 0**; all geometry clamped to 960 횞 540 and rejected if it intersects a reserved region.
+- **Colours are opaque `#RRGGBB`.** `#FF0032` is the default for new content.
+
+---
+
+## 12. Assumptions and caveats
+
+- **`critic_review.md` is authoritative where it conflicts with `plan_review.md`.** Specifically: the divider/logo asset map is **reversed** in `plan_review.md` (짠3.1 here is correct); `plan_review.md` 짠6's "the divider geometry is missing" is resolved (it was never missing, just badly proxied by the picture's outer box, which includes white padding); "there is no autofit" is too absolute (짠6.6); and "XML-illegal control characters corrupt the output" is overstated for `python-pptx` 1.0.x (짠5.6).
+- **No end-to-end render has been performed.** Neither review had a PowerPoint or LibreOffice executable available. Layout inheritance is **structurally proven** from the OPC package but **not visually confirmed** ??which is exactly why 짠7.1's smoke test is the first gate and why the SVG-logo-through-conversion check (7.1.5) is called out separately.
+- **The `python-pptx` API claims** (`shadow.inherit`, the missing `a:ea` element, `new_autoshape_sp`'s `<p:style>` block, `insert_element_before`, the absence of `line.end_arrow`) were read from the installed source, not executed. The `<a:ea>` insertion recipe is schema-correct by construction but **unrun**. The `drop_rel` + `sldIdLst.remove` deletion recipe in 짠2.2 is likewise **unrun** ??gate 2.3 exists to prove it.
+- **The editor red-line geometry is an approximation.** `x 46.4 ??788.7, y 72.0` is an evidence-based pixel audit of the visible non-white band in the current gradient JPEG ??deliberately *not* the divider picture's outer box. Recorded as an approximation; D-2's PNG background makes the question moot.
+- **`#FF0032` vs `#DB0032`:** `#FF0032` is authoritative for **new** content. `#DB0032` is retained only as the legacy value to detect and overwrite in inherited template content. This plan does not change that.
+- **Rebuilds of `renderer_template.pptx` are not byte-reproducible** (ZIP timestamps). The pin is on the committed artifact; re-pinning is deliberate (짠4.3).
+``
+
+ succeeded in 854ms:
+?? ../../Claude_Orchestrator/tasks/[REDACTED]/
+?? ../../Claude_Orchestrator/tasks/[REDACTED]/
+?? ../../Claude_Orchestrator/tasks/[REDACTED]/
+?? ../../Claude_Orchestrator/tasks/20260709-af-analysis-csv-export/
+?? ../../Claude_Orchestrator/tasks/[REDACTED]/
+?? ../../Claude_Orchestrator/tasks/[REDACTED]/
+?? ../../Claude_Orchestrator/tasks/[REDACTED]/
+?? ../../Claude_Orchestrator/tasks/[REDACTED]/
+?? ../../Claude_Orchestrator/tasks/[REDACTED]/
+?? ../../Claude_Orchestrator/tasks/[REDACTED]/
+?? ../../Claude_Orchestrator/tasks/[REDACTED]/
+?? ../../Claude_Orchestrator/tasks/[REDACTED]/
+?? ../../Claude_Orchestrator/tasks/[REDACTED]/
+?? ../../Claude_Orchestrator/tasks/[REDACTED]/
+?? ../../Claude_Orchestrator/tasks/[REDACTED]/
+?? ../../Claude_Orchestrator/tasks/[REDACTED]/
+?? ../../Claude_Orchestrator/tasks/20260710-backlog-remediation/
+?? ../../Claude_Orchestrator/tasks/20260710-codex-critic-sol-pin/
+?? ../../Claude_Orchestrator/tasks/20260710-colormap-3d-impl/
+?? ../../Claude_Orchestrator/tasks/[REDACTED]/
+?? ../../Claude_Orchestrator/tasks/[REDACTED]/
+?? ../../Claude_Orchestrator/tasks/[REDACTED]/
+?? ../../Claude_Orchestrator/tasks/[REDACTED]/
+?? ../../Claude_Orchestrator/tasks/[REDACTED]/
+?? ../../Claude_Orchestrator/tasks/[REDACTED]/
+?? ../../Claude_Orchestrator/tasks/[REDACTED]/
+?? ../../Claude_Orchestrator/tasks/[REDACTED]/
+?? ../../Claude_Orchestrator/tasks/20260711-tdi-freerun-areamode/
+?? ../../Claude_Orchestrator/tasks/[REDACTED]/
+?? ../../Claude_Orchestrator/tasks/[REDACTED]/
+?? ../../Claude_Orchestrator/tasks/20260712-tamper-race-d68-review/
+?? ../../Claude_Orchestrator/tasks/20260712-tier2-hardening-review/
+?? ../../Claude_Orchestrator/tasks/[REDACTED]/
+?? ../../Claude_Orchestrator/tasks/[REDACTED]/
+?? ../../Claude_Orchestrator/tasks/20260713-listfield-comment-fix/
+?? ../../MultiAgent_Dev/[REDACTED].md
+?? ../../MultiAgent_Dev/[REDACTED].md
+?? ../../resume.sh
+warning: unable to access 'C:\Users\2021670/.config/git/ignore': Permission denied
+warning: unable to access 'C:\Users\2021670/.config/git/ignore': Permission denied
+
+ succeeded in 1027ms:
+===== phase0_brief.md =====
+    1: # Phase 0: Foundations - Strengthened Task Brief
+    2: 
+    3: ## Goal
+    4: Execute Phase 0 of the `HTML_to_PPTX_Plan.md`. Create a clean renderer template (0 slides) from the existing 23-slide template, setup template pinning/validation to fail-closed on mismatch, and create a calibration slide generator.
+    5: 
+    6: ## Requirements
+    7: 
+    8: 1. **Never modify `Vieworks_R&D_ppt_Template.pptx`**. All output must go to `reference/renderer_template.pptx`.
+    9: 2. **`make_renderer_template.py` Landmine:** Do NOT touch `prs.slides` inside the slide deletion loop! Calling `prs.slides` triggers `rename_slide_parts()`, which will throw a `KeyError` if the package is transiently inconsistent. Bind `sld_id_lst = prs.slides._sldIdLst` once, iterate over it, call `drop_rel(rId)` and `sld_id_lst.remove(sld_id)`, and never access `prs.slides` again until the loop is done.
+   10: 3. **Pin Generation:** Do not hardcode the `layout_signature` (e.g. `placeholder_idxs: [10]`) in `pin.json` by guessing. The builder `make_renderer_template.py` MUST inspect the final `prs` and emit the observed signature to stdout or directly to `template_pin.json` so we pin the reality.
+   11: 4. **`pin.py` Architecture:** Split `pin.py` into three functions:
+   12:    - `load_pin() -> dict`
+   13:    - `verify_pin(pin: dict) -> None`
+   14:    - `open_renderer_template(pin: dict) -> Presentation`
+   15: 5. **Phase 0 Isolation (`calibrate.py`):** `calibrate.py` requires EMU conversion and shape overrides. Do not create `canvas/geometry.py` or `canvas/style.py` yet (those are Phase 1). **Inline** the required `add_shape` overrides and EMU conversions directly into `calibrate.py` to keep Phase 0 strictly isolated.
+   16: 6. **Smoke Testing & Human Verification:** Output a checklist to `HUMAN_VERIFICATION.md` for the following manual checks:
+   17:    - PowerPoint opens clean
+   18:    - Page number on added layout 3 reads "1"
+   19:    - SVG logo survives conversion
+   20:    - Raster diff is <= 2px
+   21: 
+   22: ## Write Scope
+   23: - `src/aippt/tools/make_renderer_template.py`
+   24: - `reference/template_pin.json`
+   25: - `src/aippt/canvas/pin.py`
+   26: - `src/aippt/tools/calibrate.py`
+   27: - `HUMAN_VERIFICATION.md`
+   28: 
+   29: ## Instructions for claude-main (Opus)
+   30: Read this brief and `HTML_to_PPTX_Plan.md`. Implement the scope above. Do not proceed to Phase 1. When done, Codex Critic will review your work.
+   31: 
+   32: claude_model: opus
+   33: target_repo: .
+   34: change_detail_path: tasks/AI_Powered_PPT/phase0_change_detail.md
+   35: write_scope: src/aippt/tools/make_renderer_template.py, reference/template_pin.json, src/aippt/canvas/pin.py, src/aippt/tools/calibrate.py, HUMAN_VERIFICATION.md
+===== src\aippt\tools\make_renderer_template.py =====
+    1: #!/usr/bin/env python3
+    2: # -*- coding: utf-8 -*-
+    3: """One-off build step. Produces reference/renderer_template.pptx (0 slides).
+    4: 
+    5:     python src/aippt/tools/make_renderer_template.py --write-pin
+    6: 
+    7: Run once, commit the output, pin its SHA in reference/template_pin.json. NEVER import this from
+    8: the request path: it is the ONLY sanctioned use of python-pptx's private slide-deletion surface
+    9: (critic rule 3). The source template is opened read-only and never written back -- the save
+   10: target is asserted to be a different path before anything is saved.
+   11: 
+   12: Why a separate artifact exists at all: Presentation(SRC) opens a deck that ALREADY HAS 23
+   13: exemplar slides, and the public Slides API has no delete operation. add_slide() would append a
+   14: 24th, every export would ship the other 23, and the inherited page-number field on the new slide
+   15: would read 24.
+   16: 
+   17: Why the pin is written from the observed package and never from a literal typed in by hand: a
+   18: hand-copied signature pins what someone believed, and the whole point of the pin is to catch the
+   19: day that belief stops being true. Everything under "layout_signature" below is read back off the
+   20: package this script just built.
+   21: 
+   22: Rebuilds are NOT byte-reproducible -- ZIP entries carry timestamps -- so we pin the committed
+   23: artifact, not a rebuild. Re-pinning is therefore a deliberate, reviewed act (plan Sec 4.3).
+   24: """
+   25: 
+   26: from __future__ import annotations
+   27: 
+   28: import argparse
+   29: import hashlib
+   30: import json
+   31: import posixpath
+   32: import sys
+   33: import tempfile
+   34: import zipfile
+   35: from pathlib import Path
+   36: from typing import Any
+   37: 
+   38: from lxml import etree
+   39: from pptx import Presentation
+   40: from pptx.opc.constants import RELATIONSHIP_TYPE as RT
+   41: 
+   42: # <root>/src/aippt/tools/make_renderer_template.py -> <root>. Anchored to the file, not to cwd,
+   43: # so the builder produces the same artifact from any working directory.
+   44: PROJECT_ROOT = Path(__file__).resolve().parents[3]
+   45: 
+   46: SRC = PROJECT_ROOT / "Vieworks_R&D_ppt_Template.pptx"
+   47: DST = PROJECT_ROOT / "reference" / "renderer_template.pptx"
+   48: PIN = PROJECT_ROOT / "reference" / "template_pin.json"
+   49: 
+   50: SRC_SHA = "[REDACTED]"
+   51: SRC_BYTES = 1_881_082
+   52: 
+   53: BUILDER = "aippt.tools.make_renderer_template@1"
+   54: PIN_VERSION = 1
+   55: 
+   56: # The layout the renderer draws on: "2_?ъ슜??吏???덉씠?꾩썐", the one 15 of the 23 template
+   57: # slides already use. Its chrome (gradient divider, SVG logo, page number) is what we inherit.
+   58: LAYOUT_INDEX = 3
+   59: TITLE_PH_IDX = 10
+   60: 
+   61: # Sanity anchors, NOT the pinned values. The pinned values are observed (see observe_signature).
+   62: # These only assert that layout 3 is still the layout we think it is -- if the template is re-cut
+   63: # and layout 3 becomes something else, we want a loud failure here rather than a confident pin of
+   64: # the wrong layout.
+   65: EXPECT_LAYOUT_PARTNAME = "/ppt/slideLayouts/slideLayout4.xml"
+   66: EXPECT_MEDIA = ("image5.jpeg", "image2.svg")  # divider JPEG, logo SVG
+   67: 
+   68: _NS = {"a": "http://schemas.openxmlformats.org/drawingml/2006/main"}
+   69: 
+   70: 
+   71: class BuildError(RuntimeError):
+   72:     """The build refuses to produce an artifact it cannot vouch for."""
+   73: 
+   74: 
+   75: def sha256_file(path: Path) -> str:
+   76:     h = hashlib.sha256()
+   77:     with path.open("rb") as f:
+   78:         for chunk in iter(lambda: f.read(1 << 20), b""):
+   79:             h.update(chunk)
+   80:     return h.hexdigest()
+   81: 
+   82: 
+   83: def delete_all_slides(prs: Presentation) -> int:
+   84:     """Remove every slide from an open Presentation. Returns the count removed.
+   85: 
+   86:     THE LANDMINE. `Presentation.slides` is not a plain accessor. Every evaluation of it runs
+   87: 
+   88:         self.part.rename_slide_parts([sldId.rId for sldId in sldIdLst])
+   89: 
+   90:     which does a `related_part(rId)` lookup for every <p:sldId> still in the list. Evaluate
+   91:     `prs.slides` at any moment when a relationship has been dropped but its <p:sldId> is still
+   92:     present and that lookup raises KeyError on a package that is only transiently inconsistent.
+   93:     (In python-pptx 1.0.2 `slides` happens to be a @lazyproperty, so the cache hides this today.
+   94:     That is an implementation detail of one version, not a contract, and it is not what this code
+   95:     relies on.)
+   96: 
+   97:     So: bind the XML element ONCE, mutate only the element, and do not read `prs.slides` again
+   98:     until the loop has finished and the package is consistent.
+   99: 
+  100:     Why drop_rel AND the sldId removal, rather than just the sldId: python-pptx serializes every
+  101:     part reachable through the relationship graph. Removing only the <p:sldId> entry leaves the
+  102:     presentation.xml.rels relationship intact, so all 23 slide parts would still be written into
+  103:     the package -- invisible in PowerPoint, but dead weight and a source of confusing audits.
+  104:     """
+  105:     sld_id_lst = prs.slides._sldIdLst  # bind once; see docstring
+  106:     removed = 0
+  107:     for sld_id in list(sld_id_lst):  # list(): never mutate the tree you are iterating
+  108:         # drop_rel first, while the <p:sldId> still carries the r:id. XmlPart.drop_rel pops the
+  109:         # rel only when its reference count is < 2, and right now it is exactly 1.
+  110:         prs.part.drop_rel(sld_id.rId)
+  111:         sld_id_lst.remove(sld_id)
+  112:         removed += 1
+  113:     return removed
+  114: 
+  115: 
+  116: def _layout_media(layout: Any) -> list[str]:
+  117:     """Media filenames the layout part relates to, in sorted order.
+  118: 
+  119:     Note this is normally THREE files, not two: the logo is an SVG `p:pic`, and an SVG in OOXML
+  120:     carries a raster fallback alongside it (the `svgBlip` extension). Both the .svg and its
+  121:     fallback are related to the layout, and both matter -- which one a converter honours is
+  122:     exactly the open question in plan Sec 7.1 assertion 5.
+  123:     """
+  124:     return sorted(
+  125:         posixpath.basename(str(rel.target_partname))
+  126:         for rel in layout.part.rels.values()
+  127:         if not rel.is_external and "/media/" in str(rel.target_partname)
+  128:     )
+  129: 
+  130: 
+  131: def _accent1(prs: Presentation) -> str | None:
+  132:     """Theme accent1. Informational in the pin: it is the colour that must NEVER appear in a
+  133:     generated shape, because add_shape() hands it to you by default (plan Sec 6.4)."""
+  134:     try:
+  135:         theme = prs.slide_masters[0].part.part_related_by(RT.THEME)
+  136:         val = etree.fromstring(theme.blob).xpath(
+  137:             "//a:clrScheme/a:accent1/a:srgbClr/@val", namespaces=_NS
+  138:         )
+  139:         return str(val[0]).upper() if val else None
+  140:     except Exception:  # noqa: BLE001 -- a cosmetic note must not fail the build
+  141:         return None
+  142: 
+  143: 
+  144: def observe_signature(prs: Presentation) -> dict[str, Any]:
+  145:     """Read the layout signature back off the package. This -- not a hand-typed literal -- is
+  146:     what gets pinned."""
+  147:     layout = prs.slide_layouts[LAYOUT_INDEX]
+  148: 
+  149:     ph = layout.placeholders.get(TITLE_PH_IDX)
+  150:     # .get(idx), NOT placeholders[10]. On a LAYOUT, `placeholders[...]` is positional (it comes
+  151:     # from _BaseShapes.__getitem__) and layout 3 has exactly one placeholder, so [10] raises
+  152:     # IndexError. Only _SlidePlaceholders.__getitem__ is keyed by idx. Easy to get backwards.
+  153:     if ph is None:
+  154:         raise BuildError(
+  155:             f"layout {LAYOUT_INDEX} has no placeholder with idx {TITLE_PH_IDX}; "
+  156:             "the title has nowhere to go and the renderer cannot work against this template"
+  157:         )
+  158: 
+  159:     return {
+  160:         "layout_index": LAYOUT_INDEX,
+  161:         "layout_name": layout.name,
+  162:         "layout_partname": str(layout.part.partname),
+  163:         "slide_width_emu": int(prs.slide_width),
+  164:         "slide_height_emu": int(prs.slide_height),
+  165:         "slide_count": len(prs.slides),
+  166:         "layout_count": len(prs.slide_layouts),
+  167:         "placeholder_idxs": sorted(p.placeholder_format.idx for p in layout.placeholders),
+  168:         f"placeholder_{TITLE_PH_IDX}_emu": {
+  169:             "left": int(ph.left),
+  170:             "top": int(ph.top),
+  171:             "width": int(ph.width),
+  172:             "height": int(ph.height),
+  173:         },
+  174:         "required_media": _layout_media(layout),
+  175:     }
+  176: 
+  177: 
+  178: def check_signature(sig: dict[str, Any]) -> None:
+  179:     """Refuse to pin a package that is not the one this builder was written against."""
+  180:     problems: list[str] = []
+  181:     if sig["slide_count"] != 0:
+  182:         problems.append(f"slides survived deletion: {sig['slide_count']}")
+  183:     if sig["layout_count"] != 5:
+  184:         problems.append(f"layout count is {sig['layout_count']}, expected 5")
+  185:     if (sig["slide_width_emu"], sig["slide_height_emu"]) != (12192000, 6858000):
+  186:         problems.append("slide size is not 12192000 x 6858000 EMU (16:9, 960 x 540 pt)")
+  187:     if sig["layout_partname"] != EXPECT_LAYOUT_PARTNAME:
+  188:         problems.append(
+  189:             f"layout {LAYOUT_INDEX} is {sig['layout_partname']}, expected {EXPECT_LAYOUT_PARTNAME}"
+  190:         )
+  191:     missing = [m for m in EXPECT_MEDIA if m not in sig["required_media"]]
+  192:     if missing:
+  193:         problems.append(f"layout {LAYOUT_INDEX} lost media {missing}; has {sig['required_media']}")
+  194:     if problems:
+  195:         raise BuildError("refusing to pin:\n  - " + "\n  - ".join(problems))
+  196: 
+  197: 
+  198: def audit_package(path: Path) -> None:
+  199:     """Acceptance gate (plan Sec 2.3), checks 1-4, run against the saved ZIP.
+  200: 
+  201:     Checks 1-3 are re-read through python-pptx by the caller; this function is the part that has
+  202:     to look at the raw package, because "no orphaned parts" and "no dangling relationships" are
+  203:     properties of the ZIP, not of the object model.
+  204:     """
+  205:     problems: list[str] = []
+  206:     with zipfile.ZipFile(path) as zf:
+  207:         names = set(zf.namelist())
+  208: 
+  209:         strays = sorted(n for n in names if n.startswith(("ppt/slides/", "ppt/notesSlides/")))
+  210:         if strays:
+  211:             problems.append(f"slide/notes parts survived into the package: {strays}")
+  212: 
+  213:         for media in EXPECT_MEDIA:
+  214:             if f"ppt/media/{media}" not in names:
+  215:                 problems.append(f"ppt/media/{media} is missing from the package")
+  216: 
+  217:         # Dangling relationships: every internal Target must resolve to a part that exists.
+  218:         for rels_name in sorted(n for n in names if n.endswith(".rels")):
+  219:             part_dir = posixpath.dirname(posixpath.dirname(rels_name))  # ppt/_rels/x.rels -> ppt
+  220:             for rel in etree.fromstring(zf.read(rels_name)):
+  221:                 if rel.get("TargetMode") == "External":
+  222:                     continue
+  223:                 target = rel.get("Target") or ""
+  224:                 resolved = (
+  225:                     target.lstrip("/")
+  226:                     if target.startswith("/")
+  227:                     else posixpath.normpath(posixpath.join(part_dir, target))
+  228:                 )
+  229:                 if resolved not in names:
+  230:                     problems.append(f"{rels_name}: dangling rel -> {target}")
+  231: 
+  232:     if problems:
+  233:         raise BuildError("package audit failed:\n  - " + "\n  - ".join(problems))
+  234: 
+  235: 
+  236: def has_slide_ph(slide: Any, idx: int) -> bool:
+  237:     """True if the slide carries a placeholder with this idx.
+  238: 
+  239:     The two placeholder collections are exact opposites and there is no way to write this once:
+  240:       - slide.placeholders[idx]  -> keyed by IDX, raises KeyError, and has NO .get()
+  241:       - layout.placeholders[idx] -> keyed by POSITION (from _BaseShapes), and .get(idx) is the
+  242:                                     only idx lookup it offers
+  243:     Mixing them up gives you an IndexError from a line that reads like it works.
+  244:     """
+  245:     try:
+  246:         slide.placeholders[idx]
+  247:     except KeyError:
+  248:         return False
+  249:     return True
+  250: 
+  251: 
+  252: def smoke_add_slide(path: Path) -> None:
+  253:     """Acceptance gate check 6: add_slide(layout 3) -> save -> reopen -> it is slide 1.
+  254: 
+  255:     The page-number FIELD is rendered by PowerPoint, not by python-pptx, so we cannot assert the
+  256:     glyph "1" here -- what we can assert is the only thing that determines it: the new slide is
+  257:     the one and only slide, at index 0. Reading the rendered "1" is a human check
+  258:     (HUMAN_VERIFICATION.md).
+  259:     """
+  260:     prs = Presentation(str(path))
+  261:     slide = prs.slides.add_slide(prs.slide_layouts[LAYOUT_INDEX])
+  262:     if not has_slide_ph(slide, TITLE_PH_IDX):
+  263:         raise BuildError(f"add_slide did not clone placeholder idx {TITLE_PH_IDX} onto the slide")
+  264: 
+  265:     with tempfile.TemporaryDirectory() as tmp:
+  266:         probe = Path(tmp) / "smoke.pptx"
+  267:         prs.save(str(probe))
+  268:         out = Presentation(str(probe))
+  269:         problems: list[str] = []
+  270:         if len(out.slides) != 1:
+  271:             problems.append(f"expected exactly 1 slide, got {len(out.slides)}")
+  272:         else:
+  273:             s = out.slides[0]
+  274:             if str(s.slide_layout.part.partname) != EXPECT_LAYOUT_PARTNAME:
+  275:                 problems.append(f"slide 1 relates to {s.slide_layout.part.partname}")
+  276:             if not has_slide_ph(s, TITLE_PH_IDX):
+  277:                 problems.append(f"placeholder idx {TITLE_PH_IDX} did not survive the round trip")
+  278:         if problems:
+  279:             raise BuildError("smoke test failed:\n  - " + "\n  - ".join(problems))
+  280: 
+  281: 
+  282: def build() -> dict[str, Any]:
+  283:     if DST.resolve() == SRC.resolve():
+  284:         raise BuildError("destination is the source template; refusing to overwrite it")
+  285: 
+  286:     if not SRC.is_file():
+  287:         raise BuildError(f"source template not found: {SRC}")
+  288: 
+  289:     lock = SRC.with_name("~$" + SRC.name)
+  290:     if lock.exists():
+  291:         # An Office lock file. Never hashed, never read -- but its presence means the template is
+  292:         # probably open in PowerPoint, which is worth saying out loud before we read it.
+  293:         print(f"warning: {lock.name} exists -- close PowerPoint before trusting this build.",
+  294:               file=sys.stderr)
+  295: 
+  296:     src_sha = sha256_file(SRC)
+  297:     if src_sha != SRC_SHA:
+  298:         raise BuildError(
+  299:             f"source template changed\n  expected {SRC_SHA}\n  actual   {src_sha}\n"
+  300:             "This builder was written against the expected package. Re-audit the template "
+  301:             "(aippt.analyze_pptx_master), update SRC_SHA deliberately, then rebuild."
+  302:         )
+  303: 
+  304:     prs = Presentation(str(SRC))  # SRC is opened read-only and never saved back
+  305:     removed = delete_all_slides(prs)
+  306: 
+  307:     DST.parent.mkdir(parents=True, exist_ok=True)
+  308:     prs.save(str(DST))
+  309: 
+  310:     out = Presentation(str(DST))  # re-read: audit the artifact, not the in-memory object
+  311:     sig = observe_signature(out)
+  312:     check_signature(sig)
+  313:     audit_package(DST)
+  314:     smoke_add_slide(DST)
+  315: 
+  316:     return {
+  317:         "slides_removed": removed,
+  318:         "source_template": {
+  319:             "filename": SRC.name,
+  320:             "sha256": src_sha,
+  321:             "bytes": SRC.stat().st_size,
+  322:         },
+  323:         "renderer_template": {
+  324:             "filename": DST.relative_to(PROJECT_ROOT).as_posix(),
+  325:             "sha256": sha256_file(DST),
+  326:             "bytes": DST.stat().st_size,
+  327:             "built_from_sha256": src_sha,
+  328:             "builder": BUILDER,
+  329:         },
+  330:         "layout_signature": sig,
+  331:         "theme": {
+  332:             "accent1": _accent1(out),
+  333:             "note": "Office blue. MUST NOT appear in any generated shape.",
+  334:         },
+  335:     }
+  336: 
+  337: 
+  338: def write_pin(result: dict[str, Any]) -> None:
+  339:     pin = {
+  340:         "pin_version": PIN_VERSION,
+  341:         "source_template": result["source_template"],
+  342:         "renderer_template": result["renderer_template"],
+  343:         "layout_signature": result["layout_signature"],
+  344:         "theme": result["theme"],
+  345:     }
+  346:     PIN.parent.mkdir(parents=True, exist_ok=True)
+  347:     PIN.write_text(json.dumps(pin, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+  348: 
+  349: 
+  350: def main(argv: list[str] | None = None) -> int:
+  351:     ap = argparse.ArgumentParser(description="Build reference/renderer_template.pptx (0 slides).")
+  352:     ap.add_argument(
+  353:         "--write-pin",
+  354:         action="store_true",
+  355:         help="also write reference/template_pin.json from the OBSERVED package",
+  356:     )
+  357:     args = ap.parse_args(argv)
+  358: 
+  359:     try:
+  360:         result = build()
+  361:     except BuildError as exc:
+  362:         print(f"error: {exc}", file=sys.stderr)
+  363:         return 1
+  364: 
+  365:     # Always emit the observed signature, so the pin can be reviewed before it is written.
+  366:     print(json.dumps(result, indent=2, ensure_ascii=False))
+  367: 
+  368:     if args.write_pin:
+  369:         write_pin(result)
+  370:         print(f"\nwrote {PIN.relative_to(PROJECT_ROOT).as_posix()}", file=sys.stderr)
+  371:     else:
+  372:         print(
+  373:             "\nnot written: re-run with --write-pin to update reference/template_pin.json",
+  374:             file=sys.stderr,
+  375:         )
+  376:     return 0
+  377: 
+  378: 
+  379: if __name__ == "__main__":
+  380:     raise SystemExit(main())
+===== reference\template_pin.json =====
+    1: {
+    2:   "pin_version": 1,
+    3:   "source_template": {
+    4:     "filename": "Vieworks_R&D_ppt_Template.pptx",
+    5:     "sha256": "[REDACTED]",
+    6:     "bytes": 1881082
+    7:   },
+    8:   "renderer_template": {
+    9:     "filename": "reference/renderer_template.pptx",
+   10:     "sha256": "[REDACTED]",
+   11:     "bytes": 1212639,
+   12:     "built_from_sha256": "[REDACTED]",
+   13:     "builder": "aippt.tools.make_renderer_template@1"
+   14:   },
+   15:   "layout_signature": {
+   16:     "layout_index": 3,
+   17:     "layout_name": "2_?ъ슜??吏???덉씠?꾩썐",
+   18:     "layout_partname": "/ppt/slideLayouts/slideLayout4.xml",
+   19:     "slide_width_emu": 12192000,
+   20:     "slide_height_emu": 6858000,
+   21:     "slide_count": 0,
+   22:     "layout_count": 5,
+   23:     "placeholder_idxs": [
+   24:       10
+   25:     ],
+   26:     "placeholder_10_emu": {
+   27:       "left": 578541,
+   28:       "top": 339725,
+   29:       "width": 9211156,
+   30:       "height": 473075
+   31:     },
+   32:     "required_media": [
+   33:       "image2.svg",
+   34:       "image5.jpeg"
+   35:     ]
+   36:   },
+   37:   "theme": {
+   38:     "accent1": "4472C4",
+   39:     "note": "Office blue. MUST NOT appear in any generated shape."
+   40:   }
+   41: }
+===== src\aippt\canvas\pin.py =====
+    1: #!/usr/bin/env python3
+    2: # -*- coding: utf-8 -*-
+    3: """Template pinning. Two gates, both mandatory, both at PROCESS START -- not per request.
+    4: 
+    5: Hard-coding `slide_layouts[3]` is safe ONLY while the package is pinned (critic rule 4). A
+    6: template that is changed, re-cut or re-ordered must fail closed with a clear error. It must never
+    7: silently select a different layout, because a "successful" export onto the wrong layout is a
+    8: worse outcome than a crash: it looks fine, ships, and is discovered by the audience.
+    9: 
+   10:     pin = load_pin()
+   11:     verify_pin(pin)                      # raises TemplatePinError, or returns
+   12:     prs = open_renderer_template(pin)    # verified again; cheap next to being wrong
+   13: 
+   14: Gate 1 is byte identity of the renderer template. Gate 2 is its structural signature, and it
+   15: exists because gate 1 alone can be defeated by the one mistake we actually expect: someone
+   16: rebuilds the template, sees the SHA mismatch, pastes the new SHA into template_pin.json to make
+   17: the error go away, and never notices that layout 3 is now a different layout.
+   18: 
+   19: There is no auto-repin, no --force, and no environment-variable escape hatch. Re-pinning means
+   20: running the builder, reading its output, and committing the new artifact deliberately (Sec 4.3).
+   21: 
+   22: This module never reads the SOURCE template: it is a build-time input, not a runtime one, and the
+   23: request path must not depend on a 1.8 MB deck it does not use.
+   24: """
+   25: 
+   26: from __future__ import annotations
+   27: 
+   28: import hashlib
+   29: import json
+   30: import posixpath
+   31: from pathlib import Path
+   32: from typing import Any
+   33: 
+   34: from pptx import Presentation
+   35: 
+   36: # <root>/src/aippt/canvas/pin.py -> <root>. The pin file names paths relative to the project
+   37: # root, so they must be resolved against it and not against the caller's cwd.
+   38: PROJECT_ROOT = Path(__file__).resolve().parents[3]
+   39: PIN_PATH = PROJECT_ROOT / "reference" / "template_pin.json"
+   40: 
+   41: PIN_VERSION = 1
+   42: TITLE_PH_IDX = 10
+   43: 
+   44: # What make_renderer_template.py has not yet filled in. A freshly-checked-out pin carries this
+   45: # and MUST fail: an unpinned template is an unverified template.
+   46: UNPINNED = "<FILL FROM make_renderer_template.py OUTPUT>"
+   47: 
+   48: _REBUILD = (
+   49:     "Rebuild via `python src/aippt/tools/make_renderer_template.py --write-pin` "
+   50:     "and RE-PIN deliberately."
+   51: )
+   52: 
+   53: 
+   54: class TemplatePinError(RuntimeError):
+   55:     """Fail closed. Never fall back to another layout."""
+   56: 
+   57: 
+   58: def sha256_file(path: Path) -> str:
+   59:     h = hashlib.sha256()
+   60:     with path.open("rb") as f:
+   61:         for chunk in iter(lambda: f.read(1 << 20), b""):
+   62:             h.update(chunk)
+   63:     return h.hexdigest()
+   64: 
+   65: 
+   66: def load_pin(path: Path = PIN_PATH) -> dict[str, Any]:
+   67:     """Read and structurally validate template_pin.json itself.
+   68: 
+   69:     This only checks that the pin is a well-formed pin. It says nothing about whether the package
+   70:     on disk matches it -- that is verify_pin's job, and keeping them apart is what lets a caller
+   71:     report "your pin file is malformed" separately from "your template has drifted".
+   72:     """
+   73:     try:
+   74:         pin = json.loads(path.read_text(encoding="utf-8"))
+   75:     except FileNotFoundError:
+   76:         raise TemplatePinError(f"pin file not found: {path}\n{_REBUILD}") from None
+   77:     except json.JSONDecodeError as exc:
+   78:         raise TemplatePinError(f"pin file is not valid JSON: {path}\n  {exc}") from None
+   79: 
+   80:     if pin.get("pin_version") != PIN_VERSION:
+   81:         raise TemplatePinError(
+   82:             f"pin_version is {pin.get('pin_version')!r}, this code speaks {PIN_VERSION}"
+   83:         )
+   84: 
+   85:     for key in ("source_template", "renderer_template", "layout_signature"):
+   86:         if key not in pin:
+   87:             raise TemplatePinError(f"pin file is missing required key {key!r}")
+   88: 
+   89:     rt, sig = pin["renderer_template"], pin["layout_signature"]
+   90:     for key in ("filename", "sha256", "bytes", "built_from_sha256"):
+   91:         if key not in rt:
+   92:             raise TemplatePinError(f"pin file is missing renderer_template.{key!r}")
+   93:     for key in (
+   94:         "layout_index",
+   95:         "layout_partname",
+   96:         "slide_width_emu",
+   97:         "slide_height_emu",
+   98:         "slide_count",
+   99:         "layout_count",
+  100:         "placeholder_idxs",
+  101:         f"placeholder_{TITLE_PH_IDX}_emu",
+  102:         "required_media",
+  103:     ):
+  104:         if key not in sig:
+  105:             raise TemplatePinError(f"pin file is missing layout_signature.{key!r}")
+  106: 
+  107:     # The pin must be internally consistent before we trust it about anything else.
+  108:     if rt["built_from_sha256"] != pin["source_template"].get("sha256"):
+  109:         raise TemplatePinError(
+  110:             "pin file is self-inconsistent: renderer_template.built_from_sha256 does not match "
+  111:             "source_template.sha256. Someone edited it by hand.\n" + _REBUILD
+  112:         )
+  113:     return pin
+  114: 
+  115: 
+  116: def verify_pin(pin: dict[str, Any]) -> None:
+  117:     """Both gates. Returns None; raises TemplatePinError on any mismatch."""
+  118:     tpl = _template_path(pin)
+  119: 
+  120:     # --- Gate 1: byte identity [REDACTED]
+  121:     expected = pin["renderer_template"]["sha256"]
+  122:     if expected == UNPINNED:
+  123:         raise TemplatePinError(
+  124:             f"the renderer template has never been pinned ({tpl.name} sha256 is still the "
+  125:             f"placeholder).\n{_REBUILD}"
+  126:         )
+  127:     if not tpl.is_file():
+  128:         raise TemplatePinError(f"renderer template not found: {tpl}\n{_REBUILD}")
+  129: 
+  130:     actual_bytes = tpl.stat().st_size
+  131:     if actual_bytes != pin["renderer_template"]["bytes"]:
+  132:         raise TemplatePinError(
+  133:             f"renderer template size mismatch\n  expected {pin['renderer_template']['bytes']} B"
+  134:             f"\n  actual   {actual_bytes} B\n{_REBUILD}"
+  135:         )
+  136: 
+  137:     actual = sha256_file(tpl)
+  138:     if actual != expected:
+  139:         raise TemplatePinError(
+  140:             f"renderer template SHA mismatch\n  expected {expected}\n  actual   {actual}\n"
+  141:             f"{_REBUILD}"
+  142:         )
+  143: 
+  144:     # --- Gate 2: structural signature [REDACTED]
+  145:     # Catches the re-pinned-but-wrong package: right bytes for a pin someone pasted in, wrong deck.
+  146:     _verify_signature(Presentation(str(tpl)), pin["layout_signature"])
+  147: 
+  148: 
+  149: def open_renderer_template(pin: dict[str, Any]) -> Presentation:
+  150:     """The ONLY sanctioned way to obtain the renderer's Presentation. Verified, then opened.
+  151: 
+  152:     Yes, this opens the package twice (verify_pin opens one to check the signature, we open
+  153:     another to hand back). That is a few milliseconds once per process, and the alternative --
+  154:     handing back the instance verify_pin happened to build -- couples the two functions for no
+  155:     benefit. The brief asks for verify_pin() -> None; this keeps that honest.
+  156:     """
+  157:     verify_pin(pin)
+  158:     return Presentation(str(_template_path(pin)))
+  159: 
+  160: 
+  161: def _template_path(pin: dict[str, Any]) -> Path:
+  162:     return PROJECT_ROOT / pin["renderer_template"]["filename"]
+  163: 
+  164: 
+  165: def _verify_signature(prs: Presentation, sig: dict[str, Any]) -> None:
+  166:     checks: list[tuple[bool, str]] = [
+  167:         (len(prs.slides) == sig["slide_count"], "renderer template must contain 0 slides"),
+  168:         (len(prs.slide_layouts) == sig["layout_count"], "layout count changed"),
+  169:         (prs.slide_width == sig["slide_width_emu"], "slide width changed"),
+  170:         (prs.slide_height == sig["slide_height_emu"], "slide height changed"),
+  171:     ]
+  172: 
+  173:     idx = sig["layout_index"]
+  174:     if not 0 <= idx < len(prs.slide_layouts):
+  175:         raise TemplatePinError(f"layout signature mismatch: no layout at index {idx}")
+  176:     layout = prs.slide_layouts[idx]
+  177: 
+  178:     checks += [
+  179:         (str(layout.part.partname) == sig["layout_partname"], f"layout {idx} partname changed"),
+  180:         (
+  181:             sorted(p.placeholder_format.idx for p in layout.placeholders)
+  182:             == sig["placeholder_idxs"],
+  183:             f"layout {idx} placeholder idx set changed",
+  184:         ),
+  185:     ]
+  186: 
+  187:     got = {
+  188:         posixpath.basename(str(rel.target_partname))
+  189:         for rel in layout.part.rels.values()
+  190:         if not rel.is_external
+  191:     }
+  192:     missing = sorted(set(sig["required_media"]) - got)
+  193:     checks.append((not missing, f"layout {idx} lost media {missing}"))
+  194: 
+  195:     # .get(idx) -- on a LAYOUT, placeholders[10] is POSITIONAL (layout 3 has one placeholder, so
+  196:     # it would raise IndexError). Only slide.placeholders is keyed by idx. See plan Sec 6.3.
+  197:     ph = layout.placeholders.get(TITLE_PH_IDX)
+  198:     if ph is None:
+  199:         raise TemplatePinError(
+  200:             f"layout signature mismatch: layout {idx} has no placeholder idx {TITLE_PH_IDX}"
+  201:         )
+  202:     exp = sig[f"placeholder_{TITLE_PH_IDX}_emu"]
+  203:     checks.append(
+  204:         (
+  205:             (ph.left, ph.top, ph.width, ph.height)
+  206:             == (exp["left"], exp["top"], exp["width"], exp["height"]),
+  207:             f"placeholder idx {TITLE_PH_IDX} geometry moved: "
+  208:             f"expected {exp}, got left={ph.left} top={ph.top} width={ph.width} height={ph.height}",
+  209:         )
+  210:     )
+  211: 
+  212:     for ok, msg in checks:
+  213:         if not ok:
+  214:             raise TemplatePinError(f"layout signature mismatch: {msg}\n{_REBUILD}")
+  215: 
+  216: 
+  217: if __name__ == "__main__":
+  218:     # `python src/aippt/canvas/pin.py` -- the fail-closed check, on demand.
+  219:     import sys
+  220: 
+  221:     try:
+  222:         p = load_pin()
+  223:         verify_pin(p)
+  224:     except TemplatePinError as exc:
+  225:         print(f"TemplatePinError: {exc}", file=sys.stderr)
+  226:         raise SystemExit(1) from None
+  227:     print(f"pin OK: {p['renderer_template']['filename']} @ {p['renderer_template']['sha256']}")
+===== src\aippt\tools\calibrate.py =====
+    1: #!/usr/bin/env python3
+    2: # -*- coding: utf-8 -*-
+    3: """The calibration slide (plan Sec 7.2). Phase 0, Step 2 -- blocking, before any feature work.
+    4: 
+    5:     python src/aippt/tools/calibrate.py            # -> reference/calibration.pptx + .json
+    6: 
+    7: This converts "I think the coordinate mapping is right" into a measured number. It emits a
+    8: fixture deck whose every shape has a known, exact position in the 960 x 540 logical space, plus a
+    9: JSON sidecar giving the ground truth. Export it through the ACTUAL target consumer (PowerPoint,
+   10: and the LibreOffice path if that is what ships), raster it to PNG, and diff against a screenshot
+   11: of the HTML stage at zoom 1. That diff is the mapping's error bar. Acceptance is <= 2 px
+   12: (Sec 7.5) -- and coordinate equality alone does not count as evidence (critic rule 12).
+   13: 
+   14: What each fixture probes:
+   15:   corners     the four exact slide corners -- catches an off-by-one in the model->EMU origin
+   16:   strokes     widths 0, 1, 4, 8 -- catches box-model drift (does the stroke grow the outer edge?)
+   17:   rotation    30 deg and 45 deg -- catches a centre-vs-corner rotation-origin mismatch
+   18:   wrap        a known string in a known box at 14 pt -- catches a text-metric mismatch, which
+   19:               shows up as a wrapped line count that differs between browser and PowerPoint
+   20:   mixed       a KO/EN string -- catches a missing latin/ea font split (the Hangul would fall back
+   21:               to a different face, and the line width would move with it)
+   22:   chrome      the divider and logo, inherited from layout 3 for free -- undistorted or bust
+   23: 
+   24: PHASE 0 ISOLATION. canvas/geometry.py and canvas/style.py are Phase 1 and do not exist yet, so
+   25: the EMU conversion and the four add_shape overrides are INLINED below. When Phase 1 lands, these
+   26: move out and this file imports them; until then, Phase 0 stands alone and this file is the only
+   27: place that knows them. Keep the duplication obvious rather than inventing the Phase 1 modules
+   28: early -- the point is that Phase 0's gates pass on their own.
+   29: """
+   30: 
+   31: from __future__ import annotations
+   32: 
+   33: import argparse
+   34: import json
+   35: import sys
+   36: from pathlib import Path
+   37: from typing import Any
+   38: 
+   39: from pptx import Presentation
+   40: from pptx.dml.color import RGBColor
+   41: from pptx.enum.shapes import MSO_SHAPE
+   42: from pptx.enum.text import MSO_ANCHOR, MSO_AUTO_SIZE, PP_ALIGN
+   43: from pptx.oxml.ns import qn
+   44: from pptx.util import Emu, Pt
+   45: 
+   46: if __package__ in (None, ""):  # `python src/aippt/tools/calibrate.py`, no install
+   47:     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+   48: 
+   49: from aippt.canvas.pin import (  # noqa: E402
+   50:     TITLE_PH_IDX,
+   51:     TemplatePinError,
+   52:     load_pin,
+   53:     open_renderer_template,
+   54: )
+   55: 
+   56: PROJECT_ROOT = Path(__file__).resolve().parents[3]
+   57: DST = PROJECT_ROOT / "reference" / "calibration.pptx"
+   58: 
+   59: # --- inlined from what will become canvas/geometry.py (Phase 1, task 1.2) --------------------
+   60: # 1 logical unit == 1 pt == exactly 12,700 EMU. 12192000/960 == 6858000/540 == 914400/72.
+   61: # Integer and exact by construction, which is why the round-trip tolerance below is 0 EMU and
+   62: # not "close enough".
+   63: EMU_PER_UNIT = 12700
+   64: CANVAS_W = 960
+   65: CANVAS_H = 540
+   66: 
+   67: 
+   68: def emu(u: float) -> Emu:
+   69:     return Emu(round(u * EMU_PER_UNIT))
+   70: 
+   71: 
+   72: # --- inlined from what will become canvas/style.py (Phase 1, task 1.3) -----------------------
+   73: LATIN = "Century Gothic"
+   74: EA = "留묒? 怨좊뵓"  # Century Gothic ships NO Hangul glyphs. This is not optional.
+   75: 
+   76: BRAND_RED = "FF0032"
+   77: INK = "000000"
+   78: FORBIDDEN = "4472C4"  # theme accent1. If this appears in the output, an override was missed.
+   79: 
+   80: 
+   81: def set_run_fonts(run: Any, latin: str = LATIN, ea: str = EA) -> None:
+   82:     """The latin/EA split. python-pptx cannot express an East-Asian typeface -- Font.name writes
+   83:     only <a:latin>, and CT_TextCharacterProperties declares no `ea` child at all -- so <a:ea> has
+   84:     to be inserted by hand.
+   85: 
+   86:     The successor list is the DrawingML child order for CT_TextCharacterProperties: <a:ea> must
+   87:     follow <a:latin> and precede <a:cs>/<a:sym>/<a:hlink*>/<a:rtl>/<a:extLst>. Get it wrong and
+   88:     PowerPoint calls the file corrupt. (insert_element_before appends when it finds none of the
+   89:     successors, so the list must be complete, not merely plausible.)
+   90:     """
+   91:     rPr = run._r.get_or_add_rPr()
+   92:     rPr.get_or_add_latin().typeface = latin
+   93:     ea_el = rPr.find(qn("a:ea"))
+   94:     if ea_el is None:
+   95:         ea_el = rPr.makeelement(qn("a:ea"), {})
+   96:         rPr.insert_element_before(
+   97:             ea_el, "a:cs", "a:sym", "a:hlinkClick", "a:hlinkMouseOver", "a:rtl", "a:extLst"
+   98:         )
+   99:     ea_el.set("typeface", ea)
+  100: 
+  101: 
+  102: def style_text_frame(tf: Any, text: str | None, size_pt: float = 14) -> None:
+  103:     """The margin trap: PowerPoint defaults to 0.1 in left/right and 0.05 in top/bottom, which is
+  104:     7.2 and 3.6 logical units. A browser div with padding:0 therefore wraps at a DIFFERENT width
+  105:     than PowerPoint does, and the result is an off-by-one-line overflow that presents as a
+  106:     coordinate bug. Set all four explicitly, and mirror them in the CSS."""
+  107:     tf.margin_left = tf.margin_right = Pt(7.2)
+  108:     tf.margin_top = tf.margin_bottom = Pt(3.6)
+  109:     tf.word_wrap = True
+  110:     tf.auto_size = MSO_AUTO_SIZE.NONE
+  111:     tf.vertical_anchor = MSO_ANCHOR.MIDDLE
+  112: 
+  113:     if text is None:
+  114:         return
+  115:     tf.clear()
+  116:     p = tf.paragraphs[0]
+  117:     p.alignment = PP_ALIGN.LEFT
+  118:     p.space_before = Pt(0)  # explicit -- do not inherit
+  119:     p.space_after = Pt(0)
+  120:     p.line_spacing = 1.2  # == CSS line-height: 1.2
+  121:     run = p.add_run()
+  122:     run.text = text
+  123:     set_run_fonts(run)
+  124:     run.font.size = Pt(size_pt)
+  125:     run.font.bold = False
+  126:     run.font.color.rgb = RGBColor.from_string(INK)
+  127: 
+  128: 
+  129: def draw_rect(slide: Any, el: dict[str, Any]) -> Any:
+  130:     """add_shape() hands you Office blue #4472C4, blue-outlined, drop-shadowed, with white
+  131:     theme-font text -- because new_autoshape_sp hard-codes a <p:style> block pointing
+  132:     lnRef/fillRef/effectRef at schemeClr accent1 and fontRef at lt1. None of that is what we
+  133:     asked for. Overrides 1, 2 and 4 are obvious; 3 and 5 are not."""
+  134:     shp = slide.shapes.add_shape(
+  135:         MSO_SHAPE.RECTANGLE, emu(el["x"]), emu(el["y"]), emu(el["w"]), emu(el["h"])
+  136:     )
+  137:     shp.name = el["id"]  # so the round-trip can find it by name rather than by position
+  138:     shp.rotation = el.get("rotation", 0)  # degrees clockwise, about the shape's CENTRE
+  139: 
+  140:     # 1. fill -- kills fillRef -> accent1
+  141:     shp.fill.solid()
+  142:     shp.fill.fore_color.rgb = RGBColor.from_string(el["fill"])
+  143: 
+  144:     # 2. line -- kills lnRef -> accent1
+  145:     stroke = el.get("stroke")
+  146:     if stroke is None:
+  147:         shp.line.fill.background()  # explicit "no line", NOT inherited
+  148:     else:
+  149:         shp.line.color.rgb = RGBColor.from_string(stroke["color"])
+  150:         # width 0 is a HAIRLINE in PowerPoint, not "no line". That is the case being measured:
+  151:         # a browser drawing border-width:0 draws nothing, and the two must be compared honestly.
+  152:         shp.line.width = Pt(stroke["width"])
+  153: 
+  154:     # 3. THE ONE EVERYONE FORGETS -- kills effectRef -> the Office drop shadow. No amount of
+  155:     #    fill/line overriding removes it, and there is no other shadow API.
+  156:     shp.shadow.inherit = False
+  157: 
+  158:     # 4. text -- kills fontRef -> lt1 (white) + theme font
+  159:     style_text_frame(shp.text_frame, el.get("text"), el.get("size_pt", 14))
+  160: 
+  161:     # 5. NOT in the plan's list of four, and it has to be. Overrides 1-3 win at RENDER time --
+  162:     #    an explicit <a:solidFill>/<a:ln>/<a:effectLst> in spPr beats the style ref -- but they
+  163:     #    do not DELETE the <p:style> block, so `schemeClr val="accent1"` is still sitting in the
+  164:     #    shape's XML afterwards. Plan Sec 7.3 asserts accent1 is ABSENT from every renderer-created
+  165:     #    <p:sp>; with <p:style> left in place that assertion can never pass, on a deck that is in
+  166:     #    fact rendering correctly. Strip it, and the invariant becomes checkable instead of
+  167:     #    aspirational. (<p:style> is optional in CT_Shape, so removing it is schema-valid.)
+  168:     style_el = shp._element.find(qn("p:style"))
+  169:     if style_el is not None:
+  170:         shp._element.remove(style_el)
+  171:     return shp
+  172: 
+  173: 
+  174: # --- the fixture [REDACTED]
+  175: # Note the corner rectangles deliberately sit inside HEADER_RESERVED (y 0..92) and
+  176: # FOOTER_RESERVED (y 500..540). The renderer will REJECT elements there (plan Sec 3.2) and that
+  177: # is correct -- but the whole purpose of this fixture is to measure the mapping at the true slide
+  178: # corners, so the calibration deck is explicitly exempt from that rule. It is not a rendered
+  179: # document; it is a ruler.
+  180: CORNER_W, CORNER_H = 80, 40
+  181: 
+  182: ELEMENTS: list[dict[str, Any]] = [
+  183:     # id, x, y, w, h -- the four exact slide corners
+  184:     {"id": "corner_tl", "x": 0, "y": 0, "w": CORNER_W, "h": CORNER_H, "fill": BRAND_RED},
+  185:     {
+  186:         "id": "corner_tr",
+  187:         "x": CANVAS_W - CORNER_W,
+  188:         "y": 0,
+  189:         "w": CORNER_W,
+  190:         "h": CORNER_H,
+  191:         "fill": BRAND_RED,
+  192:     },
+  193:     {
+  194:         "id": "corner_bl",
+  195:         "x": 0,
+  196:         "y": CANVAS_H - CORNER_H,
+  197:         "w": CORNER_W,
+  198:         "h": CORNER_H,
+  199:         "fill": BRAND_RED,
+  200:     },
+  201:     {
+  202:         "id": "corner_br",
+  203:         "x": CANVAS_W - CORNER_W,
+  204:         "y": CANVAS_H - CORNER_H,
+  205:         "w": CORNER_W,
+  206:         "h": CORNER_H,
+  207:         "fill": BRAND_RED,
+  208:     },
+  209:     # the stroke ladder -- 0, 1, 4, 8 logical units
+  210:     *[
+  211:         {
+  212:             "id": f"stroke_{w}",
+  213:             "x": 60 + i * 200,
+  214:             "y": 120,
+  215:             "w": 160,
+  216:             "h": 90,
+  217:             "fill": "FFFFFF",
+  218:             "stroke": {"color": INK, "width": w},
+  219:             "text": f"stroke {w}",
+  220:         }
+  221:         for i, w in enumerate((0, 1, 4, 8))
+  222:     ],
+  223:     # rotation, about the centre
+  224:     {
+  225:         "id": "rot_30",
+  226:         "x": 60,
+  227:         "y": 250,
+  228:         "w": 120,
+  229:         "h": 80,
+  230:         "fill": BRAND_RED,
+  231:         "rotation": 30,
+  232:         "text": "30",
+  233:     },
+  234:     {
+  235:         "id": "rot_45",
+  236:         "x": 260,
+  237:         "y": 250,
+  238:         "w": 120,
+  239:         "h": 80,
+  240:         "fill": BRAND_RED,
+  241:         "rotation": 45,
+  242:         "text": "45",
+  243:     },
+  244:     # a known string in a known box: 300 units wide, minus 7.2 left + 7.2 right margin = 285.6
+  245:     # units of text width, at 14 pt. Compare the RENDERED line count against the browser's. We do
+  246:     # not predict the wrap point analytically -- Century Gothic's metrics are not ours to compute
+  247:     # -- we fix the inputs so the two renderers can be compared.
+  248:     {
+  249:         "id": "wrap_14pt",
+  250:         "x": 460,
+  251:         "y": 250,
+  252:         "w": 300,
+  253:         "h": 110,
+  254:         "fill": "FFFFFF",
+  255:         "stroke": {"color": INK, "width": 1},
+  256:         "size_pt": 14,
+  257:         "text": (
+  258:             "The quick brown fox jumps over the lazy dog and keeps running "
+  259:             "until this line has to wrap somewhere."
+  260:         ),
+  261:     },
+  262:     # mixed KO/EN -- the latin/ea split, or the lack of one
+  263:     {
+  264:         "id": "mixed_ko_en",
+  265:         "x": 60,
+  266:         "y": 380,
+  267:         "w": 400,
+  268:         "h": 80,
+  269:         "fill": "FFFFFF",
+  270:         "stroke": {"color": INK, "width": 1},
+  271:         "size_pt": 14,
+  272:         "text": "Vieworks 酉곗썚??3D Logic 媛쒕컻 ?뚯뒪?몃깽移?Rev 2",
+  273:     },
+  274: ]
+  275: 
+  276: TITLE = "Calibration ??蹂댁젙 ?щ씪?대뱶"
+  277: 
+  278: 
+  279: def build(dst: Path) -> dict[str, Any]:
+  280:     pin = load_pin()
+  281:     prs = open_renderer_template(pin)  # fails closed if the template has drifted
+  282:     layout = prs.slide_layouts[pin["layout_signature"]["layout_index"]]
+  283:     slide = prs.slides.add_slide(layout)  # divider + logo + page number, inherited, free
+  284: 
+  285:     # The title goes into placeholder idx 10. On a SLIDE, placeholders[idx] is keyed by idx (it
+  286:     # raises KeyError, not IndexError) -- unlike a LAYOUT's, which is positional. See pin.py.
+  287:     try:
+  288:         ph = slide.placeholders[TITLE_PH_IDX]
+  289:     except KeyError:
+  290:         raise TemplatePinError(
+  291:             f"layout 3 did not clone placeholder idx {TITLE_PH_IDX}"
+  292:         ) from None
+  293:     tf = ph.text_frame
+  294:     tf.text = TITLE
+  295:     run = tf.paragraphs[0].runs[0]
+  296:     set_run_fonts(run)  # do NOT trust the inherited placeholder style
+  297:     run.font.size = Pt(30)
+  298:     run.font.bold = False
+  299: 
+  300:     expected: dict[str, dict[str, int]] = {}
+  301:     for el in ELEMENTS:
+  302:         draw_rect(slide, el)
+  303:         expected[el["id"]] = {
+  304:             "left": int(emu(el["x"])),
+  305:             "top": int(emu(el["y"])),
+  306:             "width": int(emu(el["w"])),
+  307:             "height": int(emu(el["h"])),
+  308:             "rotation": el.get("rotation", 0),
+  309:         }
+  310: 
+  311:     dst.parent.mkdir(parents=True, exist_ok=True)
+  312:     prs.save(str(dst))
+  313:     return expected
+  314: 
+  315: 
+  316: def roundtrip(dst: Path, expected: dict[str, dict[str, int]]) -> list[str]:
+  317:     """Re-open the export and assert 0 EMU drift (plan Sec 7.3). This is the machine-checkable
+  318:     half of calibration; the raster diff is the other half and it needs a human or a renderer.
+  319: 
+  320:     Tolerance is 0, not "small": emu = round(u * 12700) is exact, so any drift at all means the
+  321:     write path changed the number, and a write path that rounds is a write path that will keep
+  322:     rounding.
+  323:     """
+  324:     out = Presentation(str(dst))
+  325:     problems: list[str] = []
+  326: 
+  327:     if len(out.slides) != 1:
+  328:         problems.append(f"expected exactly 1 slide, got {len(out.slides)}")
+  329:         return problems
+  330:     slide = out.slides[0]
+  331: 
+  332:     by_name = {sh.name: sh for sh in slide.shapes}
+  333:     for name, exp in expected.items():
+  334:         shp = by_name.get(name)
+  335:         if shp is None:
+  336:             problems.append(f"{name}: shape missing from the export")
+  337:             continue
+  338:         got = {
+  339:             "left": int(shp.left),
+  340:             "top": int(shp.top),
+  341:             "width": int(shp.width),
+  342:             "height": int(shp.height),
+  343:             "rotation": round(float(shp.rotation)),
+  344:         }
+  345:         for key, want in exp.items():
+  346:             if got[key] != want:
+  347:                 problems.append(f"{name}.{key}: expected {want}, got {got[key]}")
+  348: 
+  349:         # The invariant, scoped to the shapes the RENDERER created -- not the whole slide. The
+  350:         # inherited placeholder is chrome; it is allowed to reference whatever the template says.
+  351:         xml = shp._element.xml
+  352:         if "accent1" in xml or FORBIDDEN in xml.upper():
+  353:             problems.append(
+  354:                 f"{name}: accent1/{FORBIDDEN} present in the shape XML -- an add_shape override "
+  355:                 "was missed (fill, line, shadow, text, or the <p:style> strip)"
+  356:             )
+  357:     return problems
+  358: 
+  359: 
+  360: def main(argv: list[str] | None = None) -> int:
+  361:     ap = argparse.ArgumentParser(description="Emit the calibration fixture deck.")
+  362:     ap.add_argument("-o", "--out", type=Path, default=DST, help=f"default: {DST.name}")
+  363:     args = ap.parse_args(argv)
+  364: 
+  365:     try:
+  366:         expected = build(args.out)
+  367:     except TemplatePinError as exc:
+  368:         print(f"TemplatePinError: {exc}", file=sys.stderr)
+  369:         return 1
+  370: 
+  371:     problems = roundtrip(args.out, expected)
+  372: 
+  373:     sidecar = args.out.with_suffix(".json")
+  374:     sidecar.write_text(
+  375:         json.dumps(
+  376:             {
+  377:                 "canvas": {"w": CANVAS_W, "h": CANVAS_H, "unit": "pt"},
+  378:                 "emu_per_unit": EMU_PER_UNIT,
+  379:                 "title": TITLE,
+  380:                 "elements": ELEMENTS,
+  381:                 "expected_emu": expected,
+  382:                 "roundtrip_problems": problems,
+  383:             },
+  384:             indent=2,
+  385:             ensure_ascii=False,
+  386:         )
+  387:         + "\n",
+  388:         encoding="utf-8",
+  389:     )
+  390: 
+  391:     rel = args.out.relative_to(PROJECT_ROOT).as_posix()
+  392:     if problems:
+  393:         print(f"round-trip FAILED ({len(problems)}):", file=sys.stderr)
+  394:         for p in problems:
+  395:             print(f"  - {p}", file=sys.stderr)
+  396:         return 1
+  397: 
+  398:     print(f"wrote {rel} and {sidecar.name}: round-trip clean, 0 EMU drift on {len(expected)} shapes")
+  399:     print("Next: render it through the ACTUAL consumer and diff vs the HTML stage at zoom 1.")
+  400:     print("      Coordinate equality proves the transform, not the render (critic rule 12).")
+  401:     return 0
+  402: 
+  403: 
+  404: if __name__ == "__main__":
+  405:     raise SystemExit(main())
+===== HUMAN_VERIFICATION.md =====
+    1: # Phase 0 ??Human Verification
+    2: 
+    3: Phase 0 is **blocking**: nothing in Phase 1 starts until every box below is ticked. The machine
+    4: can prove the transform; it cannot prove the render. That is the whole point of this file
+    5: (critic rule 12 ??*do not claim WYSIWYG from coordinate equality alone*).
+    6: 
+    7: > ## ??Nothing here has been run yet
+    8: >
+    9: > The Phase 0 code was written in an environment where Python execution was not available, so
+   10: > **every gate below ??including the automated ones ??is un-run**. `reference/renderer_template.pptx`
+   11: > **does not exist yet**, and `reference/template_pin.json` is deliberately **unpinned**
+   12: > (`sha256` is still the placeholder), so `pin.py` currently fails closed by design.
+   13: >
+   14: > Run step 0 first. If it fails, the rest of this checklist is moot.
+   15: 
+   16: ---
+   17: 
+   18: ## 0. Build and pin (do this first)
+   19: 
+   20: ```bash
+   21: cd tasks/AI_Powered_PPT
+   22: python src/aippt/tools/make_renderer_template.py --write-pin
+   23: ```
+   24: 
+   25: Close PowerPoint first ??the builder warns if `~$Vieworks_R&D_ppt_Template.pptx` (an Office lock
+   26: file) is present, which means the template is probably open.
+   27: 
+   28: This builds `reference/renderer_template.pptx` and rewrites `reference/template_pin.json` from
+   29: the **observed** package. It refuses to write anything if the source template's SHA has changed,
+   30: if slides survived deletion, if layout 3 is not `/ppt/slideLayouts/slideLayout4.xml`, if the
+   31: divider/logo media are gone, or if the package has dangling relationships.
+   32: 
+   33: - [ ] The builder exits 0 and prints an observed `layout_signature`.
+   34: - [ ] `reference/template_pin.json` now has a real `renderer_template.sha256` (not the placeholder).
+   35: - [ ] `python src/aippt/canvas/pin.py` prints `pin OK: ...`.
+   36: - [ ] `reference/renderer_template.pptx` is committed. (Rebuilds are **not** byte-reproducible ??      ZIP entries carry timestamps ??so we pin the committed artifact, not a rebuild. Re-pinning
+   37:       is a deliberate, reviewed act: plan 짠4.3.)
+   38: 
+   39: ### Already machine-checked by the builder (짠2.3 gates 1??, 6)
+   40: 
+   41: You do not need to re-check these by hand; you only need the builder to have exited 0.
+   42: 
+   43: | Gate | Check |
+   44: |---|---|
+   45: | 1 | `len(prs.slides) == 0` |
+   46: | 2 | 5 layouts; layout 3 is `2_?ъ슜??吏???덉씠?꾩썐` ??`/ppt/slideLayouts/slideLayout4.xml` |
+   47: | 3 | `image5.jpeg` + `image2.svg` present **and** related to slideLayout4 |
+   48: | 4 | No surviving `ppt/slides/` or `ppt/notesSlides/` parts; no dangling relationships |
+   49: | 6 | `add_slide(layout 3)` ??save ??reopen ??exactly 1 slide, relating to slideLayout4, carrying placeholder idx 10 |
+   50: 
+   51: ---
+   52: 
+   53: ## 1. PowerPoint opens it clean
+   54: 
+   55: Open `reference/renderer_template.pptx` in **real PowerPoint** (not a viewer, not LibreOffice).
+   56: 
+   57: - [ ] It opens with **no repair dialog** and no "PowerPoint found a problem with content" warning.
+   58: - [ ] The deck is **empty** ??zero slides in the thumbnail pane.
+   59: - [ ] The 5 layouts are all present under *View ??Slide Master*, and layout 3
+   60:       (`2_?ъ슜??吏???덉씠?꾩썐`) still shows its gradient divider, logo and page-number chrome.
+   61: 
+   62: > A repair dialog here means the slide-deletion step left the package inconsistent. Do not "let
+   63: > PowerPoint fix it" and re-save ??that silently rewrites the package and invalidates the pin.
+   64: > Report it instead.
+   65: 
+   66: ---
+   67: 
+   68: ## 2. Page number on an added layout-3 slide reads "1"
+   69: 
+   70: The builder proves the new slide is the **only** slide, at index 0. It cannot prove what the
+   71: page-number *field* renders as, because that glyph is produced by PowerPoint, not by python-pptx.
+   72: That is this check.
+   73: 
+   74: ```bash
+   75: python src/aippt/tools/calibrate.py      # -> reference/calibration.pptx
+   76: ```
+   77: 
+   78: Open `reference/calibration.pptx` in PowerPoint.
+   79: 
+   80: - [ ] The deck has **exactly one slide**.
+   81: - [ ] The page-number chrome in the bottom-right reads **1** ??**not 24**.
+   82: 
+   83: > 24 means the 23 template slides were not actually removed and you are looking at an append, not
+   84: > a clean render. Stop; the pin is wrong.
+   85: 
+   86: ---
+   87: 
+   88: ## 3. The SVG logo survives the conversion path
+   89: 
+   90: **This is the single most likely inheritance surprise** (plan 짠7.1, assertion 5), and it is the
+   91: reason this check is a gate rather than a footnote. An SVG in OOXML carries a **raster fallback**
+   92: alongside it via the `svgBlip` extension. Converters vary in which of the two they honour ??and
+   93: the fallback may be a low-resolution PNG that looks fine at thumbnail size and mushy at full size.
+   94: 
+   95: Render `reference/calibration.pptx` through **the actual consumer you will ship** (PowerPoint,
+   96: and the LibreOffice ??PNG/PDF path if that is what the server uses):
+   97: 
+   98: - [ ] The Vieworks logo (red wordmark, top-right) is **present**.
+   99: - [ ] It is **sharp**, not a blurry raster upscale ??i.e. the SVG was honoured, not the fallback.
+  100: - [ ] It is **undistorted** ??correct aspect ratio, not stretched.
+  101: - [ ] The gradient divider (the full-width band under the title) is present and undistorted.
+  102: 
+  103: > If the logo degrades only in the LibreOffice path, that is a **finding, not a failure** ??record
+  104: > which renderer honoured which, and decide before Phase 1 closes. Do not assume; test.
+  105: 
+  106: ---
+  107: 
+  108: ## 4. Raster diff ??2 px
+  109: 
+  110: The measured error bar for the coordinate mapping (plan 짠7.2, 짠7.5). This is the number that
+  111: Phase 0 exists to produce.
+  112: 
+  113: 1. Export `reference/calibration.pptx` ??PNG at **960 횞 540** via the actual target consumer.
+  114: 2. Screenshot the HTML stage at **zoom 1** (Phase 1B; if the editor does not exist yet, this step
+  115:    is deferred ??say so explicitly rather than ticking it).
+  116: 3. Diff the two.
+  117: 
+  118: - [ ] Every shape edge is within **??2 px** of the HTML stage screenshot.
+  119: - [ ] **Corners:** all four corner rectangles touch the exact slide corners ??no 1-px inset or
+  120:       overhang, which would mean an origin off-by-one.
+  121: - [ ] **Strokes:** the 0 / 1 / 4 / 8 ladder ??the shapes' **outer** edges must not drift as the
+  122:       stroke thickens. (Drift here is box-model mismatch: PowerPoint centres the stroke on the
+  123:       path; CSS `border` grows outward unless `box-sizing: border-box`.) Note that stroke width 0
+  124:       is a **hairline** in PowerPoint, not "no line" ??the browser draws nothing. Record the
+  125:       difference; do not treat it as a bug to be papered over.
+  126: - [ ] **Rotation:** the 30째 and 45째 shapes rotate about their **centres**, matching the browser's
+  127:       `transform-origin: center`.
+  128: - [ ] **Wrap:** the `wrap_14pt` box has the **same number of lines** in the render as in the
+  129:       browser, and no text overflows the box **in the rendered output** (not in the browser ??      the browser is a preview, not a proof).
+  130: - [ ] **Mixed KO/EN:** in `mixed_ko_en`, the Latin runs are **Century Gothic** and the Hangul runs
+  131:       are **留묒? 怨좊뵓**. If the Hangul renders in a serif or a default face, the `<a:ea>` split did
+  132:       not take.
+  133: - [ ] **No Office blue:** `#4472C4` appears nowhere. (`calibrate.py` also asserts this against the
+  134:       slide XML, but look anyway ??a drop shadow is the tell that `shadow.inherit = False` was
+  135:       missed.)
+  136: 
+  137: **Record the measured number**, even when it passes. "??2 px" is the gate; the actual figure is
+  138: the thing Phase 1 gets to rely on.
+  139: 
+  140:     Measured max edge error: ______ px   (consumer: ______________, date: __________)
+  141: 
+  142: ---
+  143: 
+  144: ## Open decisions this checklist will surface (plan 짠10, D-1)
+  145: 
+  146: Neither blocks Phase 0, but both get cheaper to change now than later:
+  147: 
+  148: - [ ] **Century Gothic is not the Vieworks brand font.** The template's real design fonts are
+  149:       **酉곗썚??B / 酉곗썚??M**, set at run level on every exemplar slide. Century Gothic body text
+  150:       will sit next to inherited 酉곗썚??chrome and look subtly off-brand. Ship it (the user asked
+  151:       for it) ??but decide it, do not discover it. It is one constant in `calibrate.py` today and
+  152:       one constant in `style.py` tomorrow.
+  153: - [ ] **Century Gothic may not be installed on the opening machine.** PowerPoint substitutes and
+  154:       the geometry shifts. `python-pptx` cannot embed fonts. Invisible until someone else opens
+  155:       the deck.
+
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$i=0; Get-Content -LiteralPath '"'src\\aippt\\canvas\\pin.py' | ForEach-Object { "'$i++; "{0,5}: {1}" -f $i, $_ }' in C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT
+ succeeded in 649ms:
+    1: #!/usr/bin/env python3
+    2: # -*- coding: utf-8 -*-
+    3: """Template pinning. Two gates, both mandatory, both at PROCESS START -- not per request.
+    4: 
+    5: Hard-coding `slide_layouts[3]` is safe ONLY while the package is pinned (critic rule 4). A
+    6: template that is changed, re-cut or re-ordered must fail closed with a clear error. It must never
+    7: silently select a different layout, because a "successful" export onto the wrong layout is a
+    8: worse outcome than a crash: it looks fine, ships, and is discovered by the audience.
+    9: 
+   10:     pin = load_pin()
+   11:     verify_pin(pin)                      # raises TemplatePinError, or returns
+   12:     prs = open_renderer_template(pin)    # verified again; cheap next to being wrong
+   13: 
+   14: Gate 1 is byte identity of the renderer template. Gate 2 is its structural signature, and it
+   15: exists because gate 1 alone can be defeated by the one mistake we actually expect: someone
+   16: rebuilds the template, sees the SHA mismatch, pastes the new SHA into template_pin.json to make
+   17: the error go away, and never notices that layout 3 is now a different layout.
+   18: 
+   19: There is no auto-repin, no --force, and no environment-variable escape hatch. Re-pinning means
+   20: running the builder, reading its output, and committing the new artifact deliberately (Sec 4.3).
+   21: 
+   22: This module never reads the SOURCE template: it is a build-time input, not a runtime one, and the
+   23: request path must not depend on a 1.8 MB deck it does not use.
+   24: """
+   25: 
+   26: from __future__ import annotations
+   27: 
+   28: import hashlib
+   29: import json
+   30: import posixpath
+   31: from pathlib import Path
+   32: from typing import Any
+   33: 
+   34: from pptx import Presentation
+   35: 
+   36: # <root>/src/aippt/canvas/pin.py -> <root>. The pin file names paths relative to the project
+   37: # root, so they must be resolved against it and not against the caller's cwd.
+   38: PROJECT_ROOT = Path(__file__).resolve().parents[3]
+   39: PIN_PATH = PROJECT_ROOT / "reference" / "template_pin.json"
+   40: 
+   41: PIN_VERSION = 1
+   42: TITLE_PH_IDX = 10
+   43: 
+   44: # What make_renderer_template.py has not yet filled in. A freshly-checked-out pin carries this
+   45: # and MUST fail: an unpinned template is an unverified template.
+   46: UNPINNED = "<FILL FROM make_renderer_template.py OUTPUT>"
+   47: 
+   48: _REBUILD = (
+   49:     "Rebuild via `python src/aippt/tools/make_renderer_template.py --write-pin` "
+   50:     "and RE-PIN deliberately."
+   51: )
+   52: 
+   53: 
+   54: class TemplatePinError(RuntimeError):
+   55:     """Fail closed. Never fall back to another layout."""
+   56: 
+   57: 
+   58: def sha256_file(path: Path) -> str:
+   59:     h = hashlib.sha256()
+   60:     with path.open("rb") as f:
+   61:         for chunk in iter(lambda: f.read(1 << 20), b""):
+   62:             h.update(chunk)
+   63:     return h.hexdigest()
+   64: 
+   65: 
+   66: def load_pin(path: Path = PIN_PATH) -> dict[str, Any]:
+   67:     """Read and structurally validate template_pin.json itself.
+   68: 
+   69:     This only checks that the pin is a well-formed pin. It says nothing about whether the package
+   70:     on disk matches it -- that is verify_pin's job, and keeping them apart is what lets a caller
+   71:     report "your pin file is malformed" separately from "your template has drifted".
+   72:     """
+   73:     try:
+   74:         pin = json.loads(path.read_text(encoding="utf-8"))
+   75:     except FileNotFoundError:
+   76:         raise TemplatePinError(f"pin file not found: {path}\n{_REBUILD}") from None
+   77:     except json.JSONDecodeError as exc:
+   78:         raise TemplatePinError(f"pin file is not valid JSON: {path}\n  {exc}") from None
+   79: 
+   80:     if pin.get("pin_version") != PIN_VERSION:
+   81:         raise TemplatePinError(
+   82:             f"pin_version is {pin.get('pin_version')!r}, this code speaks {PIN_VERSION}"
+   83:         )
+   84: 
+   85:     for key in ("source_template", "renderer_template", "layout_signature"):
+   86:         if key not in pin:
+   87:             raise TemplatePinError(f"pin file is missing required key {key!r}")
+   88: 
+   89:     rt, sig = pin["renderer_template"], pin["layout_signature"]
+   90:     for key in ("filename", "sha256", "bytes", "built_from_sha256"):
+   91:         if key not in rt:
+   92:             raise TemplatePinError(f"pin file is missing renderer_template.{key!r}")
+   93:     for key in (
+   94:         "layout_index",
+   95:         "layout_partname",
+   96:         "slide_width_emu",
+   97:         "slide_height_emu",
+   98:         "slide_count",
+   99:         "layout_count",
+  100:         "placeholder_idxs",
+  101:         f"placeholder_{TITLE_PH_IDX}_emu",
+  102:         "required_media",
+  103:     ):
+  104:         if key not in sig:
+  105:             raise TemplatePinError(f"pin file is missing layout_signature.{key!r}")
+  106: 
+  107:     # The pin must be internally consistent before we trust it about anything else.
+  108:     if rt["built_from_sha256"] != pin["source_template"].get("sha256"):
+  109:         raise TemplatePinError(
+  110:             "pin file is self-inconsistent: renderer_template.built_from_sha256 does not match "
+  111:             "source_template.sha256. Someone edited it by hand.\n" + _REBUILD
+  112:         )
+  113:     return pin
+  114: 
+  115: 
+  116: def verify_pin(pin: dict[str, Any]) -> None:
+  117:     """Both gates. Returns None; raises TemplatePinError on any mismatch."""
+  118:     tpl = _template_path(pin)
+  119: 
+  120:     # --- Gate 1: byte identity [REDACTED]
+  121:     expected = pin["renderer_template"]["sha256"]
+  122:     if expected == UNPINNED:
+  123:         raise TemplatePinError(
+  124:             f"the renderer template has never been pinned ({tpl.name} sha256 is still the "
+  125:             f"placeholder).\n{_REBUILD}"
+  126:         )
+  127:     if not tpl.is_file():
+  128:         raise TemplatePinError(f"renderer template not found: {tpl}\n{_REBUILD}")
+  129: 
+  130:     actual_bytes = tpl.stat().st_size
+  131:     if actual_bytes != pin["renderer_template"]["bytes"]:
+  132:         raise TemplatePinError(
+  133:             f"renderer template size mismatch\n  expected {pin['renderer_template']['bytes']} B"
+  134:             f"\n  actual   {actual_bytes} B\n{_REBUILD}"
+  135:         )
+  136: 
+  137:     actual = sha256_file(tpl)
+  138:     if actual != expected:
+  139:         raise TemplatePinError(
+  140:             f"renderer template SHA mismatch\n  expected {expected}\n  actual   {actual}\n"
+  141:             f"{_REBUILD}"
+  142:         )
+  143: 
+  144:     # --- Gate 2: structural signature [REDACTED]
+  145:     # Catches the re-pinned-but-wrong package: right bytes for a pin someone pasted in, wrong deck.
+  146:     _verify_signature(Presentation(str(tpl)), pin["layout_signature"])
+  147: 
+  148: 
+  149: def open_renderer_template(pin: dict[str, Any]) -> Presentation:
+  150:     """The ONLY sanctioned way to obtain the renderer's Presentation. Verified, then opened.
+  151: 
+  152:     Yes, this opens the package twice (verify_pin opens one to check the signature, we open
+  153:     another to hand back). That is a few milliseconds once per process, and the alternative --
+  154:     handing back the instance verify_pin happened to build -- couples the two functions for no
+  155:     benefit. The brief asks for verify_pin() -> None; this keeps that honest.
+  156:     """
+  157:     verify_pin(pin)
+  158:     return Presentation(str(_template_path(pin)))
+  159: 
+  160: 
+  161: def _template_path(pin: dict[str, Any]) -> Path:
+  162:     return PROJECT_ROOT / pin["renderer_template"]["filename"]
+  163: 
+  164: 
+  165: def _verify_signature(prs: Presentation, sig: dict[str, Any]) -> None:
+  166:     checks: list[tuple[bool, str]] = [
+  167:         (len(prs.slides) == sig["slide_count"], "renderer template must contain 0 slides"),
+  168:         (len(prs.slide_layouts) == sig["layout_count"], "layout count changed"),
+  169:         (prs.slide_width == sig["slide_width_emu"], "slide width changed"),
+  170:         (prs.slide_height == sig["slide_height_emu"], "slide height changed"),
+  171:     ]
+  172: 
+  173:     idx = sig["layout_index"]
+  174:     if not 0 <= idx < len(prs.slide_layouts):
+  175:         raise TemplatePinError(f"layout signature mismatch: no layout at index {idx}")
+  176:     layout = prs.slide_layouts[idx]
+  177: 
+  178:     checks += [
+  179:         (str(layout.part.partname) == sig["layout_partname"], f"layout {idx} partname changed"),
+  180:         (
+  181:             sorted(p.placeholder_format.idx for p in layout.placeholders)
+  182:             == sig["placeholder_idxs"],
+  183:             f"layout {idx} placeholder idx set changed",
+  184:         ),
+  185:     ]
+  186: 
+  187:     got = {
+  188:         posixpath.basename(str(rel.target_partname))
+  189:         for rel in layout.part.rels.values()
+  190:         if not rel.is_external
+  191:     }
+  192:     missing = sorted(set(sig["required_media"]) - got)
+  193:     checks.append((not missing, f"layout {idx} lost media {missing}"))
+  194: 
+  195:     # .get(idx) -- on a LAYOUT, placeholders[10] is POSITIONAL (layout 3 has one placeholder, so
+  196:     # it would raise IndexError). Only slide.placeholders is keyed by idx. See plan Sec 6.3.
+  197:     ph = layout.placeholders.get(TITLE_PH_IDX)
+  198:     if ph is None:
+  199:         raise TemplatePinError(
+  200:             f"layout signature mismatch: layout {idx} has no placeholder idx {TITLE_PH_IDX}"
+  201:         )
+  202:     exp = sig[f"placeholder_{TITLE_PH_IDX}_emu"]
+  203:     checks.append(
+  204:         (
+  205:             (ph.left, ph.top, ph.width, ph.height)
+  206:             == (exp["left"], exp["top"], exp["width"], exp["height"]),
+  207:             f"placeholder idx {TITLE_PH_IDX} geometry moved: "
+  208:             f"expected {exp}, got left={ph.left} top={ph.top} width={ph.width} height={ph.height}",
+  209:         )
+  210:     )
+  211: 
+  212:     for ok, msg in checks:
+  213:         if not ok:
+  214:             raise TemplatePinError(f"layout signature mismatch: {msg}\n{_REBUILD}")
+  215: 
+  216: 
+  217: if __name__ == "__main__":
+  218:     # `python src/aippt/canvas/pin.py` -- the fail-closed check, on demand.
+  219:     import sys
+  220: 
+  221:     try:
+  222:         p = load_pin()
+  223:         verify_pin(p)
+  224:     except TemplatePinError as exc:
+  225:         print(f"TemplatePinError: {exc}", file=sys.stderr)
+  226:         raise SystemExit(1) from None
+  227:     print(f"pin OK: {p['renderer_template']['filename']} @ {p['renderer_template']['sha256']}")
+
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$i=0; Get-Content -LiteralPath '"'src\\aippt\\tools\\calibrate.py' | ForEach-Object { "'$i++; "{0,5}: {1}" -f $i, $_ }' in C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT
+ succeeded in 687ms:
+    1: #!/usr/bin/env python3
+    2: # -*- coding: utf-8 -*-
+    3: """The calibration slide (plan Sec 7.2). Phase 0, Step 2 -- blocking, before any feature work.
+    4: 
+    5:     python src/aippt/tools/calibrate.py            # -> reference/calibration.pptx + .json
+    6: 
+    7: This converts "I think the coordinate mapping is right" into a measured number. It emits a
+    8: fixture deck whose every shape has a known, exact position in the 960 x 540 logical space, plus a
+    9: JSON sidecar giving the ground truth. Export it through the ACTUAL target consumer (PowerPoint,
+   10: and the LibreOffice path if that is what ships), raster it to PNG, and diff against a screenshot
+   11: of the HTML stage at zoom 1. That diff is the mapping's error bar. Acceptance is <= 2 px
+   12: (Sec 7.5) -- and coordinate equality alone does not count as evidence (critic rule 12).
+   13: 
+   14: What each fixture probes:
+   15:   corners     the four exact slide corners -- catches an off-by-one in the model->EMU origin
+   16:   strokes     widths 0, 1, 4, 8 -- catches box-model drift (does the stroke grow the outer edge?)
+   17:   rotation    30 deg and 45 deg -- catches a centre-vs-corner rotation-origin mismatch
+   18:   wrap        a known string in a known box at 14 pt -- catches a text-metric mismatch, which
+   19:               shows up as a wrapped line count that differs between browser and PowerPoint
+   20:   mixed       a KO/EN string -- catches a missing latin/ea font split (the Hangul would fall back
+   21:               to a different face, and the line width would move with it)
+   22:   chrome      the divider and logo, inherited from layout 3 for free -- undistorted or bust
+   23: 
+   24: PHASE 0 ISOLATION. canvas/geometry.py and canvas/style.py are Phase 1 and do not exist yet, so
+   25: the EMU conversion and the four add_shape overrides are INLINED below. When Phase 1 lands, these
+   26: move out and this file imports them; until then, Phase 0 stands alone and this file is the only
+   27: place that knows them. Keep the duplication obvious rather than inventing the Phase 1 modules
+   28: early -- the point is that Phase 0's gates pass on their own.
+   29: """
+   30: 
+   31: from __future__ import annotations
+   32: 
+   33: import argparse
+   34: import json
+   35: import sys
+   36: from pathlib import Path
+   37: from typing import Any
+   38: 
+   39: from pptx import Presentation
+   40: from pptx.dml.color import RGBColor
+   41: from pptx.enum.shapes import MSO_SHAPE
+   42: from pptx.enum.text import MSO_ANCHOR, MSO_AUTO_SIZE, PP_ALIGN
+   43: from pptx.oxml.ns import qn
+   44: from pptx.util import Emu, Pt
+   45: 
+   46: if __package__ in (None, ""):  # `python src/aippt/tools/calibrate.py`, no install
+   47:     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+   48: 
+   49: from aippt.canvas.pin import (  # noqa: E402
+   50:     TITLE_PH_IDX,
+   51:     TemplatePinError,
+   52:     load_pin,
+   53:     open_renderer_template,
+   54: )
+   55: 
+   56: PROJECT_ROOT = Path(__file__).resolve().parents[3]
+   57: DST = PROJECT_ROOT / "reference" / "calibration.pptx"
+   58: 
+   59: # --- inlined from what will become canvas/geometry.py (Phase 1, task 1.2) --------------------
+   60: # 1 logical unit == 1 pt == exactly 12,700 EMU. 12192000/960 == 6858000/540 == 914400/72.
+   61: # Integer and exact by construction, which is why the round-trip tolerance below is 0 EMU and
+   62: # not "close enough".
+   63: EMU_PER_UNIT = 12700
+   64: CANVAS_W = 960
+   65: CANVAS_H = 540
+   66: 
+   67: 
+   68: def emu(u: float) -> Emu:
+   69:     return Emu(round(u * EMU_PER_UNIT))
+   70: 
+   71: 
+   72: # --- inlined from what will become canvas/style.py (Phase 1, task 1.3) -----------------------
+   73: LATIN = "Century Gothic"
+   74: EA = "留묒? 怨좊뵓"  # Century Gothic ships NO Hangul glyphs. This is not optional.
+   75: 
+   76: BRAND_RED = "FF0032"
+   77: INK = "000000"
+   78: FORBIDDEN = "4472C4"  # theme accent1. If this appears in the output, an override was missed.
+   79: 
+   80: 
+   81: def set_run_fonts(run: Any, latin: str = LATIN, ea: str = EA) -> None:
+   82:     """The latin/EA split. python-pptx cannot express an East-Asian typeface -- Font.name writes
+   83:     only <a:latin>, and CT_TextCharacterProperties declares no `ea` child at all -- so <a:ea> has
+   84:     to be inserted by hand.
+   85: 
+   86:     The successor list is the DrawingML child order for CT_TextCharacterProperties: <a:ea> must
+   87:     follow <a:latin> and precede <a:cs>/<a:sym>/<a:hlink*>/<a:rtl>/<a:extLst>. Get it wrong and
+   88:     PowerPoint calls the file corrupt. (insert_element_before appends when it finds none of the
+   89:     successors, so the list must be complete, not merely plausible.)
+   90:     """
+   91:     rPr = run._r.get_or_add_rPr()
+   92:     rPr.get_or_add_latin().typeface = latin
+   93:     ea_el = rPr.find(qn("a:ea"))
+   94:     if ea_el is None:
+   95:         ea_el = rPr.makeelement(qn("a:ea"), {})
+   96:         rPr.insert_element_before(
+   97:             ea_el, "a:cs", "a:sym", "a:hlinkClick", "a:hlinkMouseOver", "a:rtl", "a:extLst"
+   98:         )
+   99:     ea_el.set("typeface", ea)
+  100: 
+  101: 
+  102: def style_text_frame(tf: Any, text: str | None, size_pt: float = 14) -> None:
+  103:     """The margin trap: PowerPoint defaults to 0.1 in left/right and 0.05 in top/bottom, which is
+  104:     7.2 and 3.6 logical units. A browser div with padding:0 therefore wraps at a DIFFERENT width
+  105:     than PowerPoint does, and the result is an off-by-one-line overflow that presents as a
+  106:     coordinate bug. Set all four explicitly, and mirror them in the CSS."""
+  107:     tf.margin_left = tf.margin_right = Pt(7.2)
+  108:     tf.margin_top = tf.margin_bottom = Pt(3.6)
+  109:     tf.word_wrap = True
+  110:     tf.auto_size = MSO_AUTO_SIZE.NONE
+  111:     tf.vertical_anchor = MSO_ANCHOR.MIDDLE
+  112: 
+  113:     if text is None:
+  114:         return
+  115:     tf.clear()
+  116:     p = tf.paragraphs[0]
+  117:     p.alignment = PP_ALIGN.LEFT
+  118:     p.space_before = Pt(0)  # explicit -- do not inherit
+  119:     p.space_after = Pt(0)
+  120:     p.line_spacing = 1.2  # == CSS line-height: 1.2
+  121:     run = p.add_run()
+  122:     run.text = text
+  123:     set_run_fonts(run)
+  124:     run.font.size = Pt(size_pt)
+  125:     run.font.bold = False
+  126:     run.font.color.rgb = RGBColor.from_string(INK)
+  127: 
+  128: 
+  129: def draw_rect(slide: Any, el: dict[str, Any]) -> Any:
+  130:     """add_shape() hands you Office blue #4472C4, blue-outlined, drop-shadowed, with white
+  131:     theme-font text -- because new_autoshape_sp hard-codes a <p:style> block pointing
+  132:     lnRef/fillRef/effectRef at schemeClr accent1 and fontRef at lt1. None of that is what we
+  133:     asked for. Overrides 1, 2 and 4 are obvious; 3 and 5 are not."""
+  134:     shp = slide.shapes.add_shape(
+  135:         MSO_SHAPE.RECTANGLE, emu(el["x"]), emu(el["y"]), emu(el["w"]), emu(el["h"])
+  136:     )
+  137:     shp.name = el["id"]  # so the round-trip can find it by name rather than by position
+  138:     shp.rotation = el.get("rotation", 0)  # degrees clockwise, about the shape's CENTRE
+  139: 
+  140:     # 1. fill -- kills fillRef -> accent1
+  141:     shp.fill.solid()
+  142:     shp.fill.fore_color.rgb = RGBColor.from_string(el["fill"])
+  143: 
+  144:     # 2. line -- kills lnRef -> accent1
+  145:     stroke = el.get("stroke")
+  146:     if stroke is None:
+  147:         shp.line.fill.background()  # explicit "no line", NOT inherited
+  148:     else:
+  149:         shp.line.color.rgb = RGBColor.from_string(stroke["color"])
+  150:         # width 0 is a HAIRLINE in PowerPoint, not "no line". That is the case being measured:
+  151:         # a browser drawing border-width:0 draws nothing, and the two must be compared honestly.
+  152:         shp.line.width = Pt(stroke["width"])
+  153: 
+  154:     # 3. THE ONE EVERYONE FORGETS -- kills effectRef -> the Office drop shadow. No amount of
+  155:     #    fill/line overriding removes it, and there is no other shadow API.
+  156:     shp.shadow.inherit = False
+  157: 
+  158:     # 4. text -- kills fontRef -> lt1 (white) + theme font
+  159:     style_text_frame(shp.text_frame, el.get("text"), el.get("size_pt", 14))
+  160: 
+  161:     # 5. NOT in the plan's list of four, and it has to be. Overrides 1-3 win at RENDER time --
+  162:     #    an explicit <a:solidFill>/<a:ln>/<a:effectLst> in spPr beats the style ref -- but they
+  163:     #    do not DELETE the <p:style> block, so `schemeClr val="accent1"` is still sitting in the
+  164:     #    shape's XML afterwards. Plan Sec 7.3 asserts accent1 is ABSENT from every renderer-created
+  165:     #    <p:sp>; with <p:style> left in place that assertion can never pass, on a deck that is in
+  166:     #    fact rendering correctly. Strip it, and the invariant becomes checkable instead of
+  167:     #    aspirational. (<p:style> is optional in CT_Shape, so removing it is schema-valid.)
+  168:     style_el = shp._element.find(qn("p:style"))
+  169:     if style_el is not None:
+  170:         shp._element.remove(style_el)
+  171:     return shp
+  172: 
+  173: 
+  174: # --- the fixture [REDACTED]
+  175: # Note the corner rectangles deliberately sit inside HEADER_RESERVED (y 0..92) and
+  176: # FOOTER_RESERVED (y 500..540). The renderer will REJECT elements there (plan Sec 3.2) and that
+  177: # is correct -- but the whole purpose of this fixture is to measure the mapping at the true slide
+  178: # corners, so the calibration deck is explicitly exempt from that rule. It is not a rendered
+  179: # document; it is a ruler.
+  180: CORNER_W, CORNER_H = 80, 40
+  181: 
+  182: ELEMENTS: list[dict[str, Any]] = [
+  183:     # id, x, y, w, h -- the four exact slide corners
+  184:     {"id": "corner_tl", "x": 0, "y": 0, "w": CORNER_W, "h": CORNER_H, "fill": BRAND_RED},
+  185:     {
+  186:         "id": "corner_tr",
+  187:         "x": CANVAS_W - CORNER_W,
+  188:         "y": 0,
+  189:         "w": CORNER_W,
+  190:         "h": CORNER_H,
+  191:         "fill": BRAND_RED,
+  192:     },
+  193:     {
+  194:         "id": "corner_bl",
+  195:         "x": 0,
+  196:         "y": CANVAS_H - CORNER_H,
+  197:         "w": CORNER_W,
+  198:         "h": CORNER_H,
+  199:         "fill": BRAND_RED,
+  200:     },
+  201:     {
+  202:         "id": "corner_br",
+  203:         "x": CANVAS_W - CORNER_W,
+  204:         "y": CANVAS_H - CORNER_H,
+  205:         "w": CORNER_W,
+  206:         "h": CORNER_H,
+  207:         "fill": BRAND_RED,
+  208:     },
+  209:     # the stroke ladder -- 0, 1, 4, 8 logical units
+  210:     *[
+  211:         {
+  212:             "id": f"stroke_{w}",
+  213:             "x": 60 + i * 200,
+  214:             "y": 120,
+  215:             "w": 160,
+  216:             "h": 90,
+  217:             "fill": "FFFFFF",
+  218:             "stroke": {"color": INK, "width": w},
+  219:             "text": f"stroke {w}",
+  220:         }
+  221:         for i, w in enumerate((0, 1, 4, 8))
+  222:     ],
+  223:     # rotation, about the centre
+  224:     {
+  225:         "id": "rot_30",
+  226:         "x": 60,
+  227:         "y": 250,
+  228:         "w": 120,
+  229:         "h": 80,
+  230:         "fill": BRAND_RED,
+  231:         "rotation": 30,
+  232:         "text": "30",
+  233:     },
+  234:     {
+  235:         "id": "rot_45",
+  236:         "x": 260,
+  237:         "y": 250,
+  238:         "w": 120,
+  239:         "h": 80,
+  240:         "fill": BRAND_RED,
+  241:         "rotation": 45,
+  242:         "text": "45",
+  243:     },
+  244:     # a known string in a known box: 300 units wide, minus 7.2 left + 7.2 right margin = 285.6
+  245:     # units of text width, at 14 pt. Compare the RENDERED line count against the browser's. We do
+  246:     # not predict the wrap point analytically -- Century Gothic's metrics are not ours to compute
+  247:     # -- we fix the inputs so the two renderers can be compared.
+  248:     {
+  249:         "id": "wrap_14pt",
+  250:         "x": 460,
+  251:         "y": 250,
+  252:         "w": 300,
+  253:         "h": 110,
+  254:         "fill": "FFFFFF",
+  255:         "stroke": {"color": INK, "width": 1},
+  256:         "size_pt": 14,
+  257:         "text": (
+  258:             "The quick brown fox jumps over the lazy dog and keeps running "
+  259:             "until this line has to wrap somewhere."
+  260:         ),
+  261:     },
+  262:     # mixed KO/EN -- the latin/ea split, or the lack of one
+  263:     {
+  264:         "id": "mixed_ko_en",
+  265:         "x": 60,
+  266:         "y": 380,
+  267:         "w": 400,
+  268:         "h": 80,
+  269:         "fill": "FFFFFF",
+  270:         "stroke": {"color": INK, "width": 1},
+  271:         "size_pt": 14,
+  272:         "text": "Vieworks 酉곗썚??3D Logic 媛쒕컻 ?뚯뒪?몃깽移?Rev 2",
+  273:     },
+  274: ]
+  275: 
+  276: TITLE = "Calibration ??蹂댁젙 ?щ씪?대뱶"
+  277: 
+  278: 
+  279: def build(dst: Path) -> dict[str, Any]:
+  280:     pin = load_pin()
+  281:     prs = open_renderer_template(pin)  # fails closed if the template has drifted
+  282:     layout = prs.slide_layouts[pin["layout_signature"]["layout_index"]]
+  283:     slide = prs.slides.add_slide(layout)  # divider + logo + page number, inherited, free
+  284: 
+  285:     # The title goes into placeholder idx 10. On a SLIDE, placeholders[idx] is keyed by idx (it
+  286:     # raises KeyError, not IndexError) -- unlike a LAYOUT's, which is positional. See pin.py.
+  287:     try:
+  288:         ph = slide.placeholders[TITLE_PH_IDX]
+  289:     except KeyError:
+  290:         raise TemplatePinError(
+  291:             f"layout 3 did not clone placeholder idx {TITLE_PH_IDX}"
+  292:         ) from None
+  293:     tf = ph.text_frame
+  294:     tf.text = TITLE
+  295:     run = tf.paragraphs[0].runs[0]
+  296:     set_run_fonts(run)  # do NOT trust the inherited placeholder style
+  297:     run.font.size = Pt(30)
+  298:     run.font.bold = False
+  299: 
+  300:     expected: dict[str, dict[str, int]] = {}
+  301:     for el in ELEMENTS:
+  302:         draw_rect(slide, el)
+  303:         expected[el["id"]] = {
+  304:             "left": int(emu(el["x"])),
+  305:             "top": int(emu(el["y"])),
+  306:             "width": int(emu(el["w"])),
+  307:             "height": int(emu(el["h"])),
+  308:             "rotation": el.get("rotation", 0),
+  309:         }
+  310: 
+  311:     dst.parent.mkdir(parents=True, exist_ok=True)
+  312:     prs.save(str(dst))
+  313:     return expected
+  314: 
+  315: 
+  316: def roundtrip(dst: Path, expected: dict[str, dict[str, int]]) -> list[str]:
+  317:     """Re-open the export and assert 0 EMU drift (plan Sec 7.3). This is the machine-checkable
+  318:     half of calibration; the raster diff is the other half and it needs a human or a renderer.
+  319: 
+  320:     Tolerance is 0, not "small": emu = round(u * 12700) is exact, so any drift at all means the
+  321:     write path changed the number, and a write path that rounds is a write path that will keep
+  322:     rounding.
+  323:     """
+  324:     out = Presentation(str(dst))
+  325:     problems: list[str] = []
+  326: 
+  327:     if len(out.slides) != 1:
+  328:         problems.append(f"expected exactly 1 slide, got {len(out.slides)}")
+  329:         return problems
+  330:     slide = out.slides[0]
+  331: 
+  332:     by_name = {sh.name: sh for sh in slide.shapes}
+  333:     for name, exp in expected.items():
+  334:         shp = by_name.get(name)
+  335:         if shp is None:
+  336:             problems.append(f"{name}: shape missing from the export")
+  337:             continue
+  338:         got = {
+  339:             "left": int(shp.left),
+  340:             "top": int(shp.top),
+  341:             "width": int(shp.width),
+  342:             "height": int(shp.height),
+  343:             "rotation": round(float(shp.rotation)),
+  344:         }
+  345:         for key, want in exp.items():
+  346:             if got[key] != want:
+  347:                 problems.append(f"{name}.{key}: expected {want}, got {got[key]}")
+  348: 
+  349:         # The invariant, scoped to the shapes the RENDERER created -- not the whole slide. The
+  350:         # inherited placeholder is chrome; it is allowed to reference whatever the template says.
+  351:         xml = shp._element.xml
+  352:         if "accent1" in xml or FORBIDDEN in xml.upper():
+  353:             problems.append(
+  354:                 f"{name}: accent1/{FORBIDDEN} present in the shape XML -- an add_shape override "
+  355:                 "was missed (fill, line, shadow, text, or the <p:style> strip)"
+  356:             )
+  357:     return problems
+  358: 
+  359: 
+  360: def main(argv: list[str] | None = None) -> int:
+  361:     ap = argparse.ArgumentParser(description="Emit the calibration fixture deck.")
+  362:     ap.add_argument("-o", "--out", type=Path, default=DST, help=f"default: {DST.name}")
+  363:     args = ap.parse_args(argv)
+  364: 
+  365:     try:
+  366:         expected = build(args.out)
+  367:     except TemplatePinError as exc:
+  368:         print(f"TemplatePinError: {exc}", file=sys.stderr)
+  369:         return 1
+  370: 
+  371:     problems = roundtrip(args.out, expected)
+  372: 
+  373:     sidecar = args.out.with_suffix(".json")
+  374:     sidecar.write_text(
+  375:         json.dumps(
+  376:             {
+  377:                 "canvas": {"w": CANVAS_W, "h": CANVAS_H, "unit": "pt"},
+  378:                 "emu_per_unit": EMU_PER_UNIT,
+  379:                 "title": TITLE,
+  380:                 "elements": ELEMENTS,
+  381:                 "expected_emu": expected,
+  382:                 "roundtrip_problems": problems,
+  383:             },
+  384:             indent=2,
+  385:             ensure_ascii=False,
+  386:         )
+  387:         + "\n",
+  388:         encoding="utf-8",
+  389:     )
+  390: 
+  391:     rel = args.out.relative_to(PROJECT_ROOT).as_posix()
+  392:     if problems:
+  393:         print(f"round-trip FAILED ({len(problems)}):", file=sys.stderr)
+  394:         for p in problems:
+  395:             print(f"  - {p}", file=sys.stderr)
+  396:         return 1
+  397: 
+  398:     print(f"wrote {rel} and {sidecar.name}: round-trip clean, 0 EMU drift on {len(expected)} shapes")
+  399:     print("Next: render it through the ACTUAL consumer and diff vs the HTML stage at zoom 1.")
+  400:     print("      Coordinate equality proves the transform, not the render (critic rule 12).")
+  401:     return 0
+  402: 
+  403: 
+  404: if __name__ == "__main__":
+  405:     raise SystemExit(main())
+
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$i=0; Get-Content -LiteralPath '"'reference\\template_pin.json' | ForEach-Object { "'$i++; "{0,5}: {1}" -f $i, $_ }' in C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT
+ succeeded in 620ms:
+    1: {
+    2:   "pin_version": 1,
+    3:   "source_template": {
+    4:     "filename": "Vieworks_R&D_ppt_Template.pptx",
+    5:     "sha256": "[REDACTED]",
+    6:     "bytes": 1881082
+    7:   },
+    8:   "renderer_template": {
+    9:     "filename": "reference/renderer_template.pptx",
+   10:     "sha256": "[REDACTED]",
+   11:     "bytes": 1212639,
+   12:     "built_from_sha256": "[REDACTED]",
+   13:     "builder": "aippt.tools.make_renderer_template@1"
+   14:   },
+   15:   "layout_signature": {
+   16:     "layout_index": 3,
+   17:     "layout_name": "2_?ъ슜??吏???덉씠?꾩썐",
+   18:     "layout_partname": "/ppt/slideLayouts/slideLayout4.xml",
+   19:     "slide_width_emu": 12192000,
+   20:     "slide_height_emu": 6858000,
+   21:     "slide_count": 0,
+   22:     "layout_count": 5,
+   23:     "placeholder_idxs": [
+   24:       10
+   25:     ],
+   26:     "placeholder_10_emu": {
+   27:       "left": 578541,
+   28:       "top": 339725,
+   29:       "width": 9211156,
+   30:       "height": 473075
+   31:     },
+   32:     "required_media": [
+   33:       "image2.svg",
+   34:       "image5.jpeg"
+   35:     ]
+   36:   },
+   37:   "theme": {
+   38:     "accent1": "4472C4",
+   39:     "note": "Office blue. MUST NOT appear in any generated shape."
+   40:   }
+   41: }
+
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$i=0; Get-Content -LiteralPath '"'HUMAN_VERIFICATION.md' | ForEach-Object { "'$i++; "{0,5}: {1}" -f $i, $_ }' in C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT
+ succeeded in 656ms:
+    1: # Phase 0 ??Human Verification
+    2: 
+    3: Phase 0 is **blocking**: nothing in Phase 1 starts until every box below is ticked. The machine
+    4: can prove the transform; it cannot prove the render. That is the whole point of this file
+    5: (critic rule 12 ??*do not claim WYSIWYG from coordinate equality alone*).
+    6: 
+    7: > ## ??Nothing here has been run yet
+    8: >
+    9: > The Phase 0 code was written in an environment where Python execution was not available, so
+   10: > **every gate below ??including the automated ones ??is un-run**. `reference/renderer_template.pptx`
+   11: > **does not exist yet**, and `reference/template_pin.json` is deliberately **unpinned**
+   12: > (`sha256` is still the placeholder), so `pin.py` currently fails closed by design.
+   13: >
+   14: > Run step 0 first. If it fails, the rest of this checklist is moot.
+   15: 
+   16: ---
+   17: 
+   18: ## 0. Build and pin (do this first)
+   19: 
+   20: ```bash
+   21: cd tasks/AI_Powered_PPT
+   22: python src/aippt/tools/make_renderer_template.py --write-pin
+   23: ```
+   24: 
+   25: Close PowerPoint first ??the builder warns if `~$Vieworks_R&D_ppt_Template.pptx` (an Office lock
+   26: file) is present, which means the template is probably open.
+   27: 
+   28: This builds `reference/renderer_template.pptx` and rewrites `reference/template_pin.json` from
+   29: the **observed** package. It refuses to write anything if the source template's SHA has changed,
+   30: if slides survived deletion, if layout 3 is not `/ppt/slideLayouts/slideLayout4.xml`, if the
+   31: divider/logo media are gone, or if the package has dangling relationships.
+   32: 
+   33: - [ ] The builder exits 0 and prints an observed `layout_signature`.
+   34: - [ ] `reference/template_pin.json` now has a real `renderer_template.sha256` (not the placeholder).
+   35: - [ ] `python src/aippt/canvas/pin.py` prints `pin OK: ...`.
+   36: - [ ] `reference/renderer_template.pptx` is committed. (Rebuilds are **not** byte-reproducible ??      ZIP entries carry timestamps ??so we pin the committed artifact, not a rebuild. Re-pinning
+   37:       is a deliberate, reviewed act: plan 짠4.3.)
+   38: 
+   39: ### Already machine-checked by the builder (짠2.3 gates 1??, 6)
+   40: 
+   41: You do not need to re-check these by hand; you only need the builder to have exited 0.
+   42: 
+   43: | Gate | Check |
+   44: |---|---|
+   45: | 1 | `len(prs.slides) == 0` |
+   46: | 2 | 5 layouts; layout 3 is `2_?ъ슜??吏???덉씠?꾩썐` ??`/ppt/slideLayouts/slideLayout4.xml` |
+   47: | 3 | `image5.jpeg` + `image2.svg` present **and** related to slideLayout4 |
+   48: | 4 | No surviving `ppt/slides/` or `ppt/notesSlides/` parts; no dangling relationships |
+   49: | 6 | `add_slide(layout 3)` ??save ??reopen ??exactly 1 slide, relating to slideLayout4, carrying placeholder idx 10 |
+   50: 
+   51: ---
+   52: 
+   53: ## 1. PowerPoint opens it clean
+   54: 
+   55: Open `reference/renderer_template.pptx` in **real PowerPoint** (not a viewer, not LibreOffice).
+   56: 
+   57: - [ ] It opens with **no repair dialog** and no "PowerPoint found a problem with content" warning.
+   58: - [ ] The deck is **empty** ??zero slides in the thumbnail pane.
+   59: - [ ] The 5 layouts are all present under *View ??Slide Master*, and layout 3
+   60:       (`2_?ъ슜??吏???덉씠?꾩썐`) still shows its gradient divider, logo and page-number chrome.
+   61: 
+   62: > A repair dialog here means the slide-deletion step left the package inconsistent. Do not "let
+   63: > PowerPoint fix it" and re-save ??that silently rewrites the package and invalidates the pin.
+   64: > Report it instead.
+   65: 
+   66: ---
+   67: 
+   68: ## 2. Page number on an added layout-3 slide reads "1"
+   69: 
+   70: The builder proves the new slide is the **only** slide, at index 0. It cannot prove what the
+   71: page-number *field* renders as, because that glyph is produced by PowerPoint, not by python-pptx.
+   72: That is this check.
+   73: 
+   74: ```bash
+   75: python src/aippt/tools/calibrate.py      # -> reference/calibration.pptx
+   76: ```
+   77: 
+   78: Open `reference/calibration.pptx` in PowerPoint.
+   79: 
+   80: - [ ] The deck has **exactly one slide**.
+   81: - [ ] The page-number chrome in the bottom-right reads **1** ??**not 24**.
+   82: 
+   83: > 24 means the 23 template slides were not actually removed and you are looking at an append, not
+   84: > a clean render. Stop; the pin is wrong.
+   85: 
+   86: ---
+   87: 
+   88: ## 3. The SVG logo survives the conversion path
+   89: 
+   90: **This is the single most likely inheritance surprise** (plan 짠7.1, assertion 5), and it is the
+   91: reason this check is a gate rather than a footnote. An SVG in OOXML carries a **raster fallback**
+   92: alongside it via the `svgBlip` extension. Converters vary in which of the two they honour ??and
+   93: the fallback may be a low-resolution PNG that looks fine at thumbnail size and mushy at full size.
+   94: 
+   95: Render `reference/calibration.pptx` through **the actual consumer you will ship** (PowerPoint,
+   96: and the LibreOffice ??PNG/PDF path if that is what the server uses):
+   97: 
+   98: - [ ] The Vieworks logo (red wordmark, top-right) is **present**.
+   99: - [ ] It is **sharp**, not a blurry raster upscale ??i.e. the SVG was honoured, not the fallback.
+  100: - [ ] It is **undistorted** ??correct aspect ratio, not stretched.
+  101: - [ ] The gradient divider (the full-width band under the title) is present and undistorted.
+  102: 
+  103: > If the logo degrades only in the LibreOffice path, that is a **finding, not a failure** ??record
+  104: > which renderer honoured which, and decide before Phase 1 closes. Do not assume; test.
+  105: 
+  106: ---
+  107: 
+  108: ## 4. Raster diff ??2 px
+  109: 
+  110: The measured error bar for the coordinate mapping (plan 짠7.2, 짠7.5). This is the number that
+  111: Phase 0 exists to produce.
+  112: 
+  113: 1. Export `reference/calibration.pptx` ??PNG at **960 횞 540** via the actual target consumer.
+  114: 2. Screenshot the HTML stage at **zoom 1** (Phase 1B; if the editor does not exist yet, this step
+  115:    is deferred ??say so explicitly rather than ticking it).
+  116: 3. Diff the two.
+  117: 
+  118: - [ ] Every shape edge is within **??2 px** of the HTML stage screenshot.
+  119: - [ ] **Corners:** all four corner rectangles touch the exact slide corners ??no 1-px inset or
+  120:       overhang, which would mean an origin off-by-one.
+  121: - [ ] **Strokes:** the 0 / 1 / 4 / 8 ladder ??the shapes' **outer** edges must not drift as the
+  122:       stroke thickens. (Drift here is box-model mismatch: PowerPoint centres the stroke on the
+  123:       path; CSS `border` grows outward unless `box-sizing: border-box`.) Note that stroke width 0
+  124:       is a **hairline** in PowerPoint, not "no line" ??the browser draws nothing. Record the
+  125:       difference; do not treat it as a bug to be papered over.
+  126: - [ ] **Rotation:** the 30째 and 45째 shapes rotate about their **centres**, matching the browser's
+  127:       `transform-origin: center`.
+  128: - [ ] **Wrap:** the `wrap_14pt` box has the **same number of lines** in the render as in the
+  129:       browser, and no text overflows the box **in the rendered output** (not in the browser ??      the browser is a preview, not a proof).
+  130: - [ ] **Mixed KO/EN:** in `mixed_ko_en`, the Latin runs are **Century Gothic** and the Hangul runs
+  131:       are **留묒? 怨좊뵓**. If the Hangul renders in a serif or a default face, the `<a:ea>` split did
+  132:       not take.
+  133: - [ ] **No Office blue:** `#4472C4` appears nowhere. (`calibrate.py` also asserts this against the
+  134:       slide XML, but look anyway ??a drop shadow is the tell that `shadow.inherit = False` was
+  135:       missed.)
+  136: 
+  137: **Record the measured number**, even when it passes. "??2 px" is the gate; the actual figure is
+  138: the thing Phase 1 gets to rely on.
+  139: 
+  140:     Measured max edge error: ______ px   (consumer: ______________, date: __________)
+  141: 
+  142: ---
+  143: 
+  144: ## Open decisions this checklist will surface (plan 짠10, D-1)
+  145: 
+  146: Neither blocks Phase 0, but both get cheaper to change now than later:
+  147: 
+  148: - [ ] **Century Gothic is not the Vieworks brand font.** The template's real design fonts are
+  149:       **酉곗썚??B / 酉곗썚??M**, set at run level on every exemplar slide. Century Gothic body text
+  150:       will sit next to inherited 酉곗썚??chrome and look subtly off-brand. Ship it (the user asked
+  151:       for it) ??but decide it, do not discover it. It is one constant in `calibrate.py` today and
+  152:       one constant in `style.py` tomorrow.
+  153: - [ ] **Century Gothic may not be installed on the opening machine.** PowerPoint substitutes and
+  154:       the geometry shifts. `python-pptx` cannot embed fonts. Invisible until someone else opens
+  155:       the deck.
+
+codex
+The deletion, dynamic pin generation, and calibration isolation paths look structurally aligned so far. One strict architecture gate is already problematic: `pin.py` defines helper functions beyond the required three, and `load_pin` also exposes an extra parameter. I’m completing the remaining checks before issuing the single verdict.
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$lines=Get-Content -LiteralPath '"'src\\aippt\\tools\\make_renderer_template.py'; for("'$n=282;$n -le $lines.Count;$n++){ '"'{0,5}: {1}' -f "'$n,$lines[$n-1] }' in C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT
+ succeeded in 752ms:
+  282: def build() -> dict[str, Any]:
+  283:     if DST.resolve() == SRC.resolve():
+  284:         raise BuildError("destination is the source template; refusing to overwrite it")
+  285: 
+  286:     if not SRC.is_file():
+  287:         raise BuildError(f"source template not found: {SRC}")
+  288: 
+  289:     lock = SRC.with_name("~$" + SRC.name)
+  290:     if lock.exists():
+  291:         # An Office lock file. Never hashed, never read -- but its presence means the template is
+  292:         # probably open in PowerPoint, which is worth saying out loud before we read it.
+  293:         print(f"warning: {lock.name} exists -- close PowerPoint before trusting this build.",
+  294:               file=sys.stderr)
+  295: 
+  296:     src_sha = sha256_file(SRC)
+  297:     if src_sha != SRC_SHA:
+  298:         raise BuildError(
+  299:             f"source template changed\n  expected {SRC_SHA}\n  actual   {src_sha}\n"
+  300:             "This builder was written against the expected package. Re-audit the template "
+  301:             "(aippt.analyze_pptx_master), update SRC_SHA deliberately, then rebuild."
+  302:         )
+  303: 
+  304:     prs = Presentation(str(SRC))  # SRC is opened read-only and never saved back
+  305:     removed = delete_all_slides(prs)
+  306: 
+  307:     DST.parent.mkdir(parents=True, exist_ok=True)
+  308:     prs.save(str(DST))
+  309: 
+  310:     out = Presentation(str(DST))  # re-read: audit the artifact, not the in-memory object
+  311:     sig = observe_signature(out)
+  312:     check_signature(sig)
+  313:     audit_package(DST)
+  314:     smoke_add_slide(DST)
+  315: 
+  316:     return {
+  317:         "slides_removed": removed,
+  318:         "source_template": {
+  319:             "filename": SRC.name,
+  320:             "sha256": src_sha,
+  321:             "bytes": SRC.stat().st_size,
+  322:         },
+  323:         "renderer_template": {
+  324:             "filename": DST.relative_to(PROJECT_ROOT).as_posix(),
+  325:             "sha256": sha256_file(DST),
+  326:             "bytes": DST.stat().st_size,
+  327:             "built_from_sha256": src_sha,
+  328:             "builder": BUILDER,
+  329:         },
+  330:         "layout_signature": sig,
+  331:         "theme": {
+  332:             "accent1": _accent1(out),
+  333:             "note": "Office blue. MUST NOT appear in any generated shape.",
+  334:         },
+  335:     }
+  336: 
+  337: 
+  338: def write_pin(result: dict[str, Any]) -> None:
+  339:     pin = {
+  340:         "pin_version": PIN_VERSION,
+  341:         "source_template": result["source_template"],
+  342:         "renderer_template": result["renderer_template"],
+  343:         "layout_signature": result["layout_signature"],
+  344:         "theme": result["theme"],
+  345:     }
+  346:     PIN.parent.mkdir(parents=True, exist_ok=True)
+  347:     PIN.write_text(json.dumps(pin, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+  348: 
+  349: 
+  350: def main(argv: list[str] | None = None) -> int:
+  351:     ap = argparse.ArgumentParser(description="Build reference/renderer_template.pptx (0 slides).")
+  352:     ap.add_argument(
+  353:         "--write-pin",
+  354:         action="store_true",
+  355:         help="also write reference/template_pin.json from the OBSERVED package",
+  356:     )
+  357:     args = ap.parse_args(argv)
+  358: 
+  359:     try:
+  360:         result = build()
+  361:     except BuildError as exc:
+  362:         print(f"error: {exc}", file=sys.stderr)
+  363:         return 1
+  364: 
+  365:     # Always emit the observed signature, so the pin can be reviewed before it is written.
+  366:     print(json.dumps(result, indent=2, ensure_ascii=False))
+  367: 
+  368:     if args.write_pin:
+  369:         write_pin(result)
+  370:         print(f"\nwrote {PIN.relative_to(PROJECT_ROOT).as_posix()}", file=sys.stderr)
+  371:     else:
+  372:         print(
+  373:             "\nnot written: re-run with --write-pin to update reference/template_pin.json",
+  374:             file=sys.stderr,
+  375:         )
+  376:     return 0
+  377: 
+  378: 
+  379: if __name__ == "__main__":
+  380:     raise SystemExit(main())
+
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$lines=Get-Content -LiteralPath '"'src\\aippt\\tools\\calibrate.py'; for("'$n=129;$n -le 181;$n++){ '"'{0,5}: {1}' -f "'$n,$lines[$n-1] }' in C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT
+ succeeded in 710ms:
+  129: def draw_rect(slide: Any, el: dict[str, Any]) -> Any:
+  130:     """add_shape() hands you Office blue #4472C4, blue-outlined, drop-shadowed, with white
+  131:     theme-font text -- because new_autoshape_sp hard-codes a <p:style> block pointing
+  132:     lnRef/fillRef/effectRef at schemeClr accent1 and fontRef at lt1. None of that is what we
+  133:     asked for. Overrides 1, 2 and 4 are obvious; 3 and 5 are not."""
+  134:     shp = slide.shapes.add_shape(
+  135:         MSO_SHAPE.RECTANGLE, emu(el["x"]), emu(el["y"]), emu(el["w"]), emu(el["h"])
+  136:     )
+  137:     shp.name = el["id"]  # so the round-trip can find it by name rather than by position
+  138:     shp.rotation = el.get("rotation", 0)  # degrees clockwise, about the shape's CENTRE
+  139: 
+  140:     # 1. fill -- kills fillRef -> accent1
+  141:     shp.fill.solid()
+  142:     shp.fill.fore_color.rgb = RGBColor.from_string(el["fill"])
+  143: 
+  144:     # 2. line -- kills lnRef -> accent1
+  145:     stroke = el.get("stroke")
+  146:     if stroke is None:
+  147:         shp.line.fill.background()  # explicit "no line", NOT inherited
+  148:     else:
+  149:         shp.line.color.rgb = RGBColor.from_string(stroke["color"])
+  150:         # width 0 is a HAIRLINE in PowerPoint, not "no line". That is the case being measured:
+  151:         # a browser drawing border-width:0 draws nothing, and the two must be compared honestly.
+  152:         shp.line.width = Pt(stroke["width"])
+  153: 
+  154:     # 3. THE ONE EVERYONE FORGETS -- kills effectRef -> the Office drop shadow. No amount of
+  155:     #    fill/line overriding removes it, and there is no other shadow API.
+  156:     shp.shadow.inherit = False
+  157: 
+  158:     # 4. text -- kills fontRef -> lt1 (white) + theme font
+  159:     style_text_frame(shp.text_frame, el.get("text"), el.get("size_pt", 14))
+  160: 
+  161:     # 5. NOT in the plan's list of four, and it has to be. Overrides 1-3 win at RENDER time --
+  162:     #    an explicit <a:solidFill>/<a:ln>/<a:effectLst> in spPr beats the style ref -- but they
+  163:     #    do not DELETE the <p:style> block, so `schemeClr val="accent1"` is still sitting in the
+  164:     #    shape's XML afterwards. Plan Sec 7.3 asserts accent1 is ABSENT from every renderer-created
+  165:     #    <p:sp>; with <p:style> left in place that assertion can never pass, on a deck that is in
+  166:     #    fact rendering correctly. Strip it, and the invariant becomes checkable instead of
+  167:     #    aspirational. (<p:style> is optional in CT_Shape, so removing it is schema-valid.)
+  168:     style_el = shp._element.find(qn("p:style"))
+  169:     if style_el is not None:
+  170:         shp._element.remove(style_el)
+  171:     return shp
+  172: 
+  173: 
+  174: # --- the fixture [REDACTED]
+  175: # Note the corner rectangles deliberately sit inside HEADER_RESERVED (y 0..92) and
+  176: # FOOTER_RESERVED (y 500..540). The renderer will REJECT elements there (plan Sec 3.2) and that
+  177: # is correct -- but the whole purpose of this fixture is to measure the mapping at the true slide
+  178: # corners, so the calibration deck is explicitly exempt from that rule. It is not a rendered
+  179: # document; it is a ruler.
+  180: CORNER_W, CORNER_H = 80, 40
+  181: 
+
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "rg --files 'src/aippt/canvas'" in C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT
+ succeeded in 678ms:
+src/aippt/canvas\pin.py
+src/aippt/canvas\__pycache__\pin.cpython-313.pyc
+
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "@'
+import ast
+from pathlib import Path
+for p in [Path('src/aippt/canvas/pin.py'), Path('src/aippt/tools/make_renderer_template.py'), Path('src/aippt/tools/calibrate.py')]:
+    tree = ast.parse(p.read_text(encoding='utf-8'))
+    defs = [(n.name, n.lineno, getattr(n, 'end_lineno', None)) for n in tree.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))]
+    print(f'{p}: {defs}')
+'@ | python -" in C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT
+2026-07-13T03:34:52.398769Z ERROR codex_core::tools::router: error=Exit code: 1
+Wall time: 1 seconds
+Output:
+'python.exe' 프로그램을 실행하지 못했습니다. 지정한 로그온 세션이 없습니다. 이미 종료되었을 수도 있습니다위치 줄:9 문자:6
++ '@ | python -
++      ~~~~~~~~.
+위치 줄:2 문자:1
++ @'
++ ~~
+    + CategoryInfo          : ResourceUnavailable: (:) [], ApplicationFailedException
+    + FullyQualifiedErrorId : NativeCommandFailed
+ 
+
+ exited 1 in 961ms:
+'python.exe' 프로그램을 실행하지 못했습니다. 지정한 로그온 세션이 없습니다. 이미 종료되었을 수도 있습니다위치 줄:9 문자:6
++ '@ | python -
++      ~~~~~~~~.
+위치 줄:2 문자:1
++ @'
++ ~~
+    + CategoryInfo          : ResourceUnavailable: (:) [], ApplicationFailedException
+    + FullyQualifiedErrorId : NativeCommandFailed
+ 
+
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "Get-Item -LiteralPath 'Vieworks_R&D_ppt_Template.pptx','reference\\renderer_template.pptx' | Select-Object Name,Length; Get-FileHash -Algorithm SHA256 -LiteralPath 'Vieworks_R&D_ppt_Template.pptx','reference\\renderer_template.pptx' | Select-Object Path,Hash | Format-List" in C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT
+ succeeded in 782ms:
+
+Name                            Length
+----                            ------
+Vieworks_R&D_ppt_Template.pptx 1881082
+renderer_template.pptx         1212639
+
+
+
+
+Path : C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\Vieworks_R&D_ppt_Template.pptx
+Hash : [REDACTED]
+
+Path : C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT\reference\renderer_template.pptx
+Hash : [REDACTED]
+
+
+
+
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "rg -n '"'^def '"' 'src/aippt/canvas/pin.py'; rg -n 'prs\\.slides' 'src/aippt/tools/make_renderer_template.py'; rg -n 'geometry|style' 'src/aippt/tools/calibrate.py'; rg --files 'src/aippt/canvas' | rg '(geometry|style)\\.py"'$'"'" in C:\Users\2021670\Documents\멀티 에이전트\tasks\AI_Powered_PPT
+2026-07-13T03:35:03.993832Z ERROR codex_core::tools::router: error=Exit code: 1
+Wall time: 0.9 seconds
+Output:
+58:def sha256_file(path: Path) -> str:
+66:def load_pin(path: Path = PIN_PATH) -> dict[str, Any]:
+116:def verify_pin(pin: dict[str, Any]) -> None:
+149:def open_renderer_template(pin: dict[str, Any]) -> Presentation:
+161:def _template_path(pin: dict[str, Any]) -> Path:
+165:def _verify_signature(prs: Presentation, sig: dict[str, Any]) -> None:
+91:    `prs.slides` at any moment when a relationship has been dropped but its <p:sldId> is still
+97:    So: bind the XML element ONCE, mutate only the element, and do not read `prs.slides` again
+105:    sld_id_lst = prs.slides._sldIdLst  # bind once; see docstring
+165:        "slide_count": len(prs.slides),
+261:    slide = prs.slides.add_slide(prs.slide_layouts[LAYOUT_INDEX])
+24:PHASE 0 ISOLATION. canvas/geometry.py and canvas/style.py are Phase 1 and do not exist yet, so
+59:# --- inlined from what will become canvas/geometry.py (Phase 1, task 1.2) --------------------
+72:# --- inlined from what will become canvas/style.py (Phase 1, task 1.3) -----------------------
+102:def style_text_frame(tf: Any, text: str | None, size_pt: float = 14) -> None:
+131:    theme-font text -- because new_autoshape_sp hard-codes a <p:style> block pointing
+159:    style_text_frame(shp.text_frame, el.get("text"), el.get("size_pt", 14))
+162:    #    an explicit <a:solidFill>/<a:ln>/<a:effectLst> in spPr beats the style ref -- but they
+163:    #    do not DELETE the <p:style> block, so `schemeClr val="accent1"` is still sitting in the
+165:    #    <p:sp>; with <p:style> left in place that assertion can never pass, on a deck that is in
+167:    #    aspirational. (<p:style> is optional in CT_Shape, so removing it is schema-valid.)
+168:    style_el = shp._element.find(qn("p:style"))
+169:    if style_el is not None:
+170:        shp._element.remove(style_el)
+296:    set_run_fonts(run)  # do NOT trust the inherited placeholder style
+355:                "was missed (fill, line, shadow, text, or the <p:style> strip)"
+
+ exited 1 in 949ms:
+58:def sha256_file(path: Path) -> str:
+66:def load_pin(path: Path = PIN_PATH) -> dict[str, Any]:
+116:def verify_pin(pin: dict[str, Any]) -> None:
+149:def open_renderer_template(pin: dict[str, Any]) -> Presentation:
+161:def _template_path(pin: dict[str, Any]) -> Path:
+165:def _verify_signature(prs: Presentation, sig: dict[str, Any]) -> None:
+91:    `prs.slides` at any moment when a relationship has been dropped but its <p:sldId> is still
+97:    So: bind the XML element ONCE, mutate only the element, and do not read `prs.slides` again
+105:    sld_id_lst = prs.slides._sldIdLst  # bind once; see docstring
+165:        "slide_count": len(prs.slides),
+261:    slide = prs.slides.add_slide(prs.slide_layouts[LAYOUT_INDEX])
+24:PHASE 0 ISOLATION. canvas/geometry.py and canvas/style.py are Phase 1 and do not exist yet, so
+59:# --- inlined from what will become canvas/geometry.py (Phase 1, task 1.2) --------------------
+72:# --- inlined from what will become canvas/style.py (Phase 1, task 1.3) -----------------------
+102:def style_text_frame(tf: Any, text: str | None, size_pt: float = 14) -> None:
+131:    theme-font text -- because new_autoshape_sp hard-codes a <p:style> block pointing
+159:    style_text_frame(shp.text_frame, el.get("text"), el.get("size_pt", 14))
+162:    #    an explicit <a:solidFill>/<a:ln>/<a:effectLst> in spPr beats the style ref -- but they
+163:    #    do not DELETE the <p:style> block, so `schemeClr val="accent1"` is still sitting in the
+165:    #    <p:sp>; with <p:style> left in place that assertion can never pass, on a deck that is in
+167:    #    aspirational. (<p:style> is optional in CT_Shape, so removing it is schema-valid.)
+168:    style_el = shp._element.find(qn("p:style"))
+169:    if style_el is not None:
+170:        shp._element.remove(style_el)
+296:    set_run_fonts(run)  # do NOT trust the inherited placeholder style
+355:                "was missed (fill, line, shadow, text, or the <p:style> strip)"
+
+codex
+VERDICT: REJECT
+
+`src/aippt/canvas/pin.py` violates the exact three-function architecture:
+
+- Lines 58–63 define extra `sha256_file()`.
+- Line 66 defines `load_pin(path=...)`; required signature is parameterless `load_pin()`.
+- Lines 161–162 define extra `_template_path()`.
+- Lines 165–214 define extra `_verify_signature()`.
+
+Inline these helpers into the three required functions and make `load_pin()` use `PIN_PATH` directly.
+
+Also update `HUMAN_VERIFICATION.md` lines 7–14: they incorrectly claim the renderer artifact is absent and the pin is unpinned. The artifact exists, and its SHA-256 and size match `template_pin.json`.
+
+The other critic gates pass:
+
+- No `prs.slides` access inside the deletion loop.
+- `drop_rel()` precedes `sld_id_lst.remove()` at lines 110–111.
+- The pin signature is observed from the saved package and written dynamically.
+- Calibration conversions and style overrides are inline; no `geometry.py` or `style.py` exists.
+tokens used
+56,413

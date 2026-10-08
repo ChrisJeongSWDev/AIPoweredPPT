@@ -1,0 +1,24 @@
+I've verified the diff against the actual codebase. Here is my assessment.
+
+VERDICT: WARNING
+
+## What I checked
+- Diff at `artifacts/claude-main-diff-1879-10323.txt`, scoped to the 4 static files (`editor.js`, `index.html`, `style.css`, `interactions.js`).
+- All helpers the diff relies on exist and behave as assumed: `hex2` (1034), `clamp` (157), `elementBBox`/rotated-AABB (127), `applyConstraints` (331), `commit`→`applyConstraints`→`renderEl` (426), `makeEl` calls `write`+`renderEl` (740-742), `addEl`, `snapshot`/`pushUndo`.
+- Cross-cutting dependencies line up: server `POST /api/download` accepts multipart with an `ir` field + media parts (`app.py:169`), `render_canvas.draw_image`/`draw_video` exist (88/100), and `schema.json` accepts `#RRGGBBAA` (color pattern line 249) and defines optional-fill `image`/`video` element types (180/202). So the alpha byte, media types, and the `/api/export`→`/api/download` rename are all supported end-to-end.
+- The Node-lifted functions (`ELEMENT_TYPES`, `stateFromIR`) correctly use literal string checks instead of `isMediaType()`/`withAlpha()`/`hex2()`, honoring the harness-lift constraint.
+- Ctrl+C/Ctrl+V are inserted **after** the `editingText()` guard (editor.js:1548), so native text copy/paste inside a contenteditable is preserved. Alpha slider is grouped as one undo step via `txControl`. `renderEl`'s media branch returns before the SVG path, so no crash on media.
+
+## The issue (WARNING)
+`var multi` (the alignment set) is cleared on every **interactive** path the diff added — background click, plain click, Escape, insert, paste — but **not** on the two paths that tear down and rebuild every `.el` node:
+
+- `restore()` (undo/redo) removes all nodes and rebuilds via `makeEl` (editor.js:519, 528), sets `selected = null`, but leaves `multi` pointing at the now-detached old nodes.
+- `loadIR()` does the same (editor.js:1991-1992) without clearing `multi`.
+
+Reachable failure: Shift+Click to build a 2+ element alignment set, then press Ctrl+Z (or load/paste a deck). `multi` now holds detached corpses. `selectionSet()` still counts them, so the Align panel shows a stale count, and clicking Left/Right/Center runs `alignSelection()` → `bboxOf(read(ghost))` on frozen dataset coordinates and `commit()`s a translate on the **live** element toward those invisible deleted positions — moving a live element to align with ghosts (wrong geometry the user didn't request). Recoverable via undo, but it's a normal-workflow sequence producing incorrect output.
+
+Suggested fix: call `clearMulti()` in `restore()` and `loadIR()` (and defensively filter `selectionSet()` to `el.isConnected`). Minor related nit: deleting the `selected` element doesn't prune it from `multi`, though the plain-click-clears-multi rule makes that hard to hit.
+
+Everything else in the diff is sound and internally consistent; this single state-hygiene omission is the only defect, hence WARNING rather than BLOCK.
+
+VERDICT: WARNING

@@ -1,0 +1,16 @@
+Phase 3 is implemented. Summary:
+
+**What was done** (worker brief at `tmp.ZMJeG9ljEK`, task `phase3_integration`):
+
+- Detected the same recurring `write_scope`/`change_detail_path` prefix-dropping bug this task family has hit repeatedly (per prior memory) — the brief's paths were missing `tasks/AI_Powered_PPT/`. Edited the real file at `stg.EafvhN35/tasks/AI_Powered_PPT/src/aippt/adapters/ai_adapter.py` and wrote the change doc to the canonical outer-tree location the on-disk `brief.md` actually specifies.
+- Found and read a detailed `change_detail.md` from an immediately-prior attempt on this same task (`stg.pbZbUGS6`) that had implemented this brief but whose apply/review round was aborted (not rejected — `review_decision: "abort"`, gate failure). Used it as a cross-check, but re-derived and re-verified everything independently against the current repo files rather than trusting its prose.
+- Implemented `build_system_prompt`, `generate_outline`, `fill_slide`, and `generate_deck`, plus the codex-critic's five repair points:
+  1. `_check_layout_matches_entry` — catches `fill_slide` returning a different `layout_id` than the outline assigned.
+  2. Content-budget checking now actually runs (previously nothing checked it).
+  3. `render/fit.py:check_budget` (still `NotImplementedError`) is never called — budget checking is implemented locally in `_check_slide_budget`.
+  4. Title-length is validated, with a documented fallback heuristic since this template's placeholders are all reported `BODY`-type (no `max_title_chars_cjk` ever fires).
+  5. Body-content budget uses `math.ceil(len(item)/max_chars_per_bullet)` summed per block — verified by hand against the critic's own numeric example (4×11-char bullets, cap 10/6 → 8 lines, correctly flagged; a raw sum would have missed it).
+
+**Verification limits:** Python execution (`py_compile` etc.) was refused approval all session, consistent with every prior attempt on this task family — I hand-traced the edited file (read back in full) for syntax/bracket/import correctness instead of running it. This is documented in `change_detail.md` along with what a reviewer should run first.
+
+Full rationale, design choices (title fallback, positional vs. aggregate budget check, CJK-vs-Latin default), and verification notes are in `tasks/AI_Powered_PPT/tasks/phase3_integration/change_detail.md` in the outer tree.

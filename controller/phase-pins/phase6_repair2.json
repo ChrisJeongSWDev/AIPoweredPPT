@@ -1,0 +1,10 @@
+{
+  "payload": {
+    "phase_id": "phase6_repair2",
+    "phase_started_at": "2026-07-20T11:31:50+09:00",
+    "pinned_decision_id": "decision-005",
+    "pinned_payload_sha256": "28bd3db6647372a95e0295ff93db99522067734f41e7854e1654a8aed58741d2"
+  },
+  "payload_sha256": "5709048f6f7f7243ea763afa17610018a26dd4be5f49b2b957d0bc4dd771bee6",
+  "schema_version": 1
+}

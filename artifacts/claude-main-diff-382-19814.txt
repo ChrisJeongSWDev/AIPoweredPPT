@@ -1,0 +1,35 @@
+diff --git a/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js b/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js
+index d63e64a7..98da2aeb 100644
+--- a/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js
++++ b/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js
+@@ -551,6 +551,9 @@
+     }
+ 
+     /* PASS 2 -- COMMIT. Every record is legal, so this cannot fail half-way through. */
++    // The alignment set is about to point at nodes this pass removes wholesale below -- drop it
++    // before the new snapshot is applied, or `multi` is left holding detached DOM elements.
++    clearMulti();
+     stopEditing();
+     [].slice.call(stage.querySelectorAll(':scope > .el')).forEach(function (n) { n.remove(); });
+     // The node `selected` pointed at has just been removed, so the identity check at the top of
+@@ -1167,6 +1170,10 @@
+   /* ---------------------------------------------------------------------------------- selection */
+ 
+   function select(el) {
++    // Deselecting to nothing always drops the alignment set too -- checked BEFORE the early-return
++    // below, since selected and el can both already be null (e.g. multi has members but nothing is
++    // PLAIN-selected) and that case must still clear multi, not short-circuit past it.
++    if (!el && multi.length) { clearMulti(); syncProps(); }
+     if (selected === el) return;
+     stopEditing(); // leaving an element always closes its text
+     if (selected) selected.classList.remove('selected');
+@@ -1671,6 +1678,9 @@
+     // record the stage without the element, and Delete would become permanent with extra steps.
+     pushUndo(snapshot());
+     var el = selected;
++    // select(null) drops the alignment set too (see select()) -- if `el` was ALSO a multi member
++    // (shift+click toggles independently of `selected`, so the two sets can overlap), this is what
++    // keeps the about-to-be-removed node from being left behind in `multi`.
+     select(null);
+     el.remove();
+     setStatus('Deleted. (Ctrl+Z restores it.)');

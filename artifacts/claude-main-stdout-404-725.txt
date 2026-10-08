@@ -1,0 +1,15 @@
+All six required edits already exist in `src/aippt/canvas/static/editor.js`, byte-for-byte matching the brief:
+
+- **Change A** — `DROP_THRESHOLD`/`DROP_SIZES` constants after `ZOOM_MAX` (line 58-71)
+- **Change B** — collapsed `dblclick` handler (line 850-854)
+- **Change C** — `startEditing()` right before `stopEditing()` (line 857-873)
+- **Change D** — threshold gate in the `move:` handler (line 904-914)
+- **Change E** — click-to-drop + auto-focus `end:` handler (line 954-996)
+- **Change F** — `finishCreate()` helper before `stage.addEventListener('pointerdown', ...)` (line 999-1007)
+
+The requested `tasks/AI_Powered_PPT/phase5_change_detail.md` also already exists and documents this exact work, including two caveats worth flagging to you:
+
+1. **`.editwork` path mismatch** — the brief's `target_repo` points at `.../tasks/AI_Powered_PPT/.editwork`, which is a stray git worktree (checked out on an unrelated commit/branch — it has no `src/aippt` tree at all). The edits went to the real file at `tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js` instead, consistent with `write_scope` and where every prior phase's changes live.
+2. **Test suite not run** — command execution (`pytest`, `python`, `git`) is blocked by this session's approval policy for every invocation I tried, so Gate 1 (the banned-API grep test) couldn't be executed to confirm. I manually checked the new code against the banned list (`offsetWidth`, `offsetLeft`, `getComputedStyle`, `ev.rect`/`event.rect`, and the getBoundingClientRect-appears-once rule) and none are present, but this is static review, not a test run.
+
+Nothing further to change — this appears to be a re-run of a brief a prior session already completed. No new edits were made.

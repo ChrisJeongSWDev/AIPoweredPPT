@@ -1,0 +1,5 @@
+VERDICT: BLOCK
+
+- `generate_deck` promises a bounded repair loop for content-budget failures, but the diff never checks any slide content against the manifest budgets. `_parse_and_validate_slide` only validates IR structure and layout existence, so overflowing content is accepted and never re-prompted. This contradicts the function contract and leaves the primary rendering failure unhandled.
+
+VERDICT: BLOCK

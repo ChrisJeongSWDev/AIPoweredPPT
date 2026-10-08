@@ -1,0 +1,23 @@
+Phase 1B is code-complete, but **I could not run three of the four acceptance gates** — that's the headline, and it's the first thing the report says.
+
+## What blocked me
+
+The permission layer in this non-interactive session denies every Python invocation except `python --version`. `python -m pytest`, `python -m py_compile`, even with the sandbox override — all denied. So **the Python files have never been syntax-checked, let alone run.** The Phase 1A brief author hit the same wall and recorded it as their assumption 4. I've written the exact commands to run in the report and flagged the first `pytest` run as the real gate.
+
+Gate 1 is the exception: it's a static grep, so I ran the equivalent greps directly and it **passes** — one `getBoundingClientRect` across both JS files, inside `toModel`; all four `deltaRect` fields divided by `zoom` in the same expression; no banned measurement API, no `12700`, no stacking index, `#4472C4` only in the rejection path. That output is pasted verbatim.
+
+## What I built
+
+`app.py` (FastAPI, same-origin, in-memory export, pin gate at startup, `StalePayloadError` caught *before* its parent `CanvasValidationError` — that ordering is invisible and load-bearing, and two tests hold it), plus the editor: `index.html`, `style.css`, `editor.js`, and `interactions.js`.
+
+**On interact.js:** I wrote the ~130-line pointer-capture fallback the plan sanctions rather than vendoring, because I have no network. It turned out to be the better choice anyway — interact.js hands you `event.rect`, a measured device-pixel rectangle, which is the most common way the Prime Directive dies. My engine never emits one, so the misuse isn't available. It's deliberately interact.js-shaped, so swapping the real library in is a one-file change.
+
+## Three judgement calls worth your attention
+
+1. **The §5.6 CSS contract has a latent bug I had to work around.** It puts `display: flex` on `.el .txt` and maps `align-items`→valign, `justify-content`→align. That mapping is only correct with *exactly one flex item* — a contenteditable holding several paragraphs produces several block children, which as direct flex items lay out **side by side in a row**. I kept the §5.6 declarations verbatim and gave `.txt` a single `.body` child that is the editable surface. Contract preserved, multi-paragraph text works. This is my one structural departure from the brief's HTML sketch, and it's forced.
+2. **A trailing `<br>` (last child of its block) is dropped** — Chrome inserts one into every empty contenteditable block. Emitting it would add a phantom line to the PPTX. Cost: a Shift+Enter at the very end of a text box doesn't survive the round trip. Reversible if you disagree.
+3. **`test_app.py` *skips* rather than fails without the editor extra**, so `pytest tests/` stays green for a renderer-only install. That means Gate 2 can look green having checked nothing — when you run it, confirm the summary says **passed**, not **skipped**.
+
+**No backend defects found.** The plan's §6.7 arrowhead-ordering bug is already fixed in the frozen `connectors.py`. Nothing frozen was touched.
+
+Two things you should know about the plumbing: the brief file I was handed was **corrupted in transit** — every literal `.` had been string-replaced with the absolute path `/c/Users/.../.editwork`, so `app.py` read as `app/c/Users/…/.editworkpy`. I decoded it and cross-checked against the clean `phase1b_brief.md`; the dispatcher's substitution is worth fixing. And I worked in `tasks/AI_Powered_PPT/`, **not** the `.editwork` worktree — that worktree's `tasks/` directory is empty, because `tasks/AI_Powered_PPT` isn't tracked in git, so writing there would have produced nothing.

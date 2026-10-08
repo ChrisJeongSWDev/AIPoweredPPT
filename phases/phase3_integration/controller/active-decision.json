@@ -1,0 +1,8 @@
+{
+  "payload": {
+    "decision_id": "decision-001",
+    "payload_sha256": "18ae81e1d380786d2355d9305f4532bc6b516c4d4355f06b5285b0814c905329"
+  },
+  "payload_sha256": "a185e74ada345879e790c7a73cb5f4a155d31055b221c959ede464ef47a81d5a",
+  "schema_version": 1
+}

@@ -1,0 +1,103 @@
+# AI-Powered PPT Workflow Review
+
+## 1. Frontend → Backend trigger
+
+The UI provides a prompt textarea (`#p-prompt`), model dropdown (`#p-model`), and Generate button in `index.html`.
+
+On Generate click, `editor.js`:
+
+1. Reads and trims only `#p-prompt`.
+2. Sends `POST /api/generate` with:
+   ```json
+   { "prompt": "..." }
+   ```
+3. Parses the JSON response.
+4. Passes it to `loadIR(ir)`, which validates every element before replacing the canvas and adds one undo snapshot.
+
+This does not automatically run merely when a model is selected or text is entered; it runs only after the Generate button is clicked.
+
+Important inconsistency: the selected `#p-model` value is never read in `editor.js` and is not included in the request. Although the backend supports a `model` field and profiles (`sonnet`, `opus`, `gpt-5.6-terra`, `gpt-5.6-sol`), every current UI request omits it, so `_resolve_profile()` defaults to `sonnet`. The model picker is presently cosmetic/nonfunctional.
+
+`interactions.js` is unrelated to AI generation. It supplies pointer drag/resize behavior only.
+
+## 2. Worker execution and JSON delivery
+
+`/api/generate` in `app.py` parses the HTTP JSON, validates a non-empty prompt, resolves the model profile, validates optional images, then branches on `AIPPT_LIVE_MODE`.
+
+- Default/mock mode: no Worker or model is called. The prompt, profile, and images are deliberately ignored; a fixed canvas IR payload is returned after 1.5 seconds.
+- Live mode (`AIPPT_LIVE_MODE=1`): `generate_live()` creates:
+  ```python
+  CliWorkerClient(
+      track="b",
+      backend=cfg["backend"],
+      model=cfg["model"],
+      timeout_s=900,
+  )
+  ```
+  and calls `complete_json()` on a background thread.
+
+`complete_json()` combines:
+
+- the system instruction read from `GEM_Knowledge_API.md`,
+- the user prompt,
+- an instruction to return one JSON object only,
+- the relaxed canvas JSON Schema.
+
+It invokes a direct CLI integration (`track="b"`), not the MultiAgent dispatcher:
+
+- Claude: writes the composed prompt to a temporary `.md` brief, asks Claude to read it, requests JSON output, extracts the `result` string.
+- Codex: writes that temporary brief too, but actually sends the composed prompt directly on stdin to `codex exec -`; the temporary file is not used for the Codex call.
+
+The adapter then extracts a JSON object from CLI output and validates it against the supplied schema. `app.py` finalizes the result by overwriting `schema`, `canvas`, and `target` with server-controlled values from the pinned template, adds a default title/elements list where needed, and applies two narrow fallbacks (connector arrow and missing run color). It validates the final IR again before returning it as the HTTP JSON response.
+
+There is no durable record of the generated JSON in this live path:
+
+- the temporary prompt brief is deleted in `finally`;
+- CLI output is held in process memory;
+- the finalized IR is returned to the browser;
+- the browser retains it only as the editor’s in-memory canvas state.
+
+The unused Track A path can consume dispatcher envelopes and their `stdout_path`, but the actual app creates Track B clients, so that recording path is not active.
+
+A second major gap: images are accepted and validated by `/api/generate`, but `generate_live()` explicitly discards them before calling `CliWorkerClient`. Thus AI image attachments do not reach either Claude or Codex.
+
+## 3. Slide-generation workflow
+
+The architecture is a two-stage process, not “generation immediately creates a PPTX.”
+
+```text
+Generate click
+  → POST /api/generate
+  → mock or CLI-generated canvas-ir/1 JSON
+  → browser loadIR()
+  → editable in-browser canvas
+
+Export click
+  → serialize() current canvas state as canvas-ir/1
+  → POST /api/export
+  → Python render(ir)
+  → in-memory .pptx bytes
+  → browser download/save
+```
+
+The JSON handoffs are structurally sound:
+
+- The adapter requires the model result to meet the relaxed schema.
+- `app.py` injects authoritative template/canvas data rather than trusting model values.
+- `app.py` validates the finalized IR before returning it.
+- `loadIR()` validates all received elements before mutating the browser stage, preventing partial imports.
+- `serialize()` emits the current title, template pin data, and ordered `elements` array.
+- `/api/export` invokes Python `render(ir)`, which validates again and draws elements in array order into the presentation.
+
+However, Python does not create slides as part of `/api/generate`. The generated JSON is first rendered into the browser editor; slide creation occurs only if the user later presses Export. Because export serializes the current browser state, it can contain user edits made after generation. This is appropriate for an editable-canvas workflow, but it deviates from an architecture where successful model output is immediately parsed and rendered by Python into a final presentation.
+
+## Findings and bottlenecks
+
+- **Model picker is disconnected.** The frontend always sends only `prompt`, so the backend always uses the default Sonnet profile.
+- **Mock mode is the default.** Unless `AIPPT_LIVE_MODE=1` is set, no real Worker is invoked and the prompt has no effect.
+- **AI attachments are a dead-end.** They are validated but never passed to the live CLI model.
+- **No persistent generation artifact/audit trail exists in Track B.** Prompt brief and result are transient.
+- **Track B bypasses the MultiAgent dispatcher.** It is a direct CLI call, so dispatcher-specific envelopes, guardrails, and output records are not part of the active app path.
+- **Codex’s temporary brief is redundant.** Track B creates it but sends the prompt on stdin instead.
+- **PPTX rendering is deferred.** Generation produces editable IR; exporting creates the `.pptx`.
+- **The listed workflow supports one canvas slide per export.** Adding to an existing deck is a separate `/api/append_slide` operation; no automatic multi-slide generation/orchestration is visible in the reviewed path.

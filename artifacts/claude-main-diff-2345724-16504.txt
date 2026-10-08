@@ -1,0 +1,19 @@
+diff --git a/tasks/AI_Powered_PPT/src/aippt/canvas/app.py b/tasks/AI_Powered_PPT/src/aippt/canvas/app.py
+index e0f3e08..346be1d 100644
+--- a/tasks/AI_Powered_PPT/src/aippt/canvas/app.py
++++ b/tasks/AI_Powered_PPT/src/aippt/canvas/app.py
+@@ -72,9 +72,11 @@ STATIC_DIR = Path(__file__).with_name("static")
+ 
+ PPTX_MIME = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+ 
+-# A one-slide deck of boxes and arrows is a few KB of JSON. Anything approaching a megabyte is a
+-# mistake or an attack, and either way the renderer should not be the thing that discovers it.
+-MAX_BODY_BYTES = 2 * 1024 * 1024
++# A one-slide deck of boxes and arrows is a few KB of JSON, but images now ride along as Base64 in
++# the same payload: base64 expands raw bytes 4:3, so up to MAX_IMAGES (4) images at MAX_IMAGE_BYTES
++# (1.4 MB) each can inflate to ~7.5 MB on the wire. 10 MB leaves headroom above that ceiling while
++# still catching anything that is clearly a mistake or an attack before the renderer discovers it.
++MAX_BODY_BYTES = 10 * 1024 * 1024
+ 
+ DEFAULT_STEM = "deck"
+ 

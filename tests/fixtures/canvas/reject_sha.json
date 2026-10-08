@@ -1,0 +1,21 @@
+{
+  "schema": "canvas-ir/1",
+  "canvas": {"w": 960, "h": 540, "unit": "pt"},
+  "target": {
+    "template": "reference/renderer_template.pptx",
+    "template_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "layout_index": 3
+  },
+  "title": "Rejected at RENDER time: the template SHA is not the pinned one",
+  "elements": [
+    {
+      "id": "box",
+      "type": "rect",
+      "x": 45.6,
+      "y": 120,
+      "w": 200,
+      "h": 100,
+      "fill": "#FF0032"
+    }
+  ]
+}

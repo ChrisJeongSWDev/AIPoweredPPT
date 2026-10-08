@@ -1,0 +1,13 @@
+## Summary
+
+I implemented the four functions in `ai_adapter.py` (`build_system_prompt`, `generate_outline`, `fill_slide`, `generate_deck`) using the `CliWorkerClient` from Phase 1, per the brief.
+
+**Important deviation:** the brief's "CRITICAL PATH INSTRUCTION" told me to edit `src/aippt/adapters/ai_adapter.py` without the `tasks/AI_Powered_PPT/` prefix. I verified that path doesn't exist in the staging clone (`stg.kvoRU6kv`) — only `tasks/AI_Powered_PPT/src/aippt/adapters/ai_adapter.py` does. This is the same recurring dispatcher bug documented in memory (write_scope losing its task-subtree prefix when `target_repo` is repointed at a repo-rooted staging clone) — now confirmed a 6th time, and for the first time baked into an *original* brief's instructions rather than just a repair note. I edited the real, correctly-prefixed file and declined the literal instruction; full detail is in `tasks/phase3_integration/change_detail.md` (outer tree) and I updated the persistent memory entry.
+
+Key implementation choices, also documented in change_detail.md:
+- `fill_slide` gained a keyword-only `repair_note: str = ""` param — needed to fill `{{REPAIR_NOTE}}`, nothing else carried it.
+- `generate_deck`'s repair loop catches `CliWorkerSchemaError`/`IRValidationError` (repairable) but lets `CliWorkerError` (transport failure) propagate immediately, per that exception's own documented distinction.
+- Budget-checking via `render/fit.py` is **not** wired in — that module is entirely unimplemented (`NotImplementedError` everywhere) and out of `write_scope`; wiring it in would break `generate_deck` on the first slide.
+- Could not execute `python -m py_compile` (interpreter commands are gated in this session, confirmed via both Bash and PowerShell); verified correctness by hand-tracing the full file twice instead.
+
+One open question flagged in change_detail.md: the brief references "the CliWorkerClient we verified in Phase 2," but no Phase 2 task directory exists — I treated `20260722-headless-worker-integration`'s phase1 (+ repairs, ending in `review_verdict: APPROVE`) as the intended referent.

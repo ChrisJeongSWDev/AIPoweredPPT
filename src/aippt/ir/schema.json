@@ -1,0 +1,336 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vieworks.com/aippt/slide-ir/1.0/schema.json",
+  "title": "Slide IR",
+  "description": "The neutral contract between every input adapter (HTML, AI author) and the deterministic renderer. An author -- human, Claude, Codex or Gemini -- emits ONLY this. It never emits PPTX, OOXML, DrawingML, coordinates, fonts or colours: those are the template's job. Block types are derived from the real 30-slide corpus, not invented.",
+  "type": "object",
+  "required": ["ir_version", "deck", "slides"],
+  "additionalProperties": false,
+
+  "properties": {
+    "ir_version": {
+      "const": "1.0",
+      "description": "Bump on any breaking change; the renderer refuses versions it does not know."
+    },
+
+    "deck": {
+      "type": "object",
+      "description": "Deck-level metadata. In the HTML corpus this comes from the .hero block, which sits OUTSIDE the .card sections -- it is not a slide, it is the deck header, and the renderer turns it into the title slide.",
+      "required": ["title"],
+      "additionalProperties": false,
+      "properties": {
+        "title": {"type": "string", "minLength": 1, "maxLength": 120},
+        "subtitle": {"type": "string", "maxLength": 200},
+        "language": {
+          "type": "string",
+          "enum": ["ko", "en", "mixed"],
+          "default": "mixed",
+          "description": "Drives which content budget applies. Korean glyphs are full-width: a box holding 60 Latin chars holds ~31 Hangul. 'mixed' budgets against the CJK (pessimistic) figure."
+        },
+        "source": {
+          "type": "string",
+          "description": "Provenance: the HTML filename, or the prompt/topic for an AI-authored deck."
+        }
+      }
+    },
+
+    "slides": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100,
+      "items": {"$ref": "#/$defs/slide"}
+    }
+  },
+
+  "$defs": {
+
+    "slide": {
+      "type": "object",
+      "required": ["layout_id", "title"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Stable handle for QA feedback (e.g. 'slide-07'). The visual-QA loop reports defects against this id."
+        },
+        "layout_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "MUST be a layout name that exists in reference/layout_manifest.json. The renderer resolves it against the template's OWN slide_layouts and calls add_slide(layout). An unknown layout_id is a hard validation failure -- never a silently-substituted default, because a silent substitution produces a plausible-looking but off-brand deck."
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "description": "Fills the layout's TITLE placeholder. The hard cap here is a runaway-output guard only; the REAL limit is the per-layout content budget in the manifest, enforced by render/fit.py."
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 4000,
+          "description": "Speaker notes. Free of budget constraints -- the notes pane scrolls."
+        },
+        "blocks": {
+          "type": "array",
+          "maxItems": 12,
+          "description": "Body content, in reading order. The renderer maps blocks onto the layout's non-title placeholders in order, then onto free-floating shapes once placeholders run out.",
+          "items": {"$ref": "#/$defs/block"}
+        }
+      }
+    },
+
+    "block": {
+      "description": "Closed union, discriminated on `type`. Every member is traceable to a construct that actually occurs in the corpus.",
+      "oneOf": [
+        {"$ref": "#/$defs/heading"},
+        {"$ref": "#/$defs/paragraph"},
+        {"$ref": "#/$defs/bullets"},
+        {"$ref": "#/$defs/callout"},
+        {"$ref": "#/$defs/table"},
+        {"$ref": "#/$defs/code"},
+        {"$ref": "#/$defs/image"},
+        {"$ref": "#/$defs/diagram"},
+        {"$ref": "#/$defs/steps"},
+        {"$ref": "#/$defs/cards"}
+      ]
+    },
+
+    "heading": {
+      "type": "object",
+      "description": "An <h3> inside a card: a sub-section header grouping the bullets under it. 28 occurrences in the corpus -- common enough to be first-class, and flattening it into a bold bullet loses the visual hierarchy.",
+      "required": ["type", "text"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {"const": "heading"},
+        "text": {"type": "string", "minLength": 1, "maxLength": 120}
+      }
+    },
+
+    "paragraph": {
+      "type": "object",
+      "description": "The lead <p> under the <h2>. Sets up the slide in one sentence.",
+      "required": ["type", "text"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {"const": "paragraph"},
+        "text": {"$ref": "#/$defs/rich_text"}
+      }
+    },
+
+    "bullets": {
+      "type": "object",
+      "description": "A <ul>. 22 occurrences. Nesting is capped at 3 levels because the template's body placeholder only styles lvl1-lvl3 legibly.",
+      "required": ["type", "items"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {"const": "bullets"},
+        "items": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 12,
+          "items": {
+            "type": "object",
+            "required": ["text"],
+            "additionalProperties": false,
+            "properties": {
+              "text": {"$ref": "#/$defs/rich_text"},
+              "level": {"type": "integer", "minimum": 0, "maximum": 2, "default": 0}
+            }
+          }
+        }
+      }
+    },
+
+    "callout": {
+      "type": "object",
+      "description": "The corpus has THREE callout variants, not one: .alert-box (4x, neutral/key-message), .warn-box (2x, risk) and .ok-box (1x, confirmation). They differ only in accent colour, so one block type with a `variant` discriminator is the right shape -- the renderer picks the fill/left-bar colour from the theme.",
+      "required": ["type", "text"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {"const": "callout"},
+        "variant": {
+          "type": "string",
+          "enum": ["info", "warn", "ok"],
+          "default": "info",
+          "description": "info=.alert-box (brand red bar), warn=.warn-box, ok=.ok-box"
+        },
+        "title": {"type": "string", "maxLength": 80, "description": "The leading <strong> label."},
+        "text": {"$ref": "#/$defs/rich_text"}
+      }
+    },
+
+    "table": {
+      "type": "object",
+      "description": "11 occurrences -- the single densest block in the corpus and the one most likely to overflow. Cells are rich text because the corpus routinely puts inline <code> in them (API signature tables).",
+      "required": ["type", "columns", "rows"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {"const": "table"},
+        "caption": {"type": "string", "maxLength": 160},
+        "columns": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 6,
+          "items": {"type": "string", "maxLength": 40},
+          "description": "Capped at 6: beyond that a 13.3in slide cannot render legible cells."
+        },
+        "rows": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 12,
+          "items": {
+            "type": "array",
+            "items": {"$ref": "#/$defs/rich_text"}
+          },
+          "description": "Every row MUST have exactly len(columns) cells. JSON Schema cannot express that cross-field constraint; models.py enforces it."
+        }
+      }
+    },
+
+    "code": {
+      "type": "object",
+      "description": "A <pre><code> block. Only 2 occur in the corpus -- but one of those is the tabbed C++/C# pair in Slide Template.html (.tabs/.tab-content), so `variants` is required to model it. PowerPoint has no tab control, so the renderer emits either side-by-side boxes or consecutive slides; that choice is the renderer's, not the author's.",
+      "required": ["type", "variants"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {"const": "code"},
+        "variants": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "items": {
+            "type": "object",
+            "required": ["code"],
+            "additionalProperties": false,
+            "properties": {
+              "label": {"type": "string", "maxLength": 30, "description": "Tab label, e.g. 'C++ (Native)'."},
+              "language": {"type": "string", "maxLength": 20},
+              "code": {"type": "string", "minLength": 1, "maxLength": 1200}
+            }
+          }
+        }
+      }
+    },
+
+    "image": {
+      "type": "object",
+      "description": "3 occurrences, all image/jpeg data-URIs (NOT png -- verified against the corpus). The adapter decodes base64 -> BytesIO -> add_picture. `alt` is mandatory: it is what the AI author sees when it re-reads a deck, and what the visual-QA critic checks the placement against.",
+      "required": ["type", "source", "alt"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {"const": "image"},
+        "source": {
+          "type": "object",
+          "required": ["kind", "value"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": ["data_uri", "path"],
+              "description": "data_uri: 'data:image/jpeg;base64,...' straight out of the HTML. path: relative to the IR file, for AI-authored decks that reference real assets."
+            },
+            "value": {"type": "string", "minLength": 1}
+          }
+        },
+        "alt": {"type": "string", "minLength": 1, "maxLength": 200},
+        "caption": {"type": "string", "maxLength": 200}
+      }
+    },
+
+    "diagram": {
+      "type": "object",
+      "description": "3 .mermaid blocks (1 sequenceDiagram, 2 flowcharts) plus 1 hand-drawn inline SVG. The AI author emits mermaid source ONLY -- it is a text format the model is fluent in, and it keeps the 'AI never emits geometry' invariant intact. render/diagrams.py decides how to realise it.",
+      "required": ["type", "syntax", "source"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {"const": "diagram"},
+        "syntax": {"type": "string", "enum": ["mermaid"]},
+        "kind": {
+          "type": "string",
+          "enum": ["flowchart", "sequence", "class", "state", "gantt", "other"],
+          "description": "Lets the renderer pick a strategy without re-parsing the source."
+        },
+        "source": {"type": "string", "minLength": 1, "maxLength": 3000},
+        "render_hint": {
+          "type": "string",
+          "enum": ["native", "image", "auto"],
+          "default": "auto",
+          "description": "native = editable PowerPoint autoshapes (only viable for simple linear/flowchart graphs); image = rasterise via mermaid-cli and drop in a picture; auto = let diagrams.py decide by node count. See foundation_research.md S7."
+        }
+      }
+    },
+
+    "steps": {
+      "type": "object",
+      "description": ".step-badge, 10 occurrences -- a numbered process sequence. Distinct from `bullets`: the order is semantic and the renderer draws numbered chevrons, not dots.",
+      "required": ["type", "items"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {"const": "steps"},
+        "items": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 6,
+          "items": {
+            "type": "object",
+            "required": ["title"],
+            "additionalProperties": false,
+            "properties": {
+              "title": {"type": "string", "minLength": 1, "maxLength": 60},
+              "text": {"$ref": "#/$defs/rich_text"}
+            }
+          }
+        }
+      }
+    },
+
+    "cards": {
+      "type": "object",
+      "description": ".mini-card (9x) laid out in .grid-2/.grid-3 (4x), often carrying a .tag (8x). A row of peer concepts -- renders as N side-by-side rounded rectangles. Also the target for .photo-grid/.photo-placeholder once its <img> is lifted out into an `image` block.",
+      "required": ["type", "items"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {"const": "cards"},
+        "columns": {"type": "integer", "minimum": 2, "maximum": 3, "default": 2},
+        "items": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 6,
+          "items": {
+            "type": "object",
+            "required": ["title"],
+            "additionalProperties": false,
+            "properties": {
+              "title": {"type": "string", "minLength": 1, "maxLength": 60},
+              "text": {"$ref": "#/$defs/rich_text"},
+              "tag": {"type": "string", "maxLength": 24, "description": "The .tag pill."}
+            }
+          }
+        }
+      }
+    },
+
+    "rich_text": {
+      "description": "Inline formatting. Inline <code> occurs 111 times in the corpus -- by a wide margin the most common inline mark -- so run-level styling is NOT optional: flattening it to plain text would visibly degrade every API slide. Two accepted forms: a bare string (the common case, and the one an LLM gets right most reliably), or an explicit run array. models.py normalises the string form into a single unstyled run.",
+      "oneOf": [
+        {"type": "string", "maxLength": 800},
+        {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 40,
+          "items": {
+            "type": "object",
+            "required": ["t"],
+            "additionalProperties": false,
+            "properties": {
+              "t": {"type": "string", "maxLength": 400, "description": "The run's literal text."},
+              "b": {"type": "boolean", "default": false, "description": "bold (<strong>)"},
+              "i": {"type": "boolean", "default": false, "description": "italic (<em>)"},
+              "code": {"type": "boolean", "default": false, "description": "inline <code>: monospace + brand accent"},
+              "link": {"type": "string", "format": "uri"}
+            }
+          }
+        }
+      ]
+    }
+  }
+}

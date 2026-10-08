@@ -1,0 +1,15 @@
+Text is rendering correctly with proper Korean encoding, no corruption. The task is complete.
+
+## Summary
+
+I applied the WorkDirector's Phase 1 design-style-unification changes to all three files named in the outer dispatch's `write_scope` (`GEM_Knowledge_API.md`, `GEM_Knowledge.md`, `Gemini_Web_Prompt.md`):
+- Replaced the conflicting brand-red hex (`#E63312`/`#0052CC`) with `#FF0032` everywhere
+- Re-gridded the few-shot JSON examples to the documented coordinate grid and font-size scale
+- Appended a new §8 "STRICT TEMPLATE" section (color tokens, coordinate grid, font sizes, alignment, array/id rules, self-check) to all three files
+
+Two things worth flagging, detailed fully in `C:\Users\2021670\.ma-stg\stg.ezBDCD7G\scratch\change_detail_phase1.md`:
+
+1. **The target_repo in the frontmatter doesn't hold these files at all** — that staging worktree only has `tasks/AI_Powered_PPT/src/`. The three `.md` files are gitignored/untracked in the main repo, so they never made it into that worktree checkout. I edited the actual files in the main working tree instead, since that's the only place the pre-existing content (matching what the WorkDirector described reading) exists.
+2. **The brief contradicts itself on scope.** The embedded WorkDirector output explicitly says propagating to `GEM_Knowledge.md`/`Gemini_Web_Prompt.md` is "Phase 1b — do NOT fold into this phase," and lists `GEM_Knowledge_API.md` as "the ONLY writable file." But the outer dispatch's frontmatter `write_scope` and an appended "Additional Mandatory Follow-up" note both direct doing all three now. I followed the outer instruction (it's the actual write-permission grant) and documented the conflict rather than silently picking one side.
+
+I also didn't copy the brief's §8 draft text verbatim — it's corrupted/mojibake Korean — and instead rewrote it cleanly from the legible tables and English framing, since that section becomes live LLM system-prompt text.

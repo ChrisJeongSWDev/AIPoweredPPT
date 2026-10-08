@@ -1,0 +1,230 @@
+{
+  "canvas": {
+    "w": 960,
+    "h": 540,
+    "unit": "pt"
+  },
+  "emu_per_unit": 12700,
+  "title": "Calibration — 보정 슬라이드",
+  "elements": [
+    {
+      "id": "corner_tl",
+      "x": 0,
+      "y": 0,
+      "w": 80,
+      "h": 40,
+      "fill": "FF0032"
+    },
+    {
+      "id": "corner_tr",
+      "x": 880,
+      "y": 0,
+      "w": 80,
+      "h": 40,
+      "fill": "FF0032"
+    },
+    {
+      "id": "corner_bl",
+      "x": 0,
+      "y": 500,
+      "w": 80,
+      "h": 40,
+      "fill": "FF0032"
+    },
+    {
+      "id": "corner_br",
+      "x": 880,
+      "y": 500,
+      "w": 80,
+      "h": 40,
+      "fill": "FF0032"
+    },
+    {
+      "id": "stroke_0",
+      "x": 60,
+      "y": 120,
+      "w": 160,
+      "h": 90,
+      "fill": "FFFFFF",
+      "stroke": {
+        "color": "000000",
+        "width": 0
+      },
+      "text": "stroke 0"
+    },
+    {
+      "id": "stroke_1",
+      "x": 260,
+      "y": 120,
+      "w": 160,
+      "h": 90,
+      "fill": "FFFFFF",
+      "stroke": {
+        "color": "000000",
+        "width": 1
+      },
+      "text": "stroke 1"
+    },
+    {
+      "id": "stroke_4",
+      "x": 460,
+      "y": 120,
+      "w": 160,
+      "h": 90,
+      "fill": "FFFFFF",
+      "stroke": {
+        "color": "000000",
+        "width": 4
+      },
+      "text": "stroke 4"
+    },
+    {
+      "id": "stroke_8",
+      "x": 660,
+      "y": 120,
+      "w": 160,
+      "h": 90,
+      "fill": "FFFFFF",
+      "stroke": {
+        "color": "000000",
+        "width": 8
+      },
+      "text": "stroke 8"
+    },
+    {
+      "id": "rot_30",
+      "x": 60,
+      "y": 250,
+      "w": 120,
+      "h": 80,
+      "fill": "FF0032",
+      "rotation": 30,
+      "text": "30"
+    },
+    {
+      "id": "rot_45",
+      "x": 260,
+      "y": 250,
+      "w": 120,
+      "h": 80,
+      "fill": "FF0032",
+      "rotation": 45,
+      "text": "45"
+    },
+    {
+      "id": "wrap_14pt",
+      "x": 460,
+      "y": 250,
+      "w": 300,
+      "h": 110,
+      "fill": "FFFFFF",
+      "stroke": {
+        "color": "000000",
+        "width": 1
+      },
+      "size_pt": 14,
+      "text": "The quick brown fox jumps over the lazy dog and keeps running until this line has to wrap somewhere."
+    },
+    {
+      "id": "mixed_ko_en",
+      "x": 60,
+      "y": 380,
+      "w": 400,
+      "h": 80,
+      "fill": "FFFFFF",
+      "stroke": {
+        "color": "000000",
+        "width": 1
+      },
+      "size_pt": 14,
+      "text": "Vieworks 뷰웍스 3D Logic 개발 테스트벤치 Rev 2"
+    }
+  ],
+  "expected_emu": {
+    "corner_tl": {
+      "left": 0,
+      "top": 0,
+      "width": 1016000,
+      "height": 508000,
+      "rotation": 0
+    },
+    "corner_tr": {
+      "left": 11176000,
+      "top": 0,
+      "width": 1016000,
+      "height": 508000,
+      "rotation": 0
+    },
+    "corner_bl": {
+      "left": 0,
+      "top": 6350000,
+      "width": 1016000,
+      "height": 508000,
+      "rotation": 0
+    },
+    "corner_br": {
+      "left": 11176000,
+      "top": 6350000,
+      "width": 1016000,
+      "height": 508000,
+      "rotation": 0
+    },
+    "stroke_0": {
+      "left": 762000,
+      "top": 1524000,
+      "width": 2032000,
+      "height": 1143000,
+      "rotation": 0
+    },
+    "stroke_1": {
+      "left": 3302000,
+      "top": 1524000,
+      "width": 2032000,
+      "height": 1143000,
+      "rotation": 0
+    },
+    "stroke_4": {
+      "left": 5842000,
+      "top": 1524000,
+      "width": 2032000,
+      "height": 1143000,
+      "rotation": 0
+    },
+    "stroke_8": {
+      "left": 8382000,
+      "top": 1524000,
+      "width": 2032000,
+      "height": 1143000,
+      "rotation": 0
+    },
+    "rot_30": {
+      "left": 762000,
+      "top": 3175000,
+      "width": 1524000,
+      "height": 1016000,
+      "rotation": 30
+    },
+    "rot_45": {
+      "left": 3302000,
+      "top": 3175000,
+      "width": 1524000,
+      "height": 1016000,
+      "rotation": 45
+    },
+    "wrap_14pt": {
+      "left": 5842000,
+      "top": 3175000,
+      "width": 3810000,
+      "height": 1397000,
+      "rotation": 0
+    },
+    "mixed_ko_en": {
+      "left": 762000,
+      "top": 4826000,
+      "width": 5080000,
+      "height": 1016000,
+      "rotation": 0
+    }
+  },
+  "roundtrip_problems": []
+}

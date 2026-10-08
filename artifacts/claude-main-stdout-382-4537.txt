@@ -1,0 +1,22 @@
+VERDICT: APPROVE
+
+I inspected the diff at `claude-main-diff-382-19814.txt` and cross-checked it against the current `editor.js` (the diff is not yet applied to the working tree I read, so I verified against surrounding context, call sites, and the existing `multi`/`clearMulti` idioms).
+
+The diff has three hunks, all in `editor.js`:
+
+1. **`restore()` PASS 2 — adds `clearMulti()` before the wholesale `.el` removal.** Correct and necessary. `restore()` removes every stage node and rebuilds from the snapshot; without this, `multi` would retain references to nodes that are about to be detached. Placement is right: it sits in PASS 2 (the commit phase) *after* the `unrestorableReason()` preflight, honoring the file's own "no DOM mutation before the snapshot is judged" discipline (removing the `multi-selected` class is a DOM mutation). Clearing happens while the old nodes are still present, so the class removal lands on live nodes. The later `select(toSelect)` cannot substitute for this, since `select(el)` with a non-null `el` does not clear `multi`.
+
+2. **`select()` — clears `multi` when deselecting to nothing, before the `selected === el` early-return.** Correct. The guard `if (!el && multi.length)` must precede `if (selected === el) return;` because `selected` and `el` can both be `null` while `multi` still has members (multi-selection with nothing plain-selected), and that case must not short-circuit past the clear. The in-branch `syncProps()` is needed precisely because the function may return before reaching the trailing `syncProps()`. When it doesn't return early there's one redundant `syncProps()` call — idempotent, harmless.
+
+3. **`deleteSelected()` — comment only**, documenting that `select(null)` now also drops `multi`, covering the overlap case where the deleted `selected` node is also a `multi` member. Verified: `select(null)` now removes it from `multi` before `el.remove()`, so no detached node is left behind.
+
+Interactions checked:
+- Existing pre-clear call sites (`pointerdown` empty-click at 1162, `Escape` at 1944) do `if (multi.length) clearMulti(); select(null);` — after their explicit clear, `multi.length` is 0, so `select()`'s new branch is skipped. No double-clear, no error; the redundancy is defensive and harmless.
+- Paste (line 1900) and other `select(el)` calls pass a non-null `el`, so the new `!el` branch is skipped and multi-selection is preserved as intended.
+- `clearMulti()` over an empty `multi` is a no-op.
+
+Behavior change of note (intended, per the diff's rationale): `select(null)` now always drops the alignment set, so deleting `selected` while other elements are multi-selected also clears their highlight (those elements are not deleted, only deselected). This is a reasonable, documented UX choice, not a defect.
+
+No correctness, lifetime, or ordering issues found.
+
+VERDICT: APPROVE

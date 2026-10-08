@@ -1,0 +1,225 @@
+diff --git a/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js b/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js
+index babfc37..3b5838b 100644
+--- a/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js
++++ b/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js
+@@ -2492,6 +2492,18 @@
+    * loadIR() actually accepted the payload. loadIR() must not push for itself — it is lifted out by
+    * name and executed in Node against a stubbed stage, where snapshot() does not exist.
+    */
++  // The label for a profile id, per CONTEXT.models (see /api/context) -- the server's own name for
++  // the profile the request actually named, not the server-default label CONTEXT.model carries.
++  // Falls back to the raw id so a stale/offline CONTEXT still shows SOMETHING truthful instead of
++  // silently reporting the wrong profile.
++  function modelLabel(id) {
++    var models = (CONTEXT && CONTEXT.models) || [];
++    for (var i = 0; i < models.length; i++) {
++      if (models[i].id === id) return models[i].label;
++    }
++    return id || 'the model';
++  }
++
+   async function generate() {
+     if (!CONTEXT) return;   // the server is unreachable and the button is already disabled
+ 
+@@ -2502,6 +2514,12 @@
+       return;
+     }
+ 
++    // The profile the USER picked, not the server default -- CONTEXT.model is only ever the
++    // server's default-profile label (see /api/context's docstring) and reporting it back after a
++    // request for a different profile would tell the user Opus ran under "Claude Sonnet 5".
++    var modelSel = $('p-model');
++    var selectedModel = modelSel ? modelSel.value : (CONTEXT && CONTEXT.default_model);
++
+     clearWarnings();
+     setBusy(true);
+     setStatus('Generating…');
+@@ -2509,7 +2527,7 @@
+       var res = await fetch('/api/generate', {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+-        body: JSON.stringify({ prompt: prompt }),
++        body: JSON.stringify({ prompt: prompt, model: selectedModel }),
+       });
+       if (!res.ok) {
+         var data = {};
+@@ -2526,7 +2544,7 @@
+         pushUndo(before);  // it took: replacing the whole deck is ONE step, and it is reversible
+         var live = CONTEXT && CONTEXT.mode === 'live';
+         setStatus('Generated ' + (ir.elements || []).length + ' element(s)' +
+-                  (live ? ' from ' + (CONTEXT.model || 'the model') + '.'
++                  (live ? ' from ' + modelLabel(selectedModel) + '.'
+                         : ' — MOCK payload; no model was called.'));
+       } catch (e) {
+         // The stage is UNCHANGED — loadIR() judges the whole payload before it touches anything —
+@@ -2551,6 +2569,10 @@
+     b.disabled = on;
+     b.setAttribute('aria-busy', String(on));
+     $('p-prompt').disabled = on;
++    // The picker must not be changeable mid-flight: a switch after the request is already away
++    // would show a profile the in-flight draft was never generated from.
++    var modelSel = $('p-model');
++    if (modelSel) modelSel.disabled = on;
+   }
+ 
+   $('b-generate').addEventListener('click', generate);
+diff --git a/workers/change_detail.md b/workers/change_detail.md
+new file mode 100644
+index 0000000..7a4523e
+--- /dev/null
++++ b/workers/change_detail.md
+@@ -0,0 +1,154 @@
++# NightWorker Repair — Iteration 2 — Change Detail Log
++
++Worker: `claude-main` (sonnet)
++Brief: repair the model-picker WARNING raised by Codex Review in iteration 1.
++
++## Path-prefix note (assumption)
++
++`write_scope` in the brief lists paths relative to
++`tasks/AI_Powered_PPT/src/aippt/...`, but the paths as written
++(`src/aippt/canvas/static/editor.js`, `src/aippt/canvas/app.py`,
++`src/aippt/adapters/ai_adapter.py`) do not exist directly under
++`target_repo`. This matches a known recurring bug where a brief staged on a
++repo-rooted `stg.*` drops the `tasks/AI_Powered_PPT/` prefix from
++`write_scope`. The actual files live at:
++
++- `tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js`
++- `tasks/AI_Powered_PPT/src/aippt/canvas/app.py`
++- `tasks/AI_Powered_PPT/src/aippt/adapters/ai_adapter.py`
++
++I treated the write_scope as referring to these actual files (the only
++sensible resolution — the literal paths don't exist), edited only inside
++that set, and am flagging the mismatch here rather than silently
++"correcting" the brief.
++
++## Original Codex Review WARNING being fixed
++
++> The request correctly sends the selected profile ID, and the server
++> independently validates it against `MODEL_PROFILES`. Issue: after
++> generation, the UI status still displays `CONTEXT.model`, which is the
++> server default profile—not the profile sent in this request. Selecting
++> Opus or a GPT profile can therefore report "from Claude Sonnet 5." The
++> model picker also remains enabled while a request is in flight.
++
++## Changes made
++
++### `src/aippt/canvas/static/editor.js` (only file actually edited with code changes)
++
++1. **Send the selected profile to the backend** (`generate()`):
++   - Added `var modelSel = $('p-model'); var selectedModel = modelSel ? modelSel.value : (CONTEXT && CONTEXT.default_model);`
++     read right before the fetch, so the value is captured once, at request
++     time, and used consistently for both the POST body and the later
++     status line (the picker gets disabled a few lines later, so reading it
++     again after the await would still be safe, but capturing it up front
++     removes any doubt).
++   - Changed the POST body from `{ prompt: prompt }` to
++     `{ prompt: prompt, model: selectedModel }`. The server's
++     `_resolve_profile()` (app.py) already validates this against
++     `MODEL_PROFILES` and 422s on anything else — confirmed by reading
++     `app.py`, unchanged, per the brief's "do not modify backend files
++     unless absolutely necessary."
++
++2. **Disable the picker while a request is in flight** (`setBusy()`):
++   - Added `var modelSel = $('p-model'); if (modelSel) modelSel.disabled = on;`
++     alongside the existing `b-generate` / `p-prompt` disables, so
++     `#p-model` is locked for the same duration as the Generate button and
++     the prompt textarea, and re-enabled in the same `finally` block
++     `generate()` already had.
++
++3. **Report the profile that was actually used, not the server default**
++   (`generate()` status line, plus a new small helper):
++   - Added `modelLabel(id)`, which looks up `id` in `CONTEXT.models` (an
++     array of `{id, label, thinking}` already published by `/api/context`
++     — see `app.py:api_context()`, unchanged) and returns the matching
++     `label`, falling back to the raw id (or `'the model'`) if `CONTEXT` or
++     the match is unavailable.
++   - Changed the success status from
++     `'...from ' + (CONTEXT.model || 'the model') + '.'` to
++     `'...from ' + modelLabel(selectedModel) + '.'` — this now names
++     whatever profile the dropdown held when Generate was pressed (e.g.
++     "Claude Opus" or "GPT 5.6 Terra"), not `CONTEXT.model`, which
++     `api_context()`'s own docstring documents as always the *default*
++     profile's label in live mode, regardless of what a given request
++     asked for.
++
++No other function in `editor.js` was touched. Nothing here reads any
++"measured geometry" DOM API — the file's Prime Directive / Gate 1 ban
++(`toModel()`'s comment block, top of file) is unaffected.
++
++### `src/aippt/canvas/app.py` — **not modified**
++
++Re-read `_resolve_profile()`, `MODEL_PROFILES`, `api_context()`,
++`api_generate()`, `generate_live()`, `_relaxed_live_schema()` and
++`_finalize_live_ir()`. Findings:
++
++- `_resolve_profile()` already validates `body.get("model")` by strict
++  membership in `MODEL_PROFILES` before any subprocess ever runs (confirms
++  the brief's "already correct" note — left untouched).
++- `/api/context` already publishes `models: [{id, label, thinking}, ...]`
++  and `default_model`, which is exactly what the frontend needed to
++  resolve a profile id to its human label without hardcoding a second copy
++  of the profile table in JS. No backend change was needed to support the
++  frontend fix.
++- **Requirement 3** ("ensure the JSON returned by `generate_live()`
++  adheres to the `canvas-ir/1` schema") was already satisfied by existing
++  code and required no change:
++  - `CliWorkerClient.complete_json()` (`ai_adapter.py`) already runs
++    `_validate_against_schema(obj, schema)` against `_relaxed_live_schema()`
++    (canvas/schema.json with only `target` dropped from top-level
++    `required`, since the model can't know the live pin's SHA) before
++    ever returning to `generate_live()`.
++  - `_finalize_live_ir()` then force-overwrites `schema` (to the literal
++    `"canvas-ir/1"`), `canvas`, and `target` from the live pin — the three
++    fields the model is never trusted to author — and patches two
++    commonly-omitted-by-models required fields (`connector.arrow` ->
++    `"none"`, `run.color` -> `"#1A1A1A"`) before returning.
++  - `api_generate()` then runs the *full*, strict `canvas/schema.json`
++    (via `validate(ir)`) a second time on the finalized IR before it ever
++    reaches the client, mapping any residual violation to a 502
++    (`{"error": "model", ...}`) rather than serving a non-conformant
++    payload.
++  - i.e., there are already two schema gates (relaxed pre-finalize,
++    strict post-finalize) around every live generation. I did not find a
++    gap, so per the brief I left this file untouched rather than make a
++    speculative change.
++
++### `src/aippt/adapters/ai_adapter.py` — **not modified**
++
++Read `complete_json()`, `_extract_json_object()`, and
++`_validate_against_schema()`. `complete_json()` already hard-validates the
++CLI's JSON output against the schema it was given
++(`jsonschema.validators.validator_for(schema)(schema).validate(obj)`) and
++raises `CliWorkerSchemaError` (-> `LiveGenerateError` in `app.py`) rather
++than returning malformed JSON. No changes needed or made.
++
++## Verification performed
++
++- Read `index.html`'s `#p-model` markup to confirm the `<option value="...">`
++  set (`sonnet`, `opus`, `gpt-5.6-terra`, `gpt-5.6-sol`) matches
++  `MODEL_PROFILES`'s keys in `app.py` exactly, so `selectedModel` is
++  always a value `_resolve_profile()` will accept.
++- Traced `CONTEXT.models` from `/api/context`'s response shape in
++  `app.py` (`api_context()`) through to `modelLabel()`'s lookup in
++  `editor.js`, confirming the `{id, label}` shape lines up field-for-field.
++- Could not run the project's test suite (`tests/canvas/test_editor_source.py`,
++  `test_app.py` etc., referenced in `editor.js`'s own header comment) —
++  no `tests/` directory is present under this staged copy of the repo, so
++  Gate 1 and friends could not be executed here. Manually confirmed the
++  new code touches no banned "measured geometry" API (no
++  `getBoundingClientRect`, `offset*`, `client*`, `scroll*`, or CSS
++  read-back) and no percentage widths.
++- No frontend dev server was started to click through the UI in a browser
++  (out of scope for a headless worker pass); the change is a small,
++  narrowly-scoped read of an existing, already-populated `<select>` plus a
++  lookup against an already-published `/api/context` field, so the risk
++  surface is small, but this is a caveat, not a substitute for a manual
++  click-through.
++
++## Caveats / assumptions
++
++- Assumed the `write_scope` prefix mismatch described above and edited the
++  files that actually exist under `target_repo` rather than refusing the
++  task or creating new files at the literal (non-existent) paths.
++- Did not touch `app.py` or `ai_adapter.py` beyond reading them, per the
++  brief's explicit instruction and because no gap was found in either.

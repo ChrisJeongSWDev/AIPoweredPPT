@@ -1,0 +1,158 @@
+diff --git a/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js b/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js
+index babfc37..c5dbe02 100644
+--- a/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js
++++ b/tasks/AI_Powered_PPT/src/aippt/canvas/static/editor.js
+@@ -2506,10 +2506,19 @@
+     setBusy(true);
+     setStatus('Generating…');
+     try {
++      // #p-model (index.html) is the server's own MODEL_PROFILES allowlist, echoed back into the
++      // request -- the same "server is the authority" argument loadContext() already makes for the
++      // canvas dimensions. An absent/empty value falls back to the server's default profile rather
++      // than sending an empty string it would have to reject.
++      var modelEl = $('p-model');
++      var selectedModel = modelEl && modelEl.value ? modelEl.value : undefined;
++      var payload = { prompt: prompt };
++      if (selectedModel) payload.model = selectedModel;
++
+       var res = await fetch('/api/generate', {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+-        body: JSON.stringify({ prompt: prompt }),
++        body: JSON.stringify(payload),
+       });
+       if (!res.ok) {
+         var data = {};
+diff --git a/workers/change_detail.md b/workers/change_detail.md
+new file mode 100644
+index 0000000..6232fb1
+--- /dev/null
++++ b/workers/change_detail.md
+@@ -0,0 +1,127 @@
++# NightWorker Repair — Change Detail Log
++
++Worker: `claude-main` (sonnet). Scope: `src/aippt/canvas/static/editor.js`,
++`src/aippt/canvas/app.py`, `src/aippt/adapters/ai_adapter.py`.
++
++## Summary
++
++Before editing, all three in-scope files were read in full and checked against every
++requirement in the brief. Two of the three requirement groups (backend model
++resolution/worker execution, and the canvas-ir/1 slide-generation handoff) were
++**already implemented** in `app.py` and `ai_adapter.py`. The one real gap was in
++`editor.js`: the `#p-model` dropdown existed in `index.html` but nothing read its
++value or sent it to the backend. That gap is now fixed. `app.py` and
++`ai_adapter.py` were left unmodified — see the per-requirement audit below for the
++evidence.
++
++## 1. Frontend → Backend trigger (`editor.js`) — CHANGED
++
++`generate()` (the `#b-generate` click handler) previously POSTed only
++`{ "prompt": prompt }` to `/api/generate`, silently discarding whatever the user
++picked in `#p-model`. Edited the function (around what is now line 2495) to:
++
++```js
++var modelEl = $('p-model');
++var selectedModel = modelEl && modelEl.value ? modelEl.value : undefined;
++var payload = { prompt: prompt };
++if (selectedModel) payload.model = selectedModel;
++
++var res = await fetch('/api/generate', {
++  method: 'POST',
++  headers: { 'Content-Type': 'application/json' },
++  body: JSON.stringify(payload),
++});
++```
++
++- `model` is included only when the dropdown resolves to a truthy value, so a
++  missing/blank select still sends the legacy `{"prompt": "..."}" shape the
++  backend's `_resolve_profile()` already treats as "use the default profile" —
++  no new failure mode for an edge case that shouldn't happen with a `<select>`
++  that always has a selected option, but cheap to keep intentional rather than
++  send `"model": undefined`/`""`.
++- `$('p-model')` resolves via the existing `$ = function(id){ return
++  document.getElementById(id); }` helper (editor.js line 1534), matching every
++  other lookup in this file (`$('p-prompt')`, `$('b-generate')`, etc.).
++- **Generate button disabled during generation**: already correct before this
++  change and untouched — `setBusy(true)` (called immediately before the fetch)
++  sets `$('b-generate').disabled = true` and `aria-busy`, and `setBusy(false)`
++  runs in the `finally` block so the button re-enables on every exit path
++  (success, refusal, network failure). No edit was needed for this bullet.
++
++## 2. Worker execution & JSON delivery (`app.py`, `ai_adapter.py`) — NO CHANGE, verified already correct
++
++Audited against each bullet in the brief:
++
++- **"`model` field received and resolved using `_resolve_profile()`"**: already
++  true — `api_generate()` calls `profile, err = _resolve_profile(body.get("model"))`
++  (app.py ~line 380), which validates against `MODEL_PROFILES` and 422s on an
++  unknown id. Previously this always resolved to the default because the
++  frontend never sent `model` (see §1) — the code path was correct but dead
++  until the frontend fix above.
++- **"`generate_live()` passes the correct profile to `CliWorkerClient`"**:
++  already true — `generate_live(prompt, pin, profile=profile, images=images)` is
++  called with the resolved profile, and inside it
++  `cfg = MODEL_PROFILES[profile]; client = CliWorkerClient(track="b",
++  backend=cfg["backend"], model=cfg["model"], timeout_s=900)` (app.py
++  ~line 862-863).
++- **"if `generate_live()` uses `complete_json` on a single massive schema
++  causing a 300s timeout, refactor / ensure correct backend+model"**: the
++  `timeout_s=900` above is already well above the CliWorkerClient default of
++  300s, and `backend`/`model` are already sourced from the profile as above —
++  the specific 300s-timeout condition described in the brief does not exist in
++  the current code, so no refactor was made. (A genuine two-stage
++  outline+fill split, like `generate_deck()` uses elsewhere in
++  `ai_adapter.py`, would be a much larger architectural change with no
++  evidence in this repo that it's needed for the single-slide canvas editor
++  path — flagging it here as a possible future improvement rather than
++  guessing at a rewrite.)
++- **"image attachments passed through if possible, or gracefully ignored"**:
++  already true and already documented in-place — `_decode_images()` validates
++  count/size/MIME and decodes base64 in `api_generate()`, but `generate_live()`
++  explicitly does `del images  # accepted for signature/contract compatibility
++  only` (app.py ~line 860) because `CliWorkerClient.complete_json()` is a
++  text-only seam with no attachment parameter. This is the "gracefully
++  ignored, without breaking the CLI integration" behavior the brief asks for.
++  (Also note: `index.html`'s `#ai-attachments` container is present but
++  documented as unpopulated by any current JS — "no JS in this phase
++  populates it" — so no image ever reaches `/api/generate` today regardless.)
++
++No lines in `app.py` or `ai_adapter.py` were changed.
++
++## 3. Slide generation workflow (schema / `loadIR()` handoff) — NO CHANGE, verified already correct
++
++- `generate_live()` builds its result via `_finalize_live_ir()`, which force-sets
++  `ir["schema"] = "canvas-ir/1"`, `ir["canvas"]`, and `ir["target"]` from the
++  live template pin (never from the model), then `api_generate()` runs the
++  assembled deck through the same `validate(ir)` the export path uses before
++  ever returning it to the browser (app.py ~line 433). The mock path
++  (`mock_ir()`) is validated the same way before being served.
++- On the frontend, `generate()` hands the response straight to `loadIR(ir)`
++  (editor.js, same function edited in §1) — the single door into the stage,
++  which judges every element with the same `illegalReason()` a hand-authored
++  file or the undo stack goes through. This call was not touched; only the
++  request body above it changed.
++- Generate → Export handoff (UI Canvas JSON → Python `render()` → PPTX) is
++  unchanged: `/api/export` (`app.py`) still calls `render(ir)` on whatever
++  `serialize()`/`toIR()` in `editor.js` produces from the stage, which is the
++  same canvas-ir/1 shape `loadIR()` accepted on the way in. Nothing in this
++  brief's scope touches `render_canvas.py`, `serialize()`/`toIR()`, or
++  `validate.py`, so this round trip was verified by inspection, not modified.
++
++## Assumptions / caveats
++
++- No test suite exists under this staging clone's `tasks/AI_Powered_PPT/`
++  (only `src/` is present here — `ai_adapter.py`'s own docstring notes that
++  `prompts/`/`reference/` and, by the same convention, `tests/` are excluded
++  from a staging clone). The `editor.js` change above could not be run against
++  `tests/canvas/test_editor_source.py` / `test_app.py` from this worker; it was
++  verified by static reading of the surrounding code (the `$()` helper, the
++  `setBusy()`/`finally` lifecycle, and `_resolve_profile()`'s contract) instead.
++- Left `app.py` and `ai_adapter.py` untouched because, after a full read of
++  both files, every requirement the brief lists for them already matched the
++  code on disk. Editing working code to "match" a brief that describes a bug
++  already fixed would be a change with no behavioral purpose and a needless
++  diff risk — flagging that explicitly here rather than silently doing nothing
++  and leaving no record.
++- Did not touch `index.html` (the `#p-model` markup) or `render_canvas.py` /
++  `validate.py` / `schema.json` — none of these are in `write_scope`.

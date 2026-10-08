@@ -1,0 +1,17 @@
+{
+  "payload": {
+    "candidate_id": "cand-005",
+    "candidate_payload_sha256": "6b38e51c1711480642c2d222e919a4c25579249550db250c845e6fe2ac88fd66",
+    "confirmed_at": "2026-07-20T11:31:20+09:00",
+    "decision_id": "decision-005",
+    "decision_source": "operator_acknowledged_via_orchestrator",
+    "phase_id": "phase6_repair2",
+    "requested_reviewer": "codex-critic",
+    "requested_worker": "claude-main",
+    "requested_worker_model": "sonnet",
+    "revision": 5,
+    "session_id": "AI_Powered_PPT"
+  },
+  "payload_sha256": "28bd3db6647372a95e0295ff93db99522067734f41e7854e1654a8aed58741d2",
+  "schema_version": 1
+}

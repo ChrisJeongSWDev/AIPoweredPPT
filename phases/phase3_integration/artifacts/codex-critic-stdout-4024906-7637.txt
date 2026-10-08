@@ -1,0 +1,5 @@
+VERDICT: BLOCK
+
+`_check_slide_budget()` only compares each block’s total character count to `max_bullets * max_chars_per_bullet`. It misses per-item line rounding: e.g., four 11-character bullets in a 6×10-character placeholder total 44 and pass, but each wraps to two lines (8 lines total), so it overflows. This bypasses the repair loop despite the manifest’s “a bullet that wraps consumes another slot” rule.
+
+VERDICT: BLOCK

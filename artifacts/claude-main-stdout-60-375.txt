@@ -1,0 +1,12 @@
+All three source files under `.editwork/tasks/AI_Powered_PPT/src/aippt/canvas/` are updated, and the change-detail doc is written to `tasks/AI_Powered_PPT/phase6_backend_change_detail.md`.
+
+Summary of what was done, per the brief:
+
+1. **`style.py`** — added `_split_alpha()`/`apply_alpha()` to parse an `#RRGGBBAA` trailing alpha byte and inject `<a:alpha val="...">` into the DrawingML color element (`a:srgbClr`), wired into both `apply_fill()` and `apply_line()`. Note: I placed `<a:alpha>` inside the `a:srgbClr` element rather than as a direct child of `a:solidFill` as the brief literally described — that's the ECMA-376-correct location; appending it directly under `solidFill` is well-formed XML that PowerPoint silently ignores.
+2. **`app.py`** — bumped `MAX_BODY_BYTES` to 50MB and rewrote the JSON `pptx`-export endpoint to accept `multipart/form-data`, reading IR JSON from a form field `"ir"` and saving uploaded media to a `tempfile.mkdtemp()` directory, passed to `render()` as `media_map`, cleaned up in a `finally` block.
+3. **`render_canvas.py`** — `render()` now accepts `media_map`, threaded through to new `draw_image`/`draw_video` functions that call `add_picture`/`add_movie` per the brief.
+
+Key caveats worth your attention (full detail in the doc):
+- No endpoint named `/api/download` existed before — I renamed the existing `/api/export` to it, since that's the only route matching the described shape. **This leaves the frontend (`editor.js`, calling `/api/export` with JSON) broken** until a later phase updates it — it wasn't in `write_scope`.
+- `python-multipart` isn't currently declared in `pyproject.toml`'s `[editor]` extra, and it's required for `Request.form()` to work — `pyproject.toml` wasn't in scope to edit.
+- Command execution (Bash/PowerShell) was unavailable in this session, so the edits are verified by careful manual re-reading rather than a syntax/test run.

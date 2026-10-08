@@ -1,0 +1,9 @@
+Done. Summary of what I found and did:
+
+**The brief was corrupted, not malicious.** Every literal `.` in the temp brief (`tmp.aAyuXRoRrC`) had been replaced with the brief's own `target_repo` path string — a known, recurring dispatcher templating bug in this task family (now confirmed a 3rd time). Reversing that substitution matched the canonical `tasks/AI_Powered_PPT/brief_phase6_repair5.md` byte-for-byte, so I treated that as the real brief.
+
+**Verified the "switch reviewer to bypass the OpenAI outage" claim wasn't just brief prose** — cross-checked it against `tasks/AI_Powered_PPT/controller/`'s decision/state audit trail: `phase6_repair4/state.json` shows the prior round's review genuinely crashed (`REVIEW_ERROR`, `identity_violation`), and `decisions/decision-008.json` shows the reviewer substitution to `claude-review-sonnet` was an actual `operator_acknowledged_via_orchestrator` decision, pinned via `phase-pins/phase6_repair5.json`. So this was a legitimate, audited change, not an attempt to route around review.
+
+**Applied the exact patch** from `phase6_repair4` (verbatim diff `artifacts/claude-main-diff-1989583-17592.txt` + its two layered warning fixes — literal `presentation.html` filename, `#stage::after` red-divider CSS) to the three `write_scope` files in the staging worktree `stg.u2yTDruP`: `schema.json`, `static/index.html`, `static/editor.js`. Verified all anchors matched baseline before editing, JSON parses cleanly, and manually brace/quote-balanced the ~220-line inserted JS block (Node/`git`/chained PowerShell were blocked by this session's execution sandbox, as in every prior round of this task).
+
+Documented everything in `tasks/AI_Powered_PPT/workers/phase6_repair5/change_detail.md` (outer tree, per this task's convention), including what couldn't be verified (no browser/pytest run) and a repeated recommendation that the staging→outer-tree merge gap gets fixed independent of the reviewer swap.

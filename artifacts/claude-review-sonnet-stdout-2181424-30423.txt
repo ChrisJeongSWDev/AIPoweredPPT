@@ -1,0 +1,18 @@
+VERDICT: WARNING
+
+Audited `claude-main-diff-2181424-259.txt` (schema.json / index.html / editor.js — matches write_scope exactly, no other files touched) by reading the actual post-diff file state at the worktree (`stg.BLj9uma7`), not just the patch text, and cross-checking against the phase6 change-detail history in the outer tree.
+
+**Confirmed correct / no security blockers:**
+- The two previously-BLOCKed issues (session-only `blob:` URL baked into exported media; unsanitized `link` reachable as `href="javascript:..."`) are properly fixed: `mediaDataURL()`/`fileToDataURL()` re-encode media as `data:` URLs, and `sanitizeLink()` is a fail-closed allowlist (`^#`, or `^(https?|mailto):`), with the href value additionally passed through `esc()` (quote-escaped, so no attribute-breakout even via a crafted `#"..."` fragment). Anchor also correctly uses `target="_blank" rel="noopener noreferrer"`.
+- The later-round fix for stored XSS via pasted `contenteditable` markup is present and correctly wired: `exportElementHTML()` never serializes the live node's raw `innerHTML`; it rebuilds `.txt .body` from `normalizeText()` + `paragraphsToHTML()` (a fixed, escaped tag set), and the title uses `esc(titleString())` rather than `titleField.innerHTML`.
+- `warn()` uses `textContent` only, so the unsanitized `s.link` value echoed into the "link dropped" warning message can't inject markup.
+- `schema.json`: `$defs.link` added and referenced only from `rect`/`ellipse`/`triangle`/`textbox`, `additionalProperties: false` preserved, JSON structurally sound (hand-verified brace/bracket nesting for the full `$defs` block).
+- `editor.js` state plumbing (`DEFAULTS`, `read`/`write`, `toIR`, `stateFromIR`, `syncProps`, `txControl`) and `index.html`'s new button/section are all consistently scoped to the "shape" category (`cat = connector|media|shape`), matching the schema scoping. `render_canvas.py` confirmed to not reference `link` at all — it's correctly HTML-export-only, as the schema description states.
+
+**Issue found (not previously flagged in any prior repair's change_detail):**
+- `EXPORT_CSS`'s `.el a{color:inherit;text-decoration:none}` (editor.js ~line 2126) is a dead rule: the selector matches an `<a>` *nested inside* `.el`, but the actual generated markup is the reverse — `exportElementHTML()` wraps `clone.outerHTML` (the `.el`) *inside* the `<a>` (`'<a href="...">' + clone.outerHTML + '</a>'`). So this rule never matches anything in the exported document. In practice the visual damage is limited (every text run and SVG shape already sets an explicit inline `color`/`fill`, and `text-decoration` doesn't propagate to absolutely-positioned descendants per spec), but the rule doesn't do what it's clearly meant to do and is worth fixing (e.g. plain `a{color:inherit;text-decoration:none}`) or removing.
+- Minor robustness gap: `$('b-export-html').addEventListener('click', function () { exportHTML(); })` has no `.catch()`; if `fileToDataURL()`'s `FileReader` errors on a media file mid-export, the rejected promise is unhandled and the export fails silently with no `warn()` shown to the user (every other failure path in this file does surface a warning).
+
+Neither issue is a security or scope problem; both are cosmetic/robustness nits in new code, not present in prior review rounds' findings.
+
+VERDICT: WARNING

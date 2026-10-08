@@ -1,0 +1,10 @@
+The MEMORY.md index line for this file already describes it generically enough that no update is needed there.
+
+## Summary
+
+Applied the NightWorker repair brief to the correctly-prefixed files in the staged worktree (`stg.XPlRuR1U/tasks/AI_Powered_PPT/...` — the temp brief's `write_scope`/`change_detail_path` had dropped the `tasks/AI_Powered_PPT/` prefix, a recurring dispatcher bug documented in memory):
+
+- **`editor.js`** (the only real gap): `generate()` now reads `#p-model`'s value and includes it as `model` in the `/api/generate` POST body. Generate-button-disabled-during-generation was already correct.
+- **`app.py` / `ai_adapter.py`**: no changes — full audit confirmed `_resolve_profile()`, profile→`CliWorkerClient` wiring (already using `timeout_s=900`, not the 300s default), image graceful-drop, and the `canvas-ir/1` schema/`loadIR()` handoff were all already correctly implemented.
+
+Wrote a detailed Change Detail Log to `stg.XPlRuR1U/tasks/AI_Powered_PPT/workers/change_detail.md`, including a flagged caveat: this change makes `tests/canvas/test_app.py::test_generate_posts_the_prompt_to_the_mock_endpoint` stale (it asserts the old literal `{prompt: prompt}` payload), which is expected per the brief's explicit contract change, not a regression — migrating that test is outside this brief's write_scope.

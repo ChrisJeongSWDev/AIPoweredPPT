@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <!-- utf-8, not optional: the stage carries Korean text and so does the title field. -->
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Canvas Editor — canvas-ir/1</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<!-- The warnings banner. The Century Gothic warning, the server-unreachable banner and the
+     backend's numbered violation list all land here. Loud, and never a console.warn nobody reads. -->
+<div id="warnings" role="alert" aria-live="assertive" hidden></div>
+
+<div id="app">
+
+  <aside id="toolbar">
+    <section class="group">
+      <h2>Tool</h2>
+      <div class="tools" role="radiogroup" aria-label="Tool">
+        <button type="button" class="tool" data-tool="select"    aria-pressed="true">Select</button>
+        <button type="button" class="tool" data-tool="rect"      aria-pressed="false">Rect</button>
+        <button type="button" class="tool" data-tool="ellipse"   aria-pressed="false">Ellipse</button>
+        <button type="button" class="tool" data-tool="triangle"  aria-pressed="false">Triangle</button>
+        <button type="button" class="tool" data-tool="textbox"   aria-pressed="false">Textbox</button>
+        <button type="button" class="tool" data-tool="connector" aria-pressed="false">Connector</button>
+      </div>
+    </section>
+
+    <!-- History lives HERE and not in the property panel, because it is the one control that must
+         work with NOTHING selected -- which is exactly the state the property panel is hidden in.
+         Undo after a delete is the whole point, and after a delete there is no selection. -->
+    <section class="group">
+      <h2>History</h2>
+      <div class="row">
+        <button type="button" id="b-undo" title="Undo (Ctrl+Z)" disabled>Undo</button>
+        <button type="button" id="b-redo" title="Redo (Ctrl+Y or Ctrl+Shift+Z)" disabled>Redo</button>
+      </div>
+    </section>
+
+    <section class="group">
+      <h2>View</h2>
+      <label>Zoom
+        <span class="pair">
+          <input type="range" id="p-zoom" min="25" max="200" step="5" value="100">
+          <output id="p-zoom-out">100%</output>
+        </span>
+      </label>
+    </section>
+
+    <!-- Phase 6: image/video insertion. The file itself never touches the server until Export --
+         it lives as a File object in window.uploadedMedia (editor.js) and the DOM preview is an
+         object URL. Geometrically these are rects (x/y/w/h/rotation is carried but rotation is
+         never drawn by render_canvas.draw_image/draw_video, so the rotate handle is withheld). -->
+    <section class="group" id="media-add">
+      <h2>Media</h2>
+      <div class="row">
+        <button type="button" id="b-add-image">Add Image</button>
+        <button type="button" id="b-add-video">Add Video</button>
+      </div>
+      <input type="file" id="f-image" accept="image/*" hidden>
+      <input type="file" id="f-video" accept="video/*" hidden>
+    </section>
+
+    <section class="group">
+      <h2>JSON & Data</h2>
+      <div class="action-stack">
+        <button type="button" id="b-view-json" class="sidebar-action sidebar-action--featured">View & Copy JSON 📝</button>
+        <div class="action-grid-2">
+          <button type="button" id="b-json" class="sidebar-action">Download JSON</button>
+          <button type="button" id="b-load" class="sidebar-action">Load JSON</button>
+        </div>
+        <button type="button" id="b-paste" class="sidebar-action">Paste Gem JSON</button>
+      </div>
+      <input type="file" id="f-load" accept="application/json,.json" hidden>
+    </section>
+
+    <section class="group">
+      <h2>Export Deck</h2>
+      <div class="action-grid-2">
+        <button type="button" id="b-export" class="sidebar-action sidebar-action--primary">Export PPT</button>
+        <button type="button" id="b-export-html" class="sidebar-action sidebar-action--primary">Download HTML</button>
+      </div>
+      <button type="button" id="b-append-slide" class="sidebar-action" style="margin-top: 6px;">Add Slide To (Append)</button>
+    </section>
+
+    <section class="group" id="designs">
+      <h2>Server Templates</h2>
+      <div class="action-stack">
+        <label class="stacked">Name
+          <input type="text" id="p-design-name" placeholder="e.g. Q3 Deck" maxlength="80">
+        </label>
+        <button type="button" id="b-save-design" class="sidebar-action sidebar-action--primary">Save</button>
+        <label class="stacked">Templates
+          <select id="p-designs">
+            <option value="">(none saved)</option>
+          </select>
+        </label>
+        <button type="button" id="b-load-design" class="sidebar-action">Load</button>
+        <button type="button" id="b-delete-design" class="sidebar-action sidebar-action--danger">Delete</button>
+      </div>
+    </section>
+
+    <section class="group" id="local-dirs">
+      <h2>Local Save Directories</h2>
+      <div class="action-stack">
+        <label class="stacked">JSON Directory (Dir 1)
+          <button type="button" id="b-set-dir-json" class="sidebar-action">Set JSON Dir</button>
+          <span id="label-dir-json" style="font-size: 11px; color: #6b727c; word-break: break-all; margin-top: 4px;">(Not set)</span>
+        </label>
+        <label class="stacked" style="margin-top: 8px;">PPT & HTML Directory (Dir 2)
+          <button type="button" id="b-set-dir-export" class="sidebar-action">Set Export Dir</button>
+          <span id="label-dir-export" style="font-size: 11px; color: #6b727c; word-break: break-all; margin-top: 4px;">(Not set)</span>
+        </label>
+        <label class="stacked" style="margin-top: 8px;">Target PPT File (Dir 3)
+          <button type="button" id="b-set-dir-target" class="sidebar-action">Set Target PPT</button>
+          <span id="label-dir-target" style="font-size: 11px; color: #6b727c; word-break: break-all; margin-top: 4px;">(Not set)</span>
+        </label>
+      </div>
+    </section>
+  </aside>
+
+  <main id="stage-wrap" style="--zoom: 1">
+    <!-- `transform: scale()` does not affect layout, so #stage would still reserve its unscaled
+         960x540 and the scrollbars would lie. #stage-sizer reserves the SCALED box -- derived from
+         the same --zoom the JS writes, never measured back out of the DOM. -->
+    <div id="stage-sizer">
+    <div id="stage" style="--zoom: 1">
+      <!-- #stage::before = the TITLE_LOCKED outline.  #stage::after = the red divider line.
+           They are CSS PSEUDO-ELEMENTS: they have no DOM node, so `:scope > .el` structurally
+           cannot pick them up and the serializer cannot emit them even by accident (critic rule 6).
+           The layout already draws the real gradient divider; if the exporter emitted this one too,
+           the deck would ship two stacked dividers. Do not "improve" these into real divs. -->
+
+      <!-- Deliberately NOT `.el`. This is the `title` STRING field (-> inherited placeholder idx
+           10), parked over TITLE_LOCKED so the user sees it where it will land. Not draggable, not
+           resizable, no handles, no data-type -- and structurally unserializable, as above. -->
+      <div id="title-field" contenteditable="true" spellcheck="false"
+           data-placeholder="제목을 입력하세요 / Title"></div>
+
+      <!-- user elements are appended here, class="el" -->
+    </div>
+    </div>
+  </main>
+
+  <!-- THE PROPERTY PANEL.
+       It holds NO STATE. Every value in it is written FROM the selected element's dataset by
+       syncProps() and read back only as an edit, which is why hiding it is safe: there is nothing in
+       here to lose. It is `hidden` until something is selected -- in Phase 1B these same controls sat
+       in the left toolbar and were live and inert at the same time, which is a panel that lies.
+
+       data-for="shape" / data-for="connector" is the scoping hook. syncProps() hides whichever does
+       not match the selection, because the IR gives a connector no fill, no text and no rotation:
+       offering those controls would be offering a property that cannot be serialized, and the JS
+       would silently eat the edit. There is no data-for="both" -- absence means "both". -->
+  <aside id="props" hidden aria-label="Properties">
+    <header id="p-head">
+      <h2 id="p-what">—</h2>
+      <code id="p-which"></code>
+    </header>
+
+    <section class="group" data-for="shape">
+      <h2>Fill</h2>
+      <label>Colour
+        <span class="pair">
+          <input type="color" id="p-fill" value="#FF0032">
+          <button type="button" id="p-fill-none" title="No fill (&lt;a:noFill/&gt;)">none</button>
+        </span>
+      </label>
+      <!-- Phase 6: alpha. The schema (#RRGGBB + optional AA byte) already carries this -- the
+           slider only ever writes the trailing hex pair onto the fill colour string toIR() emits;
+           nothing else about the fill contract changes. -->
+      <label>Opacity
+        <span class="pair">
+          <input type="range" id="p-fill-alpha" min="0" max="100" step="1" value="100">
+          <output id="p-fill-alpha-out">100%</output>
+        </span>
+      </label>
+    </section>
+
+    <!-- Unscoped-by-type-shape-vs-connector (data-for="shape connector"): a shape's outline and a
+         connector's LINE are the same control. A connector IS a line, so its colour belongs here
+         and not on the text control. It is scoped AWAY from media (image/video): render_canvas's
+         draw_image()/draw_video() never call apply_line(), so a stroke set here on a picture or a
+         video would be silently ignored by the renderer -- offering it would be offering a control
+         that lies. -->
+    <section class="group" data-for="shape connector">
+      <h2>Line</h2>
+      <label>Colour
+        <span class="pair">
+          <input type="color" id="p-stroke" value="#FFFFFF">
+          <!-- ...but "no line" is refused for a connector: a line is all it is. -->
+          <button type="button" id="p-stroke-none" data-for="shape"
+                  title="No line — NOT width 0, which is a hairline">none</button>
+        </span>
+      </label>
+      <label>Width
+        <input type="number" id="p-stroke-w" min="0" max="24" step="0.5" value="1">
+      </label>
+      <!-- Phase 6: a one-click preset over the SAME stroke fields the controls above already
+           write -- not a second IR property. The schema has no `border` key
+           (additionalProperties: false on every element def), so a literal "border" field would be
+           a 422 in waiting; this checkbox is sugar over stroke.color/stroke.width. -->
+      <label data-for="shape">1pt Border
+        <input type="checkbox" id="p-border-1pt">
+      </label>
+    </section>
+
+    <section class="group" data-for="shape">
+      <h2>Text</h2>
+      <label>Colour  <input type="color" id="p-color" value="#FFFFFF"></label>
+      <label>Size    <input type="number" id="p-size" min="1" max="200" step="1" value="14"></label>
+      <!-- run.bold / run.italic -- the two IR properties Phase 1B never exposed. They are element-
+           level controls over a per-run property: ON folds into every run on the way out, OFF also
+           strips <b>/<i> out of the body. See setTextFlag() in editor.js. -->
+      <div class="row">
+        <button type="button" id="p-bold"   aria-pressed="false" title="Bold — run.bold"><b>B</b></button>
+        <button type="button" id="p-italic" aria-pressed="false" title="Italic — run.italic"><i>I</i></button>
+      </div>
+      <label>Align
+        <select id="p-align">
+          <option value="LEFT">Left</option>
+          <option value="CENTER" selected>Center</option>
+          <option value="RIGHT">Right</option>
+        </select>
+      </label>
+      <label>V-align
+        <select id="p-valign">
+          <option value="TOP">Top</option>
+          <option value="MIDDLE" selected>Middle</option>
+          <option value="BOTTOM">Bottom</option>
+        </select>
+      </label>
+    </section>
+
+    <!-- Phase 6 repair: an optional hyperlink, shape/textbox only (schema.json's $defs.link). The
+         export path allowlists the scheme before ever emitting it -- see sanitizeLink() in
+         editor.js -- so a value here is never trusted as pre-sanitized just because the <input
+         type="url"> accepted it; a browser's own URL validation is a UX nicety, not a security
+         boundary. -->
+    <section class="group" data-for="shape">
+      <h2>Link</h2>
+      <label>URL
+        <input type="url" id="p-link" placeholder="https://…">
+      </label>
+    </section>
+
+    <section class="group" data-for="connector">
+      <h2>Connector</h2>
+      <label>Kind
+        <select id="p-kind">
+          <!-- straight is the default: our elbow polyline is an approximation of PowerPoint's
+               auto-routed MSO_CONNECTOR.ELBOW, and it is the one knowingly-inexact preview. -->
+          <option value="straight" selected>Straight</option>
+          <option value="elbow">Elbow (approximate)</option>
+        </select>
+      </label>
+      <label>Arrow
+        <select id="p-arrow">
+          <option value="none">None</option>
+          <option value="start">Start</option>
+          <option value="end" selected>End</option>
+          <option value="both">Both</option>
+        </select>
+      </label>
+    </section>
+
+    <section class="group" id="arrange-group">
+      <h2>Arrange</h2>
+      <!-- A connector has no `rotation` in the IR: its two endpoints already say where it points.
+           A media element (image/video) has none EITHER in practice: render_canvas's
+           draw_image()/draw_video() never apply xfrm/@rot, so exposing the control would preview a
+           rotation the exported deck does not have. -->
+      <label data-for="shape">Rotation
+        <span class="pair">
+          <input type="range" id="p-rot" min="-180" max="180" step="1" value="0">
+          <output id="p-rot-out">0°</output>
+        </span>
+      </label>
+      <div class="row">
+        <button type="button" id="b-raise" title="Raise (z-order is DOM order)">Raise</button>
+        <button type="button" id="b-lower" title="Lower">Lower</button>
+      </div>
+      <div class="row">
+        <button type="button" id="b-dup" title="Duplicate (Ctrl+D) — gets a NEW id">Duplicate</button>
+        <button type="button" id="b-del" title="Delete (Del) — Ctrl+C/Ctrl+V copy and paste">Delete</button>
+      </div>
+      <!-- Group is editor-metadata only (schema.json's `group`) -- it has no rendering effect and
+           is never a PowerPoint group. Requires 2+ elements in selectionSet() (`selected` plus any
+           Shift+Click `multi` members); Ungroup works on the current selection regardless of count. -->
+      <div class="row">
+        <button type="button" id="b-group" title="Group (Ctrl+G) — requires 2+ selected elements">Group</button>
+        <button type="button" id="b-ungroup" title="Ungroup (Ctrl+Shift+G)">Ungroup</button>
+      </div>
+    </section>
+
+    <!-- Phase 6: multi-selection alignment. Shift+Click adds an element to the alignment set
+         (editor.js: toggleMulti()) WITHOUT changing the single `selected` element the rest of this
+         panel describes -- alignment is the only thing a multi-selection drives. Shown whenever 2+
+         elements are in that set, independently of whether anything is `selected`, which is why
+         its `hidden` is driven separately from `props.hidden` in syncProps() rather than by the
+         data-for scoping loop below (that loop only runs when a SINGLE element is selected). -->
+    <section class="group" id="align-group" hidden>
+      <h2>Align (<span id="align-count">0</span> selected)</h2>
+      <div class="row">
+        <button type="button" id="b-align-left" title="Align left edges">Left</button>
+        <button type="button" id="b-align-center-x" title="Centre on the vertical axis">Center X</button>
+        <button type="button" id="b-align-right" title="Align right edges">Right</button>
+      </div>
+      <div class="row">
+        <button type="button" id="b-align-top" title="Align top edges">Top</button>
+        <button type="button" id="b-align-center-y" title="Centre on the horizontal axis">Center Y</button>
+        <button type="button" id="b-align-bottom" title="Align bottom edges">Bottom</button>
+      </div>
+    </section>
+  </aside>
+
+  <!-- THE AI DRAFT — still a MOCK, and it still says so on the tin.
+       /api/generate returns a FIXED canvas-ir/1 deck 1.5 s late; nothing reads the prompt and no
+       model is called. What is real is the wiring: the request, the loading state, the failure
+       paths, and the hand-off to loadIR() — which judges the payload exactly as it judges a file
+       the user opened, because a deck a model wrote is no more trusted than one a human
+       hand-edited. It is, in fact, the author most likely to put a box on the Vieworks logo.
+       GENERATE REPLACES THE WHOLE STAGE. That is one undo step, and the caller pushes it.
+
+       Phase 2 (AI_PPT_v2): moved here from a `<section class="group">` inside `#toolbar` to a
+       bottom composer, `grid-area: composer` (see style.css), always visible above `#status` and
+       no longer something the toolbar's own scroll could carry off-screen. `#p-model` is new —
+       Phase 1 already built the `flash` / `flash-extended` profiles this picker targets -->
+  <section id="ai" aria-label="AI draft composer">
+    <!-- Empty and `hidden`: no JS in this phase populates it. -->
+    <div id="ai-attachments" class="attachments" aria-label="Attached images" hidden></div>
+
+    <div class="composer-field">
+      <label class="visually-hidden" for="p-prompt">AI draft prompt</label>
+      <textarea id="p-prompt" rows="1" spellcheck="false"
+                placeholder="Ask anything, @ to mention, / for actions"></textarea>
+    </div>
+    
+    <div class="composer-toolbar">
+      <div class="toolbar-left">
+        <div class="model-select-wrapper">
+          <select id="p-model">
+            <option value="sonnet" selected>Claude Sonnet 5</option>
+            <option value="opus">Claude Opus</option>
+            <option value="gpt-5.6-terra">GPT 5.6 Terra</option>
+            <option value="gpt-5.6-sol">GPT 5.6 Sol</option>
+          </select>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </div>
+        <label style="margin-left: 10px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px; color: #ccc; cursor: pointer;">
+          <input type="checkbox" id="p-review"> Review
+        </label>
+        <div class="model-select-wrapper" id="reviewer-wrapper" style="margin-left: 8px; display: none;">
+          <select id="p-reviewer-model">
+            <option value="gpt-5.6-terra" selected>Reviewer: Codex (Terra)</option>
+            <option value="sonnet">Reviewer: Sonnet</option>
+            <option value="opus">Reviewer: Opus</option>
+          </select>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </div>
+        <button type="button" id="b-view-log" class="sidebar-action" style="margin-left: 8px; font-size: 11px;">View Log</button>
+      </div>
+      <div class="toolbar-right">
+        <button type="button" id="b-generate" class="submit-btn" title="Generate">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <footer id="status">
+    <span id="status-msg">Ready.</span>
+    <span class="note">
+      The header is <strong>deliberately not WYSIWYG</strong>: the editor draws a flat red line,
+      PowerPoint renders the real gradient divider and the Vieworks logo (inherited from layout 3).
+      Elbow connectors are an <strong>approximation</strong> — PowerPoint auto-routes them.
+    </span>
+  </footer>
+
+</div>
+
+<!-- JSON View Notepad Modal -->
+<div id="json-modal" class="modal-overlay" hidden>
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3>Canvas Design JSON Notepad</h3>
+      <button type="button" id="b-close-json-modal" class="modal-close-btn">&times;</button>
+    </div>
+    <textarea id="json-modal-text" readonly spellcheck="false"></textarea>
+    <div class="modal-actions">
+      <button type="button" id="b-copy-json-modal" class="primary">Copy to Clipboard</button>
+      <button type="button" id="b-close-json-modal-btn">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Multi-Agent Live Log Modal (Phase 2/3). Reuses .modal-overlay/.modal-box/.modal-header/
+     .modal-close-btn from style.css for the overlay mechanics (backdrop, centering, close-X
+     placement) and overrides colours inline for a terminal look -- this brief's write_scope does
+     not include style.css, so the terminal styling lives here rather than as a new CSS class. -->
+<div id="log-modal" class="modal-overlay" hidden>
+  <div class="modal-box" style="background: #1e1e1e;">
+    <div class="modal-header" style="border-bottom: 1px solid #333;">
+      <h3 style="color: #d4d4d4;">Multi-Agent Live Log</h3>
+      <button type="button" id="b-close-log-modal" class="modal-close-btn" style="color: #d4d4d4;">&times;</button>
+    </div>
+    <pre id="log-modal-text" style="background: #1e1e1e; color: #6be675; font-family: 'Consolas', 'Courier New', monospace; font-size: 12px; line-height: 1.5; white-space: pre-wrap; word-break: break-all; overflow-y: auto; margin: 0; padding: 12px; min-height: 300px; max-height: 60vh; border: 1px solid #333;">Waiting for logs...</pre>
+  </div>
+</div>
+
+<!-- No bundler, no npm, no CDN — the editor must work with the network off.
+     interactions.js is the ~150-line pointer-capture engine plan Sec 5.1 sanctions as the
+     alternative to interact.js, behind an interact.js-shaped interface. See the "interact.js
+     decision" section of phase1b_change_detail.md. -->
+<script src="/static/interactions.js"></script>
+<script src="/static/editor.js?v=2"></script>
+</body>
+</html>

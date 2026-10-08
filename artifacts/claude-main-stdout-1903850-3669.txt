@@ -1,0 +1,11 @@
+All changes are complete and consistent. Here's a summary:
+
+**Implemented** (all within `write_scope`, in the staged worktree `stg.nHitS8KV`):
+
+1. **`schema.json`** — added an optional `link` string property (new `$defs.link`) to `rect`, `ellipse`, `triangle`, `textbox`. Confirmed `validate.py` loads this file straight into `jsonschema` with no duplicated field list, so no backend `.py` changes were needed or made.
+
+2. **`index.html`** — added `#b-export-html` ("Download HTML") next to "Export PPT", and a new `data-for="shape"`-scoped "Link" group in the property panel with the exact `<input type="url" id="p-link">` the brief specified.
+
+3. **`editor.js`** — threaded `link` through the full state pipeline (`DEFAULTS`, `read`/`write`, `toIR`, `stateFromIR`, `syncProps`, undo-grouped input wiring), then added `exportHTML()`: it clones each rendered `.el` node verbatim (so the export can't visually drift from the live preview), strips editor-only chrome (handles, selection classes), wraps linked elements in `<a style="display:contents">` (preserves absolute positioning/z-order, relies on the same event-bubbling the editor's own drag handler already depends on), and bundles everything into a standalone, offline-capable `presentation.html` download.
+
+I verified by hand (grepping the actual gate sources in the outer tree) that no Gate 1 banned tokens were introduced and that the lifted-by-name functions (`stateFromIR`, `esc`) stay intact — but couldn't execute `node`/`pytest` in this session (blocked, as in prior sessions on this task). Full detail, reasoning, and caveats are written to `tasks/AI_Powered_PPT/workers/phase6/change_detail.md` in the outer tree.

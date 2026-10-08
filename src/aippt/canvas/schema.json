@@ -1,0 +1,370 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vieworks.com/aippt/canvas-ir/1/schema.json",
+  "title": "Canvas IR",
+  "description": "The normative contract between the visual editor (Phase 1B) and the deterministic PPTX renderer (canvas/render_canvas.py). It carries ABSOLUTE GEOMETRY in a 960x540 logical space -- unlike slide-ir/1 (src/aippt/ir/schema.json), which is semantic and carries no coordinates at all. The two IRs are deliberately separate: they must not merge and must not import each other (plan Sec 8). 1 logical unit == 1 pt == exactly 12,700 EMU, and font sizes are 1:1 with it -- there is NO scale factor anywhere in this pipeline.",
+  "type": "object",
+  "required": ["schema", "canvas", "target", "title", "elements"],
+  "additionalProperties": false,
+
+  "properties": {
+    "schema": {
+      "const": "canvas-ir/1",
+      "description": "Version it. This IR WILL change; the renderer refuses versions it does not know."
+    },
+
+    "canvas": {
+      "type": "object",
+      "description": "The model space, echoed by the editor so the backend can reject a STALE payload instead of silently rescaling it into a subtly-wrong deck. Every field is a const: there is exactly one model space, and the renderer NEVER rescales. A mismatch is a hard failure ('stale payload'), not a conversion.",
+      "required": ["w", "h", "unit"],
+      "additionalProperties": false,
+      "properties": {
+        "w": {"const": 960},
+        "h": {"const": 540},
+        "unit": {
+          "const": "pt",
+          "description": "1 logical unit == 1 pt == 12,700 EMU exactly (12192000/960 == 6858000/540 == 914400/72)."
+        }
+      }
+    },
+
+    "target": {
+      "type": "object",
+      "required": ["template_sha256", "layout_index"],
+      "additionalProperties": false,
+      "properties": {
+        "template": {
+          "type": "string",
+          "description": "Informational ONLY. The renderer never reads a template path from the payload -- it uses its own pinned path (reference/template_pin.json). Honouring a path from here would be an arbitrary-file-read the moment the Phase 1C server exists."
+        },
+        "template_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "SHA-256 of reference/renderer_template.pptx as the editor saw it. render_canvas.py hard-fails on a mismatch (StalePayloadError). It is checked THERE and not in validate.py, so that validate.py stays pure and can be unit-tested without a template on disk."
+        },
+        "layout_index": {
+          "const": 3,
+          "description": "Layout 3 == /ppt/slideLayouts/slideLayout4.xml == '2_사용자 지정 레이아웃'. It carries the Vieworks logo, the gradient divider and the page number -- all inherited for free by add_slide(). Pinned; see canvas/pin.py gate 2."
+        }
+      }
+    },
+
+    "title": {
+      "type": "string",
+      "description": "Goes to the INHERITED placeholder idx 10 -- on-brand and correctly positioned for free. It is NOT an element: it has no x/y/w/h, it cannot be moved or resized, and it never appears in `elements`. A '\\n' becomes a DrawingML <a:br/>, exactly as in a run."
+    },
+
+    "elements": {
+      "type": "array",
+      "description": "ARRAY ORDER IS Z-ORDER: elements[0] is drawn first and therefore sits at the BACK. There is deliberately no `z` field -- it would be a second source of truth and would desync. (The editor pushes new connectors towards the front of the array so that lines sit behind the boxes they join.) Note that inherited layout chrome renders behind ALL of these and cannot be raised above them; that asymmetry is what the reserved regions protect.",
+      "items": {"$ref": "#/$defs/element"}
+    }
+  },
+
+  "$defs": {
+
+    "element": {
+      "description": "Closed union, discriminated on `type` by a per-branch const so that a bad element produces a precise error ('w must be > 0') rather than 'failed to match any of 5 subschemas'. The four shape branches are structurally identical -- they differ only in the DrawingML preset geometry style.py picks -- but they are spelled out separately so the discriminator stays literal and every type carries its own description.",
+      "oneOf": [
+        {"$ref": "#/$defs/rect"},
+        {"$ref": "#/$defs/ellipse"},
+        {"$ref": "#/$defs/triangle"},
+        {"$ref": "#/$defs/textbox"},
+        {"$ref": "#/$defs/connector"},
+        {"$ref": "#/$defs/image"},
+        {"$ref": "#/$defs/video"}
+      ]
+    },
+
+    "rect": {
+      "type": "object",
+      "description": "MSO_SHAPE.RECTANGLE -> prstGeom 'rect'.",
+      "required": ["id", "type", "x", "y", "w", "h", "fill"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "type": {"const": "rect"},
+        "x": {"$ref": "#/$defs/coord"},
+        "y": {"$ref": "#/$defs/coord"},
+        "w": {"$ref": "#/$defs/extent"},
+        "h": {"$ref": "#/$defs/extent"},
+        "rotation": {"$ref": "#/$defs/rotation"},
+        "fill": {"$ref": "#/$defs/fill"},
+        "stroke": {"$ref": "#/$defs/stroke"},
+        "text": {"$ref": "#/$defs/text"},
+        "link": {"$ref": "#/$defs/link"},
+        "group": {"$ref": "#/$defs/group"}
+      }
+    },
+
+    "ellipse": {
+      "type": "object",
+      "description": "MSO_SHAPE.OVAL -> prstGeom 'ellipse'. x/y/w/h is its BOUNDING box, not its centre and radii.",
+      "required": ["id", "type", "x", "y", "w", "h", "fill"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "type": {"const": "ellipse"},
+        "x": {"$ref": "#/$defs/coord"},
+        "y": {"$ref": "#/$defs/coord"},
+        "w": {"$ref": "#/$defs/extent"},
+        "h": {"$ref": "#/$defs/extent"},
+        "rotation": {"$ref": "#/$defs/rotation"},
+        "fill": {"$ref": "#/$defs/fill"},
+        "stroke": {"$ref": "#/$defs/stroke"},
+        "text": {"$ref": "#/$defs/text"},
+        "link": {"$ref": "#/$defs/link"},
+        "group": {"$ref": "#/$defs/group"}
+      }
+    },
+
+    "triangle": {
+      "type": "object",
+      "description": "MSO_SHAPE.ISOSCELES_TRIANGLE -> prstGeom 'triangle'. Apex at the top-centre of the box, base along its bottom edge.",
+      "required": ["id", "type", "x", "y", "w", "h", "fill"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "type": {"const": "triangle"},
+        "x": {"$ref": "#/$defs/coord"},
+        "y": {"$ref": "#/$defs/coord"},
+        "w": {"$ref": "#/$defs/extent"},
+        "h": {"$ref": "#/$defs/extent"},
+        "rotation": {"$ref": "#/$defs/rotation"},
+        "fill": {"$ref": "#/$defs/fill"},
+        "stroke": {"$ref": "#/$defs/stroke"},
+        "text": {"$ref": "#/$defs/text"},
+        "link": {"$ref": "#/$defs/link"},
+        "group": {"$ref": "#/$defs/group"}
+      }
+    },
+
+    "textbox": {
+      "type": "object",
+      "description": "A plain text container (python-pptx add_textbox). Geometrically identical to a `rect`, and it accepts the same fill and stroke -- the distinction is authorial intent, and it lets the editor default a textbox to fill:null while a rect defaults to the brand red. NOTE: add_textbox() ships wrap='none' + <a:spAutoFit/>; style.style_text_frame overrides both, because autofit is out of scope (plan Sec 6.6).",
+      "required": ["id", "type", "x", "y", "w", "h", "fill"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "type": {"const": "textbox"},
+        "x": {"$ref": "#/$defs/coord"},
+        "y": {"$ref": "#/$defs/coord"},
+        "w": {"$ref": "#/$defs/extent"},
+        "h": {"$ref": "#/$defs/extent"},
+        "rotation": {"$ref": "#/$defs/rotation"},
+        "fill": {"$ref": "#/$defs/fill"},
+        "stroke": {"$ref": "#/$defs/stroke"},
+        "text": {"$ref": "#/$defs/text"},
+        "link": {"$ref": "#/$defs/link"},
+        "group": {"$ref": "#/$defs/group"}
+      }
+    },
+
+    "connector": {
+      "type": "object",
+      "description": "A line with ABSOLUTE endpoints. No gluing in Phase 1 (D-3): begin_connect()/end_connect() are experimental and their connection-site indices are unreliable for arbitrary shapes, notably triangles. Absolute endpoints always work. A connector has no text and no fill.",
+      "required": ["id", "type", "kind", "x1", "y1", "x2", "y2", "color", "width", "arrow"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "type": {"const": "connector"},
+        "kind": {
+          "enum": ["straight", "elbow"],
+          "description": "straight -> MSO_CONNECTOR.STRAIGHT; elbow -> MSO_CONNECTOR.ELBOW."
+        },
+        "x1": {"$ref": "#/$defs/coord"},
+        "y1": {"$ref": "#/$defs/coord"},
+        "x2": {"$ref": "#/$defs/coord"},
+        "y2": {"$ref": "#/$defs/coord"},
+        "color": {"$ref": "#/$defs/color"},
+        "width": {"$ref": "#/$defs/line_width"},
+        "arrow": {
+          "enum": ["none", "start", "end", "both"],
+          "description": "'start' puts an arrowhead at (x1,y1) -- DrawingML <a:headEnd>. 'end' puts one at (x2,y2) -- <a:tailEnd>. Arrowheads are not exposed in the python-pptx API (there is no line.end_arrow), so connectors.py writes them with lxml; <a:headEnd> MUST precede <a:tailEnd> per CT_LineProperties._tag_seq, or PowerPoint declares the file corrupt."
+        },
+        "group": {"$ref": "#/$defs/group"}
+      }
+    },
+
+    "image": {
+      "type": "object",
+      "description": "A raster image (python-pptx add_picture), addressed by `src`. Geometrically identical to `rect` -- x/y/w/h is its bounding box -- but it carries no text, and `fill`/`stroke` are optional rather than required since the picture itself already covers the box.",
+      "required": ["id", "type", "x", "y", "w", "h", "src"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "type": {"const": "image"},
+        "x": {"$ref": "#/$defs/coord"},
+        "y": {"$ref": "#/$defs/coord"},
+        "w": {"$ref": "#/$defs/extent"},
+        "h": {"$ref": "#/$defs/extent"},
+        "rotation": {"$ref": "#/$defs/rotation"},
+        "fill": {"$ref": "#/$defs/fill"},
+        "stroke": {"$ref": "#/$defs/stroke"},
+        "src": {
+          "type": "string",
+          "description": "Path (or URI) to the image asset, resolved by the renderer -- see canvas/render_canvas.py."
+        },
+        "group": {"$ref": "#/$defs/group"}
+      }
+    },
+
+    "video": {
+      "type": "object",
+      "description": "An embedded video (python-pptx add_movie), addressed by `src`. Geometrically identical to `rect` -- x/y/w/h is its bounding box -- but it carries no text, and `fill`/`stroke` are optional rather than required since the video frame itself already covers the box.",
+      "required": ["id", "type", "x", "y", "w", "h", "src"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "type": {"const": "video"},
+        "x": {"$ref": "#/$defs/coord"},
+        "y": {"$ref": "#/$defs/coord"},
+        "w": {"$ref": "#/$defs/extent"},
+        "h": {"$ref": "#/$defs/extent"},
+        "rotation": {"$ref": "#/$defs/rotation"},
+        "fill": {"$ref": "#/$defs/fill"},
+        "stroke": {"$ref": "#/$defs/stroke"},
+        "src": {
+          "type": "string",
+          "description": "Path (or URI) to the video asset, resolved by the renderer -- see canvas/render_canvas.py."
+        },
+        "group": {"$ref": "#/$defs/group"}
+      }
+    },
+
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Becomes the shape's NAME in the PPTX (shp.name). The round-trip suite finds shapes by name rather than by position, so ids must be unique across `elements` -- validate.py rejects duplicates."
+    },
+
+    "coord": {
+      "type": "number",
+      "description": "Logical units from the top-left of the 960x540 canvas."
+    },
+
+    "extent": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "Logical units. This is the UNROTATED PATH BOX; the stroke is centred on it and is not included in it."
+    },
+
+    "rotation": {
+      "type": "number",
+      "default": 0,
+      "description": "Degrees CLOCKWISE about the box centre (== DrawingML a:xfrm/@rot). The reserved-region and slide-bounds checks use the ROTATED axis-aligned bounding box, so a 45-degree box that visually collides with the logo is rejected even though its unrotated path box would clear it."
+    },
+
+    "color": {
+      "type": "string",
+      "pattern": "^#[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?$",
+      "description": "#RRGGBB, or #RRGGBBAA where the trailing byte is an alpha channel (00 = fully transparent, FF = fully opaque) -- Phase 6 lifts the Phase 1 (D-4) opaque-only restriction. #FF0032 (brand red) is the default for new content. #4472C4 is REJECTED by validate.py: it is this template's theme accent1, and banning it as an explicit author choice is what keeps 'no accent1 in any renderer-created shape' (plan Sec 7.3) a machine-checkable invariant rather than an aspiration."
+    },
+
+    "fill": {
+      "description": "Solid opaque fill, or null for NO fill (<a:noFill/>). REQUIRED even when null: omitting a fill is precisely how a shape silently inherits the template's theme accent1 -- new_autoshape_sp hard-codes a <p:style> block pointing fillRef at schemeClr accent1, which is Office blue -- so making the author state the intent is the schema encoding that invariant. 'No fill' is the ABSENCE of a fill, not a transparency, so it does not reopen D-4.",
+      "oneOf": [
+        {"$ref": "#/$defs/color"},
+        {"type": "null"}
+      ]
+    },
+
+    "stroke": {
+      "description": "The line around the shape; null or absent means no line. The stroke is CENTRED on the path box (SVG and DrawingML agree, which is why the editor draws SVG), so it bleeds width/2 OUTSIDE x/y/w/h -- and that bleed is deliberately NOT part of the reserved-region check. See the caveat in canvas/geometry.py. Its `color` may carry an alpha channel like any other color (Phase 6 lifts the Phase 1 (D-4) opaque-only restriction).",
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "required": ["color", "width"],
+          "additionalProperties": false,
+          "properties": {
+            "color": {"$ref": "#/$defs/color"},
+            "width": {"$ref": "#/$defs/line_width"}
+          }
+        }
+      ]
+    },
+
+    "line_width": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Logical units (== pt). CAUTION: width 0 is a HAIRLINE in PowerPoint, not 'no line' -- a browser draws nothing for border-width:0 while PowerPoint draws the thinnest line it can. To get no line at all, use `\"stroke\": null`."
+    },
+
+    "link": {
+      "type": "string",
+      "description": "Phase 6: an optional hyperlink carried on a shape/textbox element only (not connector/image/video). The editor allowlists the scheme (http/https/mailto, or a #anchor) before ever exporting or rendering it -- see sanitizeLink() in editor.js -- so this field is never trusted as pre-sanitized just because it validated against this (deliberately permissive) string type."
+    },
+
+    "group": {
+      "type": "string",
+      "description": "An opaque, editor-only grouping id shared by every element the user grouped together (editor.js Group/Ungroup, Ctrl+G / Ctrl+Shift+G). It is NOT a PowerPoint group: render_canvas.py never reads it and it has no effect on the rendered deck. Present on every element type; absent or '' means the element belongs to no group. Carried through purely so the editor can remember and rigidly drag a group together across save/load."
+    },
+
+    "text": {
+      "description": "Null or absent means the shape carries no text. Connectors cannot carry text at all.",
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "required": ["paragraphs"],
+          "additionalProperties": false,
+          "properties": {
+            "align": {
+              "enum": ["LEFT", "CENTER", "RIGHT"],
+              "default": "CENTER",
+              "description": "Horizontal alignment, applied to every paragraph. style.py maps this with an EXPLICIT dict, never with PP_ALIGN[name]: enum-member-name indexing happens to work in python-pptx 1.0.x, but it would couple this IR's public vocabulary to an upstream enum's member names and would raise a bare KeyError instead of a validation error."
+            },
+            "valign": {
+              "enum": ["TOP", "MIDDLE", "BOTTOM"],
+              "default": "MIDDLE",
+              "description": "Vertical anchor of the whole text frame (== CSS align-items on the editor's div)."
+            },
+            "paragraphs": {
+              "type": "array",
+              "minItems": 1,
+              "items": {"$ref": "#/$defs/paragraph"}
+            }
+          }
+        }
+      ]
+    },
+
+    "paragraph": {
+      "type": "object",
+      "required": ["runs"],
+      "additionalProperties": false,
+      "properties": {
+        "runs": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/run"}
+        }
+      }
+    },
+
+    "run": {
+      "type": "object",
+      "description": "A span of uniformly-formatted text. Every property the rendered result depends on is stated explicitly -- the inherited placeholder/theme style is never trusted to match the editor's default.",
+      "required": ["t", "size", "color"],
+      "additionalProperties": false,
+      "properties": {
+        "t": {
+          "type": "string",
+          "description": "The run's literal text. A '\\n' is a LINE BREAK WITHIN THE PARAGRAPH: style.py splits the run on it and emits a DrawingML <a:br/> between the pieces, carrying this run's formatting across the break. That split is not cosmetic -- a raw '\\n' left inside <a:t> is mere whitespace to DrawingML, so splitting is the only thing that makes the character mean what the author typed. U+00A0 (nbsp) is preserved verbatim and is never collapsed to a space. C0 control characters other than '\\t' and '\\n' are rejected by validate.py."
+        },
+        "size": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Points, 1:1 with the logical unit. A size-14 run is Pt(14). There is NO scale factor."
+        },
+        "bold": {"type": "boolean", "default": false},
+        "italic": {"type": "boolean", "default": false},
+        "color": {
+          "$ref": "#/$defs/color",
+          "description": "REQUIRED. An un-coloured run inherits fontRef -> lt1 from the autoshape's <p:style> block, and lt1 is WHITE; stating the colour is what stops white-on-white text."
+        }
+      }
+    }
+  }
+}
